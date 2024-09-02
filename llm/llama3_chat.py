@@ -8,6 +8,9 @@ import json
 os.environ['HUGGINGFACE_HUB_CACHE'] = "/scratch/slowe8/.cache/"
 
 def load_model():
+    # Set the cache location for the model
+    os.environ['HUGGINGFACE_HUB_CACHE'] = "/scratch/slowe8/.cache/"
+
     # Define the model ID and load the tokenizer and model
     global model_id
     global tokenizer
@@ -68,6 +71,7 @@ def get_multiline_input(prompt="Enter your message (end with 'END' on a new line
         lines.append(line)
     return "\n".join(lines)
 
+# Parse JSON Response from LLM to dict
 def convert_json_reponse_to_dict(generated_response: str) -> dict:
     
     first_pos = generated_response.find('{')
@@ -87,6 +91,7 @@ def convert_json_reponse_to_dict(generated_response: str) -> dict:
     
     return parsed_response
 
+# TODO: Create call to QuestaSim to get coverage
 def get_coverage(generated_response):
     generated_testbench = generated_response["test bench"]
 
