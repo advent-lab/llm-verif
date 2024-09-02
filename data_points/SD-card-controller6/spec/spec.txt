@@ -1,0 +1,4 @@
+ sd_controller_wb.v                                           
+                                                              
+ Description                                                  
+ Wishbone interface responsible for comunication with coreface interface      

@@ -1,0 +1,5 @@
+ sd_data_serial_host.v                                        
+                                                              
+ Description                                                  
+ Module resposible for sending and receiving data through     
+ 4-bit sd card data interface 

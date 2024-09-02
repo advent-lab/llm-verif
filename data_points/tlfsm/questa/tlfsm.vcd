@@ -1,0 +1,31 @@
+$date
+	Tue Jul 30 19:02:08 2024
+$end
+$version
+	Questa Intel FPGA Edition Version 2023.3
+$end
+$timescale
+	1ns
+$end
+
+$scope module tlfsmtb $end
+
+$scope module DUT $end
+
+$scope module inner_counter $end
+
+$scope module inner_counter $end
+
+$scope task step $end
+$upscope $end
+
+$scope task restart $end
+$upscope $end
+$upscope $end
+$upscope $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+#0
+$dumpvars
+$end

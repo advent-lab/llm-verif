@@ -1,0 +1,543 @@
+$date
+	Sun Aug 25 16:42:14 2024
+$end
+$version
+	Questa Intel FPGA Edition Version 2023.3
+$end
+$timescale
+	1ps
+$end
+
+$scope module tb_input_port $end
+$var reg 25 ! data_cmd [24:0] $end
+$var reg 25 " flit_o [24:0] $end
+$var reg 6 # out_port_o [5:0] $end
+
+$scope task dump_output $end
+$upscope $end
+
+$scope task initialize $end
+$upscope $end
+
+$scope task create_flit $end
+$upscope $end
+
+$scope task clear_reset $end
+$upscope $end
+
+$scope task write_flit $end
+$upscope $end
+
+$scope task push_flit $end
+$upscope $end
+
+$scope task checkFlits $end
+$upscope $end
+
+$scope task noHead $end
+$upscope $end
+
+$scope task test $end
+$upscope $end
+
+$scope function checkEndConditions $end
+$upscope $end
+
+$scope task insertFlit $end
+$upscope $end
+
+$scope task readFlit $end
+$upscope $end
+
+$scope task commandIP $end
+$upscope $end
+
+$scope task initTest $end
+$upscope $end
+
+$scope task vcChange $end
+$upscope $end
+
+$scope module input_port $end
+
+$scope begin generate_virtual_channels[1] $end
+
+$scope module input_buffer $end
+
+$scope module circular_buffer $end
+$var reg 3 $ read_ptr [2:0] $end
+$var reg 3 % write_ptr [2:0] $end
+$var reg 3 & read_ptr_next [2:0] $end
+$var reg 3 ' write_ptr_next [2:0] $end
+$var reg 1 ( is_full_next $end
+$var reg 1 ) is_empty_next $end
+
+$scope begin read_not_empty $end
+$upscope $end
+
+$scope begin write_not_full $end
+$upscope $end
+
+$scope begin read_write_not_empty $end
+$upscope $end
+
+$scope begin do_nothing $end
+$upscope $end
+
+$scope begin update_on_off_flag $end
+$upscope $end
+
+$scope function increase_ptr $end
+$upscope $end
+
+$scope function update_empty_on_read $end
+$upscope $end
+
+$scope function update_full_on_write $end
+$upscope $end
+$upscope $end
+$upscope $end
+$upscope $end
+
+$scope begin generate_virtual_channels[0] $end
+
+$scope module input_buffer $end
+
+$scope module circular_buffer $end
+$var reg 3 * read_ptr [2:0] $end
+$var reg 3 + write_ptr [2:0] $end
+$var reg 3 , read_ptr_next [2:0] $end
+$var reg 3 - write_ptr_next [2:0] $end
+$var reg 1 . is_full_next $end
+$var reg 1 / is_empty_next $end
+
+$scope begin read_not_empty $end
+$upscope $end
+
+$scope begin write_not_full $end
+$upscope $end
+
+$scope begin read_write_not_empty $end
+$upscope $end
+
+$scope begin do_nothing $end
+$upscope $end
+
+$scope begin update_on_off_flag $end
+$upscope $end
+
+$scope function increase_ptr $end
+$upscope $end
+
+$scope function update_empty_on_read $end
+$upscope $end
+
+$scope function update_full_on_write $end
+$upscope $end
+$upscope $end
+$upscope $end
+$upscope $end
+
+$scope module rc_unit $end
+$upscope $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+#0
+$dumpvars
+bx !
+bx0xxxxxxxxxxxxxxxxxxxxxx "
+b0 #
+b0 *
+b0 +
+b0 ,
+b0 -
+0.
+1/
+b0 $
+b0 %
+b0 &
+b0 '
+0(
+1)
+$end
+#15000
+b0 !
+b1 -
+0/
+#25000
+b1 +
+b100000000000000000000001 !
+b11 #
+b10 -
+b1 -
+b10 -
+b0 "
+#35000
+b10 +
+b100000000000000000000010 !
+b11 -
+#45000
+b11 +
+b1000000000000000000000011 !
+b100 -
+b1 ,
+b10000000000000000000000 "
+#55000
+b1 *
+b100 +
+b10 ,
+b101 -
+b100 -
+b110000000000000000000001 "
+#65000
+b10 *
+b11 ,
+b110000000000000000000010 "
+#75000
+b11 *
+b100 ,
+1/
+b1010000000000000000000011 "
+#85000
+b100 *
+bx1xxxxxxxxxxxxxxxxxxxxxx "
+#95000
+b1000 !
+b101 -
+0/
+#105000
+b101 +
+b110 -
+b101 -
+b10000000000000000001000 "
+#125000
+b100000000000000000001001 !
+b110 -
+#135000
+b110 +
+b111 -
+b101 ,
+b110 -
+#145000
+b101 *
+b110 ,
+1/
+b110000000000000000001001 "
+#155000
+b110 *
+b100000000000000000001100 !
+bx1xxxxxxxxxxxxxxxxxxxxxx "
+#165000
+b110000000000000000001100 "
+#185000
+b1000000000000000000001110 !
+#195000
+b1010000000000000000001110 "
+#215000
+b10000000000000000010000 !
+b1 '
+0)
+#225000
+b1 %
+b1010000000000000000010001 !
+b11011 #
+b10 '
+b1 '
+b10 '
+#235000
+b10 %
+b11 '
+b10000 "
+b1 &
+b10 '
+b10000000000000000010000 "
+#245000
+b1 $
+b10 &
+1)
+b1010000000000000000010001 "
+#255000
+b10 $
+bx1xxxxxxxxxxxxxxxxxxxxxx "
+#265000
+b11001000000000000010100 !
+b11 '
+0)
+#275000
+b11 %
+b110000000000000000010101 !
+b100011 #
+b100 '
+b11 '
+b100 '
+b11001000000000000010100 "
+#285000
+b100 %
+b110000000000000000010110 !
+b101 '
+b11 &
+#295000
+b11 $
+b101 %
+b110000000000000000011000 !
+b100 &
+b110 '
+b110000000000000000010101 "
+#305000
+b100 $
+b110 %
+b110000000000000000011010 !
+b101 &
+b111 '
+b110000000000000000010110 "
+#315000
+b101 $
+b111 %
+b110000000000000000011100 !
+b110 &
+b0 '
+b110000000000000000011000 "
+#325000
+b110 $
+b0 %
+b110000000000000000011110 !
+b111 &
+b1 '
+b110000000000000000011010 "
+#335000
+b111 $
+b1 %
+b110000000000000000100000 !
+b0 &
+b10 '
+b110000000000000000011100 "
+#345000
+b0 $
+b10 %
+b110000000000000000100010 !
+b1 &
+b11 '
+b110000000000000000011110 "
+#355000
+b1 $
+b11 %
+b110000000000000000100100 !
+b10 &
+b100 '
+b110000000000000000100000 "
+#365000
+b10 $
+b100 %
+b110000000000000000100110 !
+b11 &
+b101 '
+b110000000000000000100010 "
+#375000
+b11 $
+b101 %
+b110000000000000000101000 !
+b100 &
+b110 '
+b110000000000000000100100 "
+#385000
+b100 $
+b110 %
+b110000000000000000101010 !
+b101 &
+b111 '
+b110000000000000000100110 "
+#395000
+b101 $
+b111 %
+b110000000000000000101100 !
+b110 &
+b0 '
+b110000000000000000101000 "
+#405000
+b110 $
+b0 %
+b110000000000000000101110 !
+b111 &
+b1 '
+b110000000000000000101010 "
+#415000
+b111 $
+b1 %
+b1010000000000000000110000 !
+b0 &
+b10 '
+b110000000000000000101100 "
+#425000
+b0 $
+b10 %
+b1 &
+b11 '
+b10 '
+b110000000000000000101110 "
+#435000
+b1 $
+b10 &
+1)
+b1010000000000000000110000 "
+#445000
+b10 $
+b110000000000000000100010 "
+#455000
+b11001000000000000110100 !
+b11 '
+0)
+#465000
+b11 %
+b11011010000000000110101 !
+b100 '
+b11 '
+b11001000000000000110100 "
+#475000
+b11101100000000000110110 !
+b11 &
+1)
+#485000
+b11 $
+b110000000000000000111000 !
+b110000000000000000100100 "
+#495000
+b110000000000000000111001 !
+b110000000000000000111000 "
+#505000
+b1010000000000000000111011 !
+b110000000000000000111001 "
+#515000
+b1010000000000000000111011 "
+#535000
+b1110000000000000000111110 !
+b100 '
+0)
+#545000
+b100 %
+b11011 #
+b101 '
+b100 '
+b1110000000000000000111110 "
+#565000
+b100 &
+1)
+#575000
+b100 $
+b110000000000000000100110 "
+#585000
+b1000000 !
+b111 -
+0/
+#595000
+b111 +
+b10010010000000001000001 !
+b0 -
+b111 -
+b101 '
+0)
+#605000
+b101 %
+b100000000000000001000010 !
+b110 '
+b101 '
+b0 -
+b10010010000000001000001 "
+#615000
+b0 +
+b110000000000000001000011 !
+b1 -
+b0 -
+b110 '
+#625000
+b110 %
+b100000000000000001000100 !
+b111 '
+b10000000000000001000000 "
+b110 '
+b111 ,
+b1 -
+#635000
+b111 *
+b1 +
+b110000000000000001000110 !
+b0 ,
+b10 -
+b10010000000001000001 "
+b101 &
+b111 '
+b111 ,
+b1 -
+#645000
+b101 $
+b111 %
+b1000000000000000001001000 !
+b110 &
+b0 '
+b110000000000000001000010 "
+b101 &
+b111 '
+b0 ,
+b10 -
+#655000
+b0 *
+b10 +
+b110000000000000001001010 !
+b1 ,
+b11 -
+b100000000000000001000011 "
+b0 ,
+b10 -
+b110 &
+b0 '
+#665000
+b110 $
+b0 %
+b111 &
+b1 '
+b110000000000000001000100 "
+b1 ,
+b110 &
+b0 '
+#675000
+b1 *
+b1010000000000000001001101 !
+b10 ,
+1/
+b100000000000000001000110 "
+b1 ,
+0/
+b111 &
+b1 '
+#685000
+b111 $
+b1 %
+b0 &
+b10 '
+b1010000000000000001001000 "
+b111 &
+b1 '
+b10 ,
+1/
+#695000
+b10 *
+b100000000000000001001010 "
+b0 &
+#705000
+b0 $
+b1 &
+1)
+b110000000000000000000010 "
+b0 &
+0)
+#715000
+b1000000000000000001001101 "
+b1 &
+1)
+#725000
+b1 $
+b1000000000000000000110000 "
+#735000
+b100000000000000001010010 !
+#755000
+b1000000000000000001010011 !

@@ -1,0 +1,7 @@
+  monostable_domain_cross.v                                     
+                                                                
+  Description                                                   
+  Clock synchronisation beetween two clock domains.             
+  Assumption is that input signal duration is always             
+  one clk_a clock period. If that is true output signal         
+  duration is always one clk_b clock period. 

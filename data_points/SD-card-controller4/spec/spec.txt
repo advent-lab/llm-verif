@@ -1,0 +1,5 @@
+  sd_cmd_master.v                                               
+                                                                
+  Description                                                   
+  State machine resposible for controlling command transfers    
+  on 1-bit sd card command interface      

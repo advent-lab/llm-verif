@@ -1,0 +1,5 @@
+edge_detect.v                                                
+
+Description                                                  
+Signal edge detection. If input signal transitions between   
+two states, output signal is generated for one clock cycle.   
