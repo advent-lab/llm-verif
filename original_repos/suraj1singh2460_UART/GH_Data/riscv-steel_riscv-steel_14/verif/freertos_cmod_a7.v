@@ -1,0 +1,68 @@
+// ----------------------------------------------------------------------------
+// Copyright (c) 2020-2024 RISC-V Steel contributors
+//
+// This work is licensed under the MIT License, see LICENSE file for details.
+// SPDX-License-Identifier: MIT
+// ----------------------------------------------------------------------------
+
+module freertos_cmod_a7 #(
+  
+  parameter GPIO_WIDTH = 2
+
+  )(
+
+  input   wire clock,
+  input   wire reset,
+  input   wire halt,
+  input   wire uart_rx,
+  output  wire uart_tx,
+  inout   wire [GPIO_WIDTH-1:0] gpio
+
+  );
+
+  // GPIO signals
+  wire [GPIO_WIDTH-1:0] gpio_input;
+  wire [GPIO_WIDTH-1:0] gpio_oe;
+  wire [GPIO_WIDTH-1:0] gpio_output;
+
+  genvar i;
+  for (i = 0; i < GPIO_WIDTH; i=i+1) begin
+    assign gpio_input[i] = gpio_oe[i] == 1'b1 ? gpio_output[i] : gpio[i];
+    assign gpio[i] = gpio_oe[i] == 1'b1 ? gpio_output[i] : 1'bZ;
+  end
+
+  // Buttons debouncing
+  reg reset_debounced;
+  reg halt_debounced;
+  always @(posedge clock) begin
+    reset_debounced <= reset;
+    halt_debounced <= halt;
+  end
+
+  rvsteel_mcu #(
+
+    .CLOCK_FREQUENCY          (12000000               ),
+    .UART_BAUD_RATE           (9600                   ),
+    .MEMORY_SIZE              (131072                 ),
+    .MEMORY_INIT_FILE         ("freertos_demo.hex"    ),
+    .BOOT_ADDRESS             (32'h00000000           ),
+    .GPIO_WIDTH               (2                      )
+
+  ) rvsteel_mcu_instance (
+
+    .clock                    (clock                  ),
+    .reset                    (reset_debounced        ),
+    .halt                     (halt_debounced         ),
+    .uart_rx                  (uart_rx                ),
+    .uart_tx                  (uart_tx                ),
+    .gpio_input               (gpio_input             ),
+    .gpio_oe                  (gpio_oe                ),
+    .gpio_output              (gpio_output            ),
+    .sclk                     (), // unused
+    .pico                     (), // unused
+    .poci                     (1'b0                   ),
+    .cs                       ()  // unused
+
+  );
+
+endmodule

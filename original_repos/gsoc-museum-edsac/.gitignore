@@ -1,0 +1,6 @@
+# text editor backup files
+*~
+\#*\#
+*.swp
+*.out
+.DS_Store
