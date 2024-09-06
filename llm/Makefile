@@ -1,4 +1,4 @@
-QUESTA_ROOT ?= /mnt/vault0/tools/Intel/intelFPGA_pro/23.4/questa_fe/bin
+QUESTA_ROOT ?= /packages/apps/fpga/Questa/questa_fe/bin
 BASE_DIR ?= ./sha12/design
 
 all: worklib compile sim report
@@ -13,7 +13,7 @@ compile:
 
 sim: 
 	echo "simulating test bench and generating .ucdb coverate report"
-	$(QUESTA_ROOT)/vsim work.tb_sha1 -coverage -c -do questa_coverage.do
+	$(QUESTA_ROOT)/vsim work.tb_llm -coverage -c -do questa_coverage.do
 
 report:
 	echo "generating coverage report"

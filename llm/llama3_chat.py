@@ -5,6 +5,7 @@ from datetime import datetime
 import json
 import questasim as qs
 from storage import FileStore
+import re
 
 # Set the cache location for the model
 os.environ['HUGGINGFACE_HUB_CACHE'] = "/scratch/slowe8/.cache/"
@@ -74,8 +75,9 @@ def get_multiline_input(prompt="Enter your message (end with 'END' on a new line
     return "\n".join(lines)
 
 # Parse JSON Response from LLM to dict
-def convert_json_reponse_to_dict(generated_response: str) -> dict:
+def convert_json_response_to_dict(generated_response: str) -> dict:
     
+    # Find the first and last JSON curly braces
     first_pos = generated_response.find('{')
     if first_pos != -1:
         generated_response = generated_response[first_pos:]
@@ -84,21 +86,22 @@ def convert_json_reponse_to_dict(generated_response: str) -> dict:
     if last_pos != -1:
         generated_response = generated_response[:last_pos + 1]
 
-    print(generated_response)
-
     try:
-        parsed_response = json.loads(generate_response)
-    except:
-        parsed_response = {}
-    
+        # Parse JSON
+        decoder = json.JSONDecoder(strict=False)
+        parsed_response = decoder.raw_decode(generated_response)
+    except json.JSONDecodeError as e:
+        print(f"JSONDecodeError: {e}")
+        return {}
+
     return parsed_response
 
 # TODO: Create call to QuestaSim to get coverage
 def get_coverage(generated_response: dict, design_dir: str, storage: FileStore = None):
     # Write the generated testbench to a file
-    generated_testbench = generated_response["test bench"]
     testbench_file = open(os.path.join(design_dir, "tb_llm.v"), "w+")
-    testbench_file.write(generated_testbench)
+    reformatted_testbench = restore_indentation(generated_response)
+    testbench_file.write(reformatted_testbench)
 
     # Run QuestaSim to get coverage
     coverage_report = qs.run_questasim("Makefile", "questasim.log", storage)

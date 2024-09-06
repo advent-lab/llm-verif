@@ -1,4 +1,4 @@
-coverage exclude -du tb_sha1;
+coverage exclude -du tb_llm;
 coverage save -onexit coverage.ucdb;
 run -all;
 exit;
