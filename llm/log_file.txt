@@ -1,0 +1,131 @@
+echo "creating worklib"
+creating worklib
+/mnt/vault0/tools/Intel/intelFPGA_pro/23.4/questa_fe/bin/vlib work
+echo "compiling design files"
+compiling design files
+/mnt/vault0/tools/Intel/intelFPGA_pro/23.4/questa_fe/bin/vlog -cover s ./sha12/design/sha1.v ./sha12/design/sha1_core.v ./sha12/design/sha1_w_mem.v ./sha12/design/tb_sha1.v
+Questa Intel FPGA Edition-64 vlog 2023.3 Compiler 2023.07 Jul 17 2023
+Start time: 00:15:48 on Sep 06,2024
+vlog -cover s ./sha12/design/sha1.v ./sha12/design/sha1_core.v ./sha12/design/sha1_w_mem.v ./sha12/design/tb_sha1.v 
+-- Compiling module sha1
+-- Compiling module sha1_core
+-- Compiling module sha1_w_mem
+-- Compiling module tb_sha1
+
+Top level modules:
+	tb_sha1
+End time: 00:15:48 on Sep 06,2024, Elapsed time: 0:00:00
+Errors: 0, Warnings: 0
+echo "simulating test bench and generating .ucdb coverate report"
+simulating test bench and generating .ucdb coverate report
+/mnt/vault0/tools/Intel/intelFPGA_pro/23.4/questa_fe/bin/vsim work.tb_sha1 -coverage -c -do questa_coverage.do
+Reading pref.tcl
+
+# 2023.3
+
+# vsim work.tb_sha1 -coverage -c -do "questa_coverage.do" 
+# Start time: 00:15:48 on Sep 06,2024
+# ** Note: (vsim-3812) Design is being optimized...
+# //  Questa Intel FPGA Edition-64
+# //  Version 2023.3 linux_x86_64 Jul 17 2023
+# //
+# //  Copyright 1991-2023 Mentor Graphics Corporation
+# //  All Rights Reserved.
+# //
+# //  QuestaSim and its associated documentation contain trade
+# //  secrets and commercial or financial information that are the property of
+# //  Mentor Graphics Corporation and are privileged, confidential,
+# //  and exempt from disclosure under the Freedom of Information Act,
+# //  5 U.S.C. Section 552. Furthermore, this information
+# //  is prohibited from disclosure under the Trade Secrets Act,
+# //  18 U.S.C. Section 1905.
+# //
+# Loading work.tb_sha1(fast)
+# do questa_coverage.do
+#    -- Testbench for sha1 started --
+# *** Toggle reset.
+# DUT name: sha1    
+# DUT version: 0.70
+# *** TC0 - Single block test started.
+# TC0: OK.
+# *** TC0 - Single block test done.
+# *** TC1 - Double block test started.
+# TC1 first block: OK.
+# TC1 final block: OK.
+# *** TC1 - Double block test done.
+# *** All  2 test cases completed successfully.
+# *** Simulation done. ***
+# ** Note: $finish    : ./sha12/design/tb_sha1.v(540)
+#    Time: 640 ns  Iteration: 0  Instance: /tb_sha1
+# Saving coverage database on exit...
+# End time: 00:15:49 on Sep 06,2024, Elapsed time: 0:00:01
+# Errors: 0, Warnings: 0
+rm -rf work transcript
+--- QuestaSim Simulation: 2024-09-06 00:15:48 ---
+echo "creating worklib"
+creating worklib
+/mnt/vault0/tools/Intel/intelFPGA_pro/23.4/questa_fe/bin/vlib work
+echo "compiling design files"
+compiling design files
+/mnt/vault0/tools/Intel/intelFPGA_pro/23.4/questa_fe/bin/vlog -cover s ./sha12/design/sha1.v ./sha12/design/sha1_core.v ./sha12/design/sha1_w_mem.v ./sha12/design/tb_sha1.v
+Questa Intel FPGA Edition-64 vlog 2023.3 Compiler 2023.07 Jul 17 2023
+Start time: 00:17:03 on Sep 06,2024
+vlog -cover s ./sha12/design/sha1.v ./sha12/design/sha1_core.v ./sha12/design/sha1_w_mem.v ./sha12/design/tb_sha1.v 
+-- Compiling module sha1
+-- Compiling module sha1_core
+-- Compiling module sha1_w_mem
+-- Compiling module tb_sha1
+
+Top level modules:
+	tb_sha1
+End time: 00:17:04 on Sep 06,2024, Elapsed time: 0:00:01
+Errors: 0, Warnings: 0
+echo "simulating test bench and generating .ucdb coverate report"
+simulating test bench and generating .ucdb coverate report
+/mnt/vault0/tools/Intel/intelFPGA_pro/23.4/questa_fe/bin/vsim work.tb_sha1 -coverage -c -do questa_coverage.do
+Reading pref.tcl
+
+# 2023.3
+
+# vsim work.tb_sha1 -coverage -c -do "questa_coverage.do" 
+# Start time: 00:17:04 on Sep 06,2024
+# ** Note: (vsim-3812) Design is being optimized...
+# //  Questa Intel FPGA Edition-64
+# //  Version 2023.3 linux_x86_64 Jul 17 2023
+# //
+# //  Copyright 1991-2023 Mentor Graphics Corporation
+# //  All Rights Reserved.
+# //
+# //  QuestaSim and its associated documentation contain trade
+# //  secrets and commercial or financial information that are the property of
+# //  Mentor Graphics Corporation and are privileged, confidential,
+# //  and exempt from disclosure under the Freedom of Information Act,
+# //  5 U.S.C. Section 552. Furthermore, this information
+# //  is prohibited from disclosure under the Trade Secrets Act,
+# //  18 U.S.C. Section 1905.
+# //
+# Loading work.tb_sha1(fast)
+# do questa_coverage.do
+#    -- Testbench for sha1 started --
+# *** Toggle reset.
+# DUT name: sha1    
+# DUT version: 0.70
+# *** TC0 - Single block test started.
+# TC0: OK.
+# *** TC0 - Single block test done.
+# *** TC1 - Double block test started.
+# TC1 first block: OK.
+# TC1 final block: OK.
+# *** TC1 - Double block test done.
+# *** All  2 test cases completed successfully.
+# *** Simulation done. ***
+# ** Note: $finish    : ./sha12/design/tb_sha1.v(540)
+#    Time: 640 ns  Iteration: 0  Instance: /tb_sha1
+# Saving coverage database on exit...
+# End time: 00:17:04 on Sep 06,2024, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0
+echo "generating coverage report"
+generating coverage report
+/mnt/vault0/tools/Intel/intelFPGA_pro/23.4/questa_fe/bin/vcover report coverage.ucdb > coverage_report.txt
+rm -rf work transcript
+--- QuestaSim Simulation: 2024-09-06 00:17:03 ---
