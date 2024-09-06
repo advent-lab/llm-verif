@@ -3,6 +3,8 @@ import torch
 import os
 from datetime import datetime
 import json
+import questasim as qs
+from storage import FileStore
 
 # Set the cache location for the model
 os.environ['HUGGINGFACE_HUB_CACHE'] = "/scratch/slowe8/.cache/"
@@ -92,8 +94,16 @@ def convert_json_reponse_to_dict(generated_response: str) -> dict:
     return parsed_response
 
 # TODO: Create call to QuestaSim to get coverage
-def get_coverage(generated_response):
+def get_coverage(generated_response: dict, design_dir: str, storage: FileStore = None):
+    # Write the generated testbench to a file
     generated_testbench = generated_response["test bench"]
+    testbench_file = open(os.path.join(design_dir, "tb_llm.v"), "w+")
+    testbench_file.write(generated_testbench)
+
+    # Run QuestaSim to get coverage
+    coverage_report = qs.run_questasim("Makefile", "questasim.log", storage)
+    
+    return coverage_report
 
 
 if __name__=="__main__":

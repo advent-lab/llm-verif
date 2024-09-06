@@ -9,7 +9,7 @@ def run_questasim(makefile: str, log_file: str, storage: FileStore = None) -> st
 
     # Run the simulation and log the output
     with open(log_file, 'a+') as f:
-        f.write(f"--- QuestaSim Simulation: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n")
+        f.write(f"--- QuestaSim Simulation: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n")
         subprocess.run(['make', 'all'], stdout=f)
         subprocess.run(['make', 'clean'], stdout=f)
 
@@ -19,8 +19,7 @@ def run_questasim(makefile: str, log_file: str, storage: FileStore = None) -> st
 
     if storage is not None:
         storage.move('./coverage.ucdb')
-        storage.move(log_file)
-
+    
     os.remove('./coverage_report.txt')
 
     return coverage_report

@@ -1,7 +1,7 @@
 QUESTA_ROOT ?= /mnt/vault0/tools/Intel/intelFPGA_pro/23.4/questa_fe/bin
 BASE_DIR ?= ./sha12/design
 
-all: worklib compile sim
+all: worklib compile sim report
 
 worklib:
 	echo "creating worklib"
