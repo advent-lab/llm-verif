@@ -1,4 +1,6 @@
+# QuestaSim ignores
 *work/
+*transcript
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
