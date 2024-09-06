@@ -1,0 +1,34 @@
+Questa Intel FPGA Edition-64 vcover 2023.3 Coverage Utility 2023.07 Jul 17 2023
+Start time: 23:17:08 on Sep 05,2024
+vcover report tb_sha1_coverage.ucdb 
+Coverage Report Summary Data by instance
+
+=================================================================================
+=== Instance: /tb_sha1/dut/core/w_mem_inst
+=== Design Unit: work.sha1_w_mem
+=================================================================================
+    Enabled Coverage              Bins      Hits    Misses  Coverage
+    ----------------              ----      ----    ------  --------
+    Statements                      90        90         0   100.00%
+
+=================================================================================
+=== Instance: /tb_sha1/dut/core
+=== Design Unit: work.sha1_core
+=================================================================================
+    Enabled Coverage              Bins      Hits    Misses  Coverage
+    ----------------              ----      ----    ------  --------
+    Statements                     144       137         7    95.13%
+
+=================================================================================
+=== Instance: /tb_sha1/dut
+=== Design Unit: work.sha1
+=================================================================================
+    Enabled Coverage              Bins      Hits    Misses  Coverage
+    ----------------              ----      ----    ------  --------
+    Statements                      45        40         5    88.88%
+
+
+Total Coverage By Instance (filtered view): 95.69%
+
+End time: 23:17:08 on Sep 05,2024, Elapsed time: 0:00:00
+Errors: 0, Warnings: 0
