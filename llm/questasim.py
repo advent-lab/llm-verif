@@ -1,7 +1,7 @@
 import subprocess
 import datetime
 import os
-from llm.storage import FileStore
+from storage import FileStore
 
 def run_questasim(makefile: str, log_file: str, storage: FileStore = None) -> str:
     # Move the Makefile to the current directory
