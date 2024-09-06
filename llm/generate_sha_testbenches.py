@@ -24,7 +24,7 @@ if __name__=="__main__":
         print(response)
         response = chat.convert_json_response_to_dict(response)
 
-        cov = chat.get_coverage(response, './sha12/design')
+        cov = chat.get_coverage(response[0]['test bench'], './sha12/design')
         if cov != "":
             print("Passed!")
         else:

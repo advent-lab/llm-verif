@@ -75,7 +75,7 @@ def get_multiline_input(prompt="Enter your message (end with 'END' on a new line
     return "\n".join(lines)
 
 # Parse JSON Response from LLM to dict
-def convert_json_response_to_dict(generated_response: str) -> dict:
+def convert_json_response_to_dict(generated_response: str) -> tuple:
     
     # Find the first and last JSON curly braces
     first_pos = generated_response.find('{')
@@ -100,7 +100,6 @@ def convert_json_response_to_dict(generated_response: str) -> dict:
 def get_coverage(generated_response: dict, design_dir: str, storage: FileStore = None):
     # Write the generated testbench to a file
     testbench_file = open(os.path.join(design_dir, "tb_llm.v"), "w+")
-    reformatted_testbench = restore_indentation(generated_response)
     testbench_file.write(reformatted_testbench)
 
     # Run QuestaSim to get coverage
