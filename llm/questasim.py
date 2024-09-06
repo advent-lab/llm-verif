@@ -8,10 +8,9 @@ def run_questasim(makefile: str, log_file: str, storage: FileStore = None) -> st
     os.rename(makefile, 'Makefile')
 
     # Run the simulation and log the output
-    with open(log_file, 'a') as f:
+    with open(log_file, 'a+') as f:
         f.write(f"--- QuestaSim Simulation: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n")
         subprocess.run(['make', 'all'], stdout=f)
-        
         subprocess.run(['make', 'clean'], stdout=f)
 
     # Move the log file to the storage directory
