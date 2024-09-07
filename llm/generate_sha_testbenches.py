@@ -1,8 +1,13 @@
 import llama3_chat as chat
 from storage import FileStore
 import os
+import argparse
 
 if __name__=="__main__":
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--compiler')
+    args = parser.parse_args()
     
     # Read the prompt
     prompt_file = open('few_shot_prompt.txt', 'r')
@@ -10,6 +15,7 @@ if __name__=="__main__":
 
     # Create a directory to store generations
     store = FileStore('./generations')
+    chat.load_model()
 
     for i in range(0,100):
         # Run generations
@@ -19,12 +25,12 @@ if __name__=="__main__":
         ]
         conversation.append({"role":"user", "content":prompt})
 
-        chat.load_model()
+        
         response = chat.generate_response(conversation_history=conversation)
-        print(response)
         response = chat.convert_json_response_to_dict(response)
+        print(response)
 
-        cov = chat.get_coverage(response[0]['test bench'], './sha12/design')
+        cov = chat.get_coverage(args.compiler, response[0]['test bench'], './sha12/design')
         if cov != "":
             print("Passed!")
         else:
