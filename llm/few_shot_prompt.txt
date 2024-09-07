@@ -1,5 +1,5 @@
 User
-Generate a Verilog testbench for the following design specification. The test bench should meet the statement coverage goal of 100%. Generate only the Verilog testbench and no additional words. 
+Generate a Verilog testbench named tb_llm for the following design specification. The test bench should meet the statement coverage goal of 100%. Generate only the Verilog testbench and no additional words. 
 
 Module header: 
 module sha1( 
@@ -62,7 +62,7 @@ Provide the generated testbench in a JSON format as shown below. You should put 
 Example output:
 {
 	"test bench": "
-		module sha1_tb;
+		module tb_llm;
 			// Generated test bench code
 		endmodule
 	",
