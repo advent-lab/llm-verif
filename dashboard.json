@@ -1,1380 +1,1368 @@
 {
     "agalimberti_NoCRouter_10": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_10/src/tb/router/tb_router.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_10/src/tb/router/tb_router.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_10/src/rtl/router/router.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_10/src/rtl/router/router.sv"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_10/src/rtl/allocators/separable_input_first_allocator.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_10/src/rtl/allocators/round_robin_arbiter.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_10/src/rtl/input_port/rc_unit.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_10/src/rtl/input_port/input_port.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_10/src/rtl/allocators/vc_allocator.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_10/src/rtl/input_port/input_buffer.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_10/src/rtl/input_port/circular_buffer.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_10/src/rtl/allocators/switch_allocator.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_10/src/rtl/input_port/input_block.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_10/src/rtl/crossbar/crossbar.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_10/src/rtl/allocators/separable_input_first_allocator.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_10/src/rtl/allocators/round_robin_arbiter.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_10/src/rtl/input_port/rc_unit.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_10/src/rtl/input_port/input_port.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_10/src/rtl/allocators/vc_allocator.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_10/src/rtl/input_port/input_buffer.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_10/src/rtl/input_port/circular_buffer.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_10/src/rtl/allocators/switch_allocator.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_10/src/rtl/input_port/input_block.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_10/src/rtl/crossbar/crossbar.sv"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_10/doc/Project Documentation.pdf"
+            "$(BASE_DIR)agalimberti_NoCRouter_10/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_10/questa/Makefile"
+            "$(BASE_DIR)agalimberti_NoCRouter_10/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "verilog-divider": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/verilog-divider/verif/tb.v"
+            "$(BASE_DIR)verilog-divider/verif/tb.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/verilog-divider/design/divfunc.v"
+            "$(BASE_DIR)verilog-divider/design/divfunc.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/verilog-divider/spec/spec.md",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/verilog-divider/LICENSE.txt"
+            "$(BASE_DIR)verilog-divider/spec/spec.md"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/verilog-divider/questa/Makefile"
+            "$(BASE_DIR)verilog-divider/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "SD-card-controller1": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller1/verif/byte_en_reg_tb.sv"
+            "$(BASE_DIR)SD-card-controller1/verif/byte_en_reg_tb.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller1/design/byte_en_reg.v"
+            "$(BASE_DIR)SD-card-controller1/design/byte_en_reg.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller1/spec/spec.txt"
+            "$(BASE_DIR)SD-card-controller1/spec/spec.txt"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller1/questa/Makefile"
+            "$(BASE_DIR)SD-card-controller1/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "agalimberti_NoCRouter_2": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_2/src/tb/input_port/tb_input_buffer.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_2/src/tb/input_port/tb_input_buffer.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_2/src/rtl/input_port/input_buffer.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_2/src/rtl/input_port/input_buffer.sv"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_2/src/rtl/input_port/circular_buffer.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_2/src/rtl/input_port/circular_buffer.sv"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_2/doc/Project Documentation.pdf"
+            "$(BASE_DIR)agalimberti_NoCRouter_2/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_2/questa/Makefile"
+            "$(BASE_DIR)agalimberti_NoCRouter_2/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "stop-watch": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/stop-watch/verif/tb_stopWatch.v"
+            "$(BASE_DIR)stop-watch/verif/tb_stopWatch.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/stop-watch/design/stopWatch.v"
+            "$(BASE_DIR)stop-watch/design/stopWatch.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/stop-watch/spec/spec.md"
+            "$(BASE_DIR)stop-watch/spec/spec.md"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/stop-watch/questa/Makefile"
+            "$(BASE_DIR)stop-watch/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "onehzclk2": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/onehzclk2/verif/onehzclk2tb.v"
+            "$(BASE_DIR)onehzclk2/verif/onehzclk2tb.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/onehzclk2/design/onehzclk2.v"
+            "$(BASE_DIR)onehzclk2/design/onehzclk2.v"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/onehzclk2/design_context/cntclk2.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/onehzclk2/design_context/counter2.v"
+            "$(BASE_DIR)onehzclk2/design_context/cntclk2.v",
+            "$(BASE_DIR)onehzclk2/design_context/counter2.v"
         ],
         "spec": [],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/onehzclk2/questa/Makefile"
+            "$(BASE_DIR)onehzclk2/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "cntclk2": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/cntclk2/verif/cntclk2tb.v"
+            "$(BASE_DIR)cntclk2/verif/cntclk2tb.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/cntclk2/design/cntclk2.v"
+            "$(BASE_DIR)cntclk2/design/cntclk2.v"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/cntclk2/design_context/counter2.v"
+            "$(BASE_DIR)cntclk2/design_context/counter2.v"
         ],
         "spec": [],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/cntclk2/questa/Makefile"
+            "$(BASE_DIR)cntclk2/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "mkmif1": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/mkmif1/verif/tb_mkmif_core.v"
+            "$(BASE_DIR)mkmif1/verif/tb_mkmif_core.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/mkmif1/design/mkmif_core.v"
+            "$(BASE_DIR)mkmif1/design/mkmif_core.v"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/mkmif1/design_context/mkmif_spi.v"
+            "$(BASE_DIR)mkmif1/design_context/mkmif_spi.v"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/mkmif1/spec/spec.md",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/mkmif1/LICENSE.txt"
+            "$(BASE_DIR)mkmif1/spec/spec.md"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/mkmif1/questa/Makefile"
+            "$(BASE_DIR)mkmif1/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "TrafficLightController3": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController3/verif/TimeParameter_test.v"
+            "$(BASE_DIR)TrafficLightController3/verif/TimeParameter_test.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController3/design/TimeParameter.v"
+            "$(BASE_DIR)TrafficLightController3/design/TimeParameter.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController3/spec/spec.txt"
+            "$(BASE_DIR)TrafficLightController3/spec/spec.txt"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController3/questa/Makefile"
+            "$(BASE_DIR)TrafficLightController3/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "tlfsm": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/tlfsm/verif/tlfsmtb.v"
+            "$(BASE_DIR)tlfsm/verif/tlfsmtb.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/tlfsm/design/tlfsm.v"
+            "$(BASE_DIR)tlfsm/design/tlfsm.v"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/tlfsm/design_context/cntclk.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/tlfsm/design_context/counter.v"
+            "$(BASE_DIR)tlfsm/design_context/cntclk.v",
+            "$(BASE_DIR)tlfsm/design_context/counter.v"
         ],
         "spec": [],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/tlfsm/questa/Makefile"
+            "$(BASE_DIR)tlfsm/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "trng1": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng1/verif/tb_csprng.v"
+            "$(BASE_DIR)trng1/verif/tb_csprng.v"
         ],
         "verif_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng1/design_context/chacha_core.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng1/design_context/chacha_qr.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng1/design_context/trng_csprng_fifo.v"
+            "$(BASE_DIR)trng1/design_context/chacha_core.v",
+            "$(BASE_DIR)trng1/design_context/chacha_qr.v",
+            "$(BASE_DIR)trng1/design_context/trng_csprng_fifo.v"
         ],
-        "design": ["/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng1/design/trng_csprng.v"
+        "design": [
+            "$(BASE_DIR)trng1/design/trng_csprng.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng1/spec/spec.md"
+            "$(BASE_DIR)trng1/spec/spec.md"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng1/questa/Makefile"
+            "$(BASE_DIR)trng1/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "TrafficLightController4": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController4/verif/Timer_test.v"
+            "$(BASE_DIR)TrafficLightController4/verif/Timer_test.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController4/design/Timer.v"
+            "$(BASE_DIR)TrafficLightController4/design/Timer.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController4/spec/spec.txt"
+            "$(BASE_DIR)TrafficLightController4/spec/spec.txt"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController4/questa/Makefile"
+            "$(BASE_DIR)TrafficLightController4/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "ethmac0": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/verif/tb_ethernet.v"
+            "$(BASE_DIR)ethmac0/verif/tb_ethernet.v"
         ],
         "verif_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design_context/wb_slave_behavioral.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design_context/timescale.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design_context/wb_model_defines.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design_context/wb_bus_mon.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/ethmac.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/eth_wishbone.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/eth_rxethmac.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/eth_shiftreg.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/eth_rxaddrcheck.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/eth_transmitcontrol.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/eth_random.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/eth_outputcontrol.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/xilinx_dist_ram_16x32.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/eth_rxcounters.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/eth_macstatus.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/eth_miim.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/eth_txstatem.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/ethmac_defines.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/eth_registers.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/eth_rxstatem.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/eth_receivecontrol.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/eth_maccontrol.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/eth_crc.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/eth_clockgen.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/eth_fifo.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/eth_register.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/eth_txethmac.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/eth_txcounters.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design/eth_spram_256x32.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/verif/eth_phy.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/verif/tb_eth_defines.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/verif/eth_phy_defines.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design_context/wb_master_behavioral.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/design_context/wb_master32.v"
+            "$(BASE_DIR)ethmac0/design_context/wb_slave_behavioral.v",
+            "$(BASE_DIR)ethmac0/design_context/timescale.v",
+            "$(BASE_DIR)ethmac0/design_context/wb_model_defines.v",
+            "$(BASE_DIR)ethmac0/design_context/wb_bus_mon.v",
+            "$(BASE_DIR)ethmac0/design/ethmac.v",
+            "$(BASE_DIR)ethmac0/design/eth_wishbone.v",
+            "$(BASE_DIR)ethmac0/design/eth_rxethmac.v",
+            "$(BASE_DIR)ethmac0/design/eth_shiftreg.v",
+            "$(BASE_DIR)ethmac0/design/eth_rxaddrcheck.v",
+            "$(BASE_DIR)ethmac0/design/eth_transmitcontrol.v",
+            "$(BASE_DIR)ethmac0/design/eth_random.v",
+            "$(BASE_DIR)ethmac0/design/eth_outputcontrol.v",
+            "$(BASE_DIR)ethmac0/design/xilinx_dist_ram_16x32.v",
+            "$(BASE_DIR)ethmac0/design/eth_rxcounters.v",
+            "$(BASE_DIR)ethmac0/design/eth_macstatus.v",
+            "$(BASE_DIR)ethmac0/design/eth_miim.v",
+            "$(BASE_DIR)ethmac0/design/eth_txstatem.v",
+            "$(BASE_DIR)ethmac0/design/ethmac_defines.v",
+            "$(BASE_DIR)ethmac0/design/eth_registers.v",
+            "$(BASE_DIR)ethmac0/design/eth_rxstatem.v",
+            "$(BASE_DIR)ethmac0/design/eth_receivecontrol.v",
+            "$(BASE_DIR)ethmac0/design/eth_maccontrol.v",
+            "$(BASE_DIR)ethmac0/design/eth_crc.v",
+            "$(BASE_DIR)ethmac0/design/eth_clockgen.v",
+            "$(BASE_DIR)ethmac0/design/eth_fifo.v",
+            "$(BASE_DIR)ethmac0/design/eth_register.v",
+            "$(BASE_DIR)ethmac0/design/eth_txethmac.v",
+            "$(BASE_DIR)ethmac0/design/eth_txcounters.v",
+            "$(BASE_DIR)ethmac0/design/eth_spram_256x32.v",
+            "$(BASE_DIR)ethmac0/verif/eth_phy.v",
+            "$(BASE_DIR)ethmac0/verif/tb_eth_defines.v",
+            "$(BASE_DIR)ethmac0/verif/eth_phy_defines.v",
+            "$(BASE_DIR)ethmac0/design_context/wb_master_behavioral.v",
+            "$(BASE_DIR)ethmac0/design_context/wb_master32.v"
         ],
         "design": [],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/LICENSE.txt",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/spec/Spec0.pdf",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/spec/Spec1.pdf"
+            "$(BASE_DIR)ethmac0/spec/Spec0.pdf",
+            "$(BASE_DIR)ethmac0/spec/Spec1.pdf"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac0/questa/Makefile"
+            "$(BASE_DIR)ethmac0/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "trng0": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng0/verif/tb_trng.v"
+            "$(BASE_DIR)trng0/verif/tb_trng.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng0/design/trng.v"
+            "$(BASE_DIR)trng0/design/trng.v"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng0/design_context/trng_csprng.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng0/design_context/trng_csprng_fifo.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng0/design_context/chacha_qr.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng0/design_context/rosc_entropy.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng0/design_context/sha512_h_constants.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng0/design_context/avalanche_entropy.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng0/design_context/chacha_core.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng0/design_context/sha512_w_mem.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng0/design_context/trng_mixer.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng0/design_context/sha512_core.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng0/design_context/sha512_k_constants.v"
+            "$(BASE_DIR)trng0/design_context/trng_csprng.v",
+            "$(BASE_DIR)trng0/design_context/trng_csprng_fifo.v",
+            "$(BASE_DIR)trng0/design_context/chacha_qr.v",
+            "$(BASE_DIR)trng0/design_context/rosc_entropy.v",
+            "$(BASE_DIR)trng0/design_context/sha512_h_constants.v",
+            "$(BASE_DIR)trng0/design_context/avalanche_entropy.v",
+            "$(BASE_DIR)trng0/design_context/chacha_core.v",
+            "$(BASE_DIR)trng0/design_context/sha512_w_mem.v",
+            "$(BASE_DIR)trng0/design_context/trng_mixer.v",
+            "$(BASE_DIR)trng0/design_context/sha512_core.v",
+            "$(BASE_DIR)trng0/design_context/sha512_k_constants.v"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng0/spec/spec.md"
+            "$(BASE_DIR)trng0/spec/spec.md"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng0/questa/Makefile"
+            "$(BASE_DIR)trng0/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "SD-card-controller9": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller9/verif/sd_data_xfer_trig_tb.sv"
+            "$(BASE_DIR)SD-card-controller9/verif/sd_data_xfer_trig_tb.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller9/design/sd_data_xfer_trig.v"
+            "$(BASE_DIR)SD-card-controller9/design/sd_data_xfer_trig.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller9/spec/spec.txt"
+            "$(BASE_DIR)SD-card-controller9/spec/spec.txt"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller9/questa/Makefile"
+            "$(BASE_DIR)SD-card-controller9/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "sha11": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/sha11/verif/tb_sha1_w_mem.v"
+            "$(BASE_DIR)sha11/verif/tb_sha1_w_mem.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/sha11/design/sha1_w_mem.v"
+            "$(BASE_DIR)sha11/design/sha1_w_mem.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/sha11/spec/spec.md",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/sha11/LICENSE.txt"
+            "$(BASE_DIR)sha11/spec/spec.md"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/sha11/questa/Makefile"
+            "$(BASE_DIR)sha11/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "agalimberti_NoCRouter_6": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_6/src/tb/allocators/tb_switch_allocator.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_6/src/tb/allocators/tb_switch_allocator.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_6/src/rtl/allocators/switch_allocator.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_6/src/rtl/allocators/switch_allocator.sv"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_6/src/rtl/allocators/round_robin_arbiter.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_6/src/rtl/allocators/separable_input_first_allocator.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_6/src/rtl/allocators/round_robin_arbiter.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_6/src/rtl/allocators/separable_input_first_allocator.sv"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_6/doc/Project Documentation.pdf"
+            "$(BASE_DIR)agalimberti_NoCRouter_6/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_6/questa/Makefile"
+            "$(BASE_DIR)agalimberti_NoCRouter_6/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "chacha1": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/chacha1/verif/tb_chacha_core.v"
+            "$(BASE_DIR)chacha1/verif/tb_chacha_core.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/chacha1/design/chacha_core.v"
+            "$(BASE_DIR)chacha1/design/chacha_core.v"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/chacha1/design_context/chacha_qr.v"
+            "$(BASE_DIR)chacha1/design_context/chacha_qr.v"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/chacha1/spec/spec.md",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/chacha1/LICENSE.txt",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/chacha1/spec/README.md"
+            "$(BASE_DIR)chacha1/spec/spec.md",
+            "$(BASE_DIR)chacha1/spec/README.md"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/chacha1/questa/Makefile"
+            "$(BASE_DIR)chacha1/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "chacha2": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/chacha2/verif/tb_chacha_qr.v"
+            "$(BASE_DIR)chacha2/verif/tb_chacha_qr.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/chacha2/design/chacha_qr.v"
+            "$(BASE_DIR)chacha2/design/chacha_qr.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/chacha2/LICENSE.txt",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/chacha2/spec/spec.md"
+            "$(BASE_DIR)chacha2/spec/spec.md"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/chacha2/questa/Makefile"
+            "$(BASE_DIR)chacha2/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "vndecorrelator": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/vndecorrelator/verif/tb_vndecorrelator.v"
+            "$(BASE_DIR)vndecorrelator/verif/tb_vndecorrelator.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/vndecorrelator/design/vndecorrelator.v"
+            "$(BASE_DIR)vndecorrelator/design/vndecorrelator.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/vndecorrelator/LICENSE.txt",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/vndecorrelator/spec/spec.md"
+            "$(BASE_DIR)vndecorrelator/spec/spec.md"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/vndecorrelator/questa/Makefile"
+            "$(BASE_DIR)vndecorrelator/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "tlfsm2": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/tlfsm2/verif/tlfsm2tb.v"
+            "$(BASE_DIR)tlfsm2/verif/tlfsm2tb.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/tlfsm2/design/tlfsm2.v"
+            "$(BASE_DIR)tlfsm2/design/tlfsm2.v"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/tlfsm2/design_context/counter2.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/tlfsm2/design_context/cntclk2.v"
+            "$(BASE_DIR)tlfsm2/design_context/counter2.v",
+            "$(BASE_DIR)tlfsm2/design_context/cntclk2.v"
         ],
         "spec": [],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/tlfsm2/questa/Makefile"
+            "$(BASE_DIR)tlfsm2/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "fsm-verilog1": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/fsm-verilog1/verif/fsm_2_tb.v"
+            "$(BASE_DIR)fsm-verilog1/verif/fsm_2_tb.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/fsm-verilog1/design/fsm_2.v"
+            "$(BASE_DIR)fsm-verilog1/design/fsm_2.v"
         ],
         "design_context": [],
         "spec": [],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/fsm-verilog1/questa/Makefile"
+            "$(BASE_DIR)fsm-verilog1/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "SD-card-controller7": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller7/verif/sd_data_master_tb.sv"
+            "$(BASE_DIR)SD-card-controller7/verif/sd_data_master_tb.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller7/design/sd_data_master.v"
+            "$(BASE_DIR)SD-card-controller7/design/sd_data_master.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller7/spec/spec.txt"
+            "$(BASE_DIR)SD-card-controller7/spec/spec.txt"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller7/questa/Makefile"
+            "$(BASE_DIR)SD-card-controller7/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "SD-card-controller3": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller3/verif/monostable_domain_cross_tb.sv"
+            "$(BASE_DIR)SD-card-controller3/verif/monostable_domain_cross_tb.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller3/design/monostable_domain_cross.v"
+            "$(BASE_DIR)SD-card-controller3/design/monostable_domain_cross.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller3/spec/spec.txt"
+            "$(BASE_DIR)SD-card-controller3/spec/spec.txt"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller3/questa/Makefile"
+            "$(BASE_DIR)SD-card-controller3/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "agalimberti_NoCRouter_1": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_1/src/tb/input_port/tb_circular_buffer.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_1/src/tb/input_port/tb_circular_buffer.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_1/src/rtl/input_port/circular_buffer.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_1/src/rtl/input_port/circular_buffer.sv"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_1/doc/Project Documentation.pdf"
+            "$(BASE_DIR)agalimberti_NoCRouter_1/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_1/questa/Makefile"
+            "$(BASE_DIR)agalimberti_NoCRouter_1/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "agalimberti_NoCRouter_12": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_12/src/tb/crossbar/tb_crossbar.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_12/src/tb/crossbar/tb_crossbar.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_12/src/rtl/input_port/input_block.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_12/src/rtl/allocators/switch_allocator.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_12/src/rtl/crossbar/crossbar.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_12/src/rtl/input_port/input_block.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_12/src/rtl/allocators/switch_allocator.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_12/src/rtl/crossbar/crossbar.sv"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_12/src/rtl/input_port/input_buffer.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_12/src/rtl/input_port/input_port.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_12/src/rtl/input_port/rc_unit.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_12/src/rtl/input_port/circular_buffer.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_12/src/rtl/allocators/round_robin_arbiter.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_12/src/rtl/allocators/separable_input_first_allocator.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_12/src/rtl/input_port/input_buffer.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_12/src/rtl/input_port/input_port.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_12/src/rtl/input_port/rc_unit.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_12/src/rtl/input_port/circular_buffer.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_12/src/rtl/allocators/round_robin_arbiter.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_12/src/rtl/allocators/separable_input_first_allocator.sv"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_12/doc/Project Documentation.pdf"
+            "$(BASE_DIR)agalimberti_NoCRouter_12/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_12/questa/Makefile"
+            "$(BASE_DIR)agalimberti_NoCRouter_12/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "TrafficLightController5": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController5/verif/TrafficControllerMain_test.v"
+            "$(BASE_DIR)TrafficLightController5/verif/TrafficControllerMain_test.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController5/design/TrafficControllerMain.v"
+            "$(BASE_DIR)TrafficLightController5/design/TrafficControllerMain.v"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController5/design_context/WalkRegister.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController5/design_context/Timer.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController5/design_context/Synchronizer.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController5/design_context/TimeParameter.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController5/design_context/Divider.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController5/design_context/FSM.v"
+            "$(BASE_DIR)TrafficLightController5/design_context/WalkRegister.v",
+            "$(BASE_DIR)TrafficLightController5/design_context/Timer.v",
+            "$(BASE_DIR)TrafficLightController5/design_context/Synchronizer.v",
+            "$(BASE_DIR)TrafficLightController5/design_context/TimeParameter.v",
+            "$(BASE_DIR)TrafficLightController5/design_context/Divider.v",
+            "$(BASE_DIR)TrafficLightController5/design_context/FSM.v"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController5/spec/spec.txt"
+            "$(BASE_DIR)TrafficLightController5/spec/spec.txt"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController5/questa/Makefile"
+            "$(BASE_DIR)TrafficLightController5/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "agalimberti_NoCRouter_7": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_7/src/tb/allocators/tb_vc_allocator.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_7/src/tb/allocators/tb_vc_allocator.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_7/src/rtl/allocators/vc_allocator.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_7/src/rtl/allocators/vc_allocator.sv"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_7/src/rtl/allocators/separable_input_first_allocator.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_7/src/rtl/allocators/round_robin_arbiter.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_7/src/rtl/allocators/separable_input_first_allocator.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_7/src/rtl/allocators/round_robin_arbiter.sv"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_7/doc/Project Documentation.pdf"
+            "$(BASE_DIR)agalimberti_NoCRouter_7/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_7/questa/Makefile"
+            "$(BASE_DIR)agalimberti_NoCRouter_7/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "agalimberti_NoCRouter_3": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_3/src/tb/input_port/tb_input_port.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_3/src/tb/input_port/tb_input_port.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_3/src/rtl/input_port/input_port.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_3/src/rtl/input_port/input_port.sv"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_3/src/rtl/input_port/circular_buffer.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_3/src/rtl/input_port/input_buffer.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_3/src/rtl/input_port/rc_unit.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_3/src/rtl/input_port/circular_buffer.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_3/src/rtl/input_port/input_buffer.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_3/src/rtl/input_port/rc_unit.sv"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_3/doc/Project Documentation.pdf"
+            "$(BASE_DIR)agalimberti_NoCRouter_3/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_3/questa/Makefile"
+            "$(BASE_DIR)agalimberti_NoCRouter_3/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "SD-card-controller11": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller11/verif/sd_wb_sel_ctrl_tb.sv"
+            "$(BASE_DIR)SD-card-controller11/verif/sd_wb_sel_ctrl_tb.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller11/design/sd_wb_sel_ctrl.v"
+            "$(BASE_DIR)SD-card-controller11/design/sd_wb_sel_ctrl.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller11/spec/spec.txt"
+            "$(BASE_DIR)SD-card-controller11/spec/spec.txt"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller11/questa/Makefile"
+            "$(BASE_DIR)SD-card-controller11/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "agalimberti_NoCRouter_9": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_9/src/tb/mesh/tb_two_routers.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_9/src/tb/mesh/tb_two_routers.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_9/src/rtl/router/router.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_9/src/rtl/router/router.sv"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_9/src/rtl/allocators/round_robin_arbiter.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_9/src/rtl/input_port/input_port.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_9/src/rtl/input_port/circular_buffer.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_9/src/rtl/input_port/rc_unit.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_9/src/rtl/allocators/vc_allocator.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_9/src/rtl/input_port/input_buffer.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_9/src/rtl/allocators/switch_allocator.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_9/src/rtl/input_port/input_block.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_9/src/rtl/crossbar/crossbar.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_9/src/rtl/allocators/separable_input_first_allocator.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_9/src/rtl/allocators/round_robin_arbiter.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_9/src/rtl/input_port/input_port.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_9/src/rtl/input_port/circular_buffer.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_9/src/rtl/input_port/rc_unit.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_9/src/rtl/allocators/vc_allocator.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_9/src/rtl/input_port/input_buffer.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_9/src/rtl/allocators/switch_allocator.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_9/src/rtl/input_port/input_block.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_9/src/rtl/crossbar/crossbar.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_9/src/rtl/allocators/separable_input_first_allocator.sv"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_9/doc/Project Documentation.pdf"
+            "$(BASE_DIR)agalimberti_NoCRouter_9/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_9/questa/Makefile"
+            "$(BASE_DIR)agalimberti_NoCRouter_9/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "chacha0": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/chacha0/verif/tb_chacha.v"
+            "$(BASE_DIR)chacha0/verif/tb_chacha.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/chacha0/design/chacha.v"
+            "$(BASE_DIR)chacha0/design/chacha.v"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/chacha0/design_context/chacha_core.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/chacha0/design_context/chacha_qr.v"
+            "$(BASE_DIR)chacha0/design_context/chacha_core.v",
+            "$(BASE_DIR)chacha0/design_context/chacha_qr.v"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/chacha0/spec/spec.md",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/chacha0/LICENSE.txt"
+            "$(BASE_DIR)chacha0/spec/spec.md"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/chacha0/questa/Makefile"
+            "$(BASE_DIR)chacha0/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "TrafficLightController2": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController2/verif/Synchronizer_test.v"
+            "$(BASE_DIR)TrafficLightController2/verif/Synchronizer_test.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController2/design/Synchronizer.v"
+            "$(BASE_DIR)TrafficLightController2/design/Synchronizer.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController2/spec/spec.txt"
+            "$(BASE_DIR)TrafficLightController2/spec/spec.txt"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController2/questa/Makefile"
+            "$(BASE_DIR)TrafficLightController2/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "fifo": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/fifo/verif/testbench.sv"
+            "$(BASE_DIR)fifo/verif/testbench.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/fifo/design/sync_fifo.sv"
+            "$(BASE_DIR)fifo/design/sync_fifo.sv"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/fifo/spec/spec.md"
+            "$(BASE_DIR)fifo/spec/spec.md"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/fifo/questa/Makefile"
+            "$(BASE_DIR)fifo/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "cntclk": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/cntclk/verif/cntclktb.v"
+            "$(BASE_DIR)cntclk/verif/cntclktb.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/cntclk/design/cntclk.v"
+            "$(BASE_DIR)cntclk/design/cntclk.v"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/cntclk/design_context/counter.v"
+            "$(BASE_DIR)cntclk/design_context/counter.v"
         ],
         "spec": [],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/cntclk/questa/Makefile"
+            "$(BASE_DIR)cntclk/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "counter1": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/counter1/verif/countertb.v"
+            "$(BASE_DIR)counter1/verif/countertb.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/counter1/design/counter.v"
+            "$(BASE_DIR)counter1/design/counter.v"
         ],
         "design_context": [],
         "spec": [],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/counter1/questa/Makefile"
+            "$(BASE_DIR)counter1/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "fsm-verilog0": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/fsm-verilog0/verif/fsm_1_tb.v"
+            "$(BASE_DIR)fsm-verilog0/verif/fsm_1_tb.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/fsm-verilog0/design/fsm_1.v"
+            "$(BASE_DIR)fsm-verilog0/design/fsm_1.v"
         ],
         "design_context": [],
         "spec": [],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/fsm-verilog0/questa/Makefile"
+            "$(BASE_DIR)fsm-verilog0/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "SD-card-controller8": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller8/verif/sd_data_serial_host_tb.sv"
+            "$(BASE_DIR)SD-card-controller8/verif/sd_data_serial_host_tb.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller8/design/sd_data_serial_host.v"
+            "$(BASE_DIR)SD-card-controller8/design/sd_data_serial_host.v"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller8/design_context/sd_crc_16.v"
+            "$(BASE_DIR)SD-card-controller8/design_context/sd_crc_16.v"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller8/spec/spec.txt"
+            "$(BASE_DIR)SD-card-controller8/spec/spec.txt"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller8/questa/Makefile"
+            "$(BASE_DIR)SD-card-controller8/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "SD-card-controller6": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller6/verif/sd_controller_wb_tb.sv"
+            "$(BASE_DIR)SD-card-controller6/verif/sd_controller_wb_tb.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller6/design/sd_controller_wb.v"
+            "$(BASE_DIR)SD-card-controller6/design/sd_controller_wb.v"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller6/design_context/byte_en_reg.v"
+            "$(BASE_DIR)SD-card-controller6/design_context/byte_en_reg.v"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller6/spec/spec.txt"
+            "$(BASE_DIR)SD-card-controller6/spec/spec.txt"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller6/questa/Makefile"
+            "$(BASE_DIR)SD-card-controller6/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "mkmif0": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/mkmif0/verif/tb_mkmif.v"
+            "$(BASE_DIR)mkmif0/verif/tb_mkmif.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/mkmif0/design/mkmif.v"
+            "$(BASE_DIR)mkmif0/design/mkmif.v"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/mkmif0/design_context/mkmif_core.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/mkmif0/design_context/mkmif_spi.v"
+            "$(BASE_DIR)mkmif0/design_context/mkmif_core.v",
+            "$(BASE_DIR)mkmif0/design_context/mkmif_spi.v"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/mkmif0/spec/spec.md",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/mkmif0/LICENSE.txt"
+            "$(BASE_DIR)mkmif0/spec/spec.md"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/mkmif0/questa/Makefile"
+            "$(BASE_DIR)mkmif0/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "gsoc-museum-edsac_0": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/gsoc-museum-edsac_0/test/edsac/memory/memory_tb.v"
+            "$(BASE_DIR)gsoc-museum-edsac_0/test/edsac/memory/memory_tb.v"
         ],
         "verif_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/gsoc-museum-edsac_0/src/edsac/memory/delay_line.v"
+            "$(BASE_DIR)gsoc-museum-edsac_0/src/edsac/memory/delay_line.v"
         ],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/gsoc-museum-edsac_0/src/edsac/memory/memory.v"
+            "$(BASE_DIR)gsoc-museum-edsac_0/src/edsac/memory/memory.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/gsoc-museum-edsac_0/doc/gating_emfs.md",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/gsoc-museum-edsac_0/doc/instruction_set.md",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/gsoc-museum-edsac_0/doc/main_control_unit.md",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/gsoc-museum-edsac_0/doc/computer.md"
+            "$(BASE_DIR)gsoc-museum-edsac_0/doc/gating_emfs.md",
+            "$(BASE_DIR)gsoc-museum-edsac_0/doc/instruction_set.md",
+            "$(BASE_DIR)gsoc-museum-edsac_0/doc/main_control_unit.md",
+            "$(BASE_DIR)gsoc-museum-edsac_0/doc/computer.md"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/gsoc-museum-edsac_0/questa/Makefile"
+            "$(BASE_DIR)gsoc-museum-edsac_0/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "onehzclk": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/onehzclk/verif/onehzclktb.v"
+            "$(BASE_DIR)onehzclk/verif/onehzclktb.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/onehzclk/design/onehzclk.v"
+            "$(BASE_DIR)onehzclk/design/onehzclk.v"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/onehzclk/design_context/cntclk.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/onehzclk/design_context/counter.v"
+            "$(BASE_DIR)onehzclk/design_context/cntclk.v",
+            "$(BASE_DIR)onehzclk/design_context/counter.v"
         ],
         "spec": [],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/onehzclk/questa/Makefile"
+            "$(BASE_DIR)onehzclk/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "sha12": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/sha12/verif/tb_sha1.v"
+            "$(BASE_DIR)sha12/verif/tb_sha1.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/sha12/design/sha1.v"
+            "$(BASE_DIR)sha12/design/sha1.v"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/sha12/design_context/sha1_w_mem.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/sha12/design_context/sha1_core.v"
+            "$(BASE_DIR)sha12/design_context/sha1_w_mem.v",
+            "$(BASE_DIR)sha12/design_context/sha1_core.v"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/sha12/spec/spec.md",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/sha12/LICENSE.txt"
+            "$(BASE_DIR)sha12/spec/spec.md"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/sha12/questa/Makefile"
+            "$(BASE_DIR)sha12/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "agalimberti_NoCRouter_0": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_0/src/tb/input_port/tb_rc_unit.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_0/src/tb/input_port/tb_rc_unit.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_0/src/rtl/input_port/rc_unit.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_0/src/rtl/input_port/rc_unit.sv"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_0/doc/Project Documentation.pdf"
+            "$(BASE_DIR)agalimberti_NoCRouter_0/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_0/questa/Makefile"
+            "$(BASE_DIR)agalimberti_NoCRouter_0/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "TrafficLightController1": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController1/verif/FSM_test.v"
+            "$(BASE_DIR)TrafficLightController1/verif/FSM_test.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController1/design/FSM.v"
+            "$(BASE_DIR)TrafficLightController1/design/FSM.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController1/spec/spec.txt"
+            "$(BASE_DIR)TrafficLightController1/spec/spec.txt"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController1/questa/Makefile"
+            "$(BASE_DIR)TrafficLightController1/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "counter2": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/counter2/verif/counter2tb.v"
+            "$(BASE_DIR)counter2/verif/counter2tb.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/counter2/design/counter2.v"
+            "$(BASE_DIR)counter2/design/counter2.v"
         ],
         "design_context": [],
         "spec": [],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/counter2/questa/Makefile"
+            "$(BASE_DIR)counter2/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "SD-card-controller0": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller0/verif/bistable_domain_cross_tb.sv"
+            "$(BASE_DIR)SD-card-controller0/verif/bistable_domain_cross_tb.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller0/design/bistable_domain_cross.v"
+            "$(BASE_DIR)SD-card-controller0/design/bistable_domain_cross.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller0/spec/1.1 Purpose of the IP core.txt",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller0/spec/spec.txt"
+            "$(BASE_DIR)SD-card-controller0/spec/1.1 Purpose of the IP core.txt",
+            "$(BASE_DIR)SD-card-controller0/spec/spec.txt"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller0/questa/Makefile"
+            "$(BASE_DIR)SD-card-controller0/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "sha10": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/sha10/verif/tb_sha1_core.v"
+            "$(BASE_DIR)sha10/verif/tb_sha1_core.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/sha10/design/sha1_core.v"
+            "$(BASE_DIR)sha10/design/sha1_core.v"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/sha10/design_context/sha1_w_mem.v"
+            "$(BASE_DIR)sha10/design_context/sha1_w_mem.v"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/sha10/spec/spec.md",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/sha10/LICENSE.txt"
+            "$(BASE_DIR)sha10/spec/spec.md"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/sha10/questa/Makefile"
+            "$(BASE_DIR)sha10/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "agalimberti_NoCRouter_8": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_8/src/tb/mesh/tb_mesh.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_8/src/tb/mesh/tb_mesh.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_8/src/rtl/noc/mesh.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_8/src/rtl/noc/mesh.sv"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_8/src/rtl/input_port/circular_buffer.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_8/src/rtl/input_port/input_port.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_8/src/rtl/noc/router_link.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_8/src/rtl/allocators/switch_allocator.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_8/src/rtl/router/router.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_8/src/rtl/crossbar/crossbar.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_8/src/rtl/allocators/separable_input_first_allocator.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_8/src/rtl/noc/node_link.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_8/src/rtl/input_port/rc_unit.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_8/src/rtl/allocators/vc_allocator.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_8/src/rtl/allocators/round_robin_arbiter.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_8/src/rtl/input_port/input_buffer.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_8/src/rtl/input_port/input_block.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_8/src/rtl/input_port/circular_buffer.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_8/src/rtl/input_port/input_port.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_8/src/rtl/noc/router_link.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_8/src/rtl/allocators/switch_allocator.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_8/src/rtl/router/router.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_8/src/rtl/crossbar/crossbar.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_8/src/rtl/allocators/separable_input_first_allocator.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_8/src/rtl/noc/node_link.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_8/src/rtl/input_port/rc_unit.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_8/src/rtl/allocators/vc_allocator.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_8/src/rtl/allocators/round_robin_arbiter.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_8/src/rtl/input_port/input_buffer.sv",
+            "$(BASE_DIR)agalimberti_NoCRouter_8/src/rtl/input_port/input_block.sv"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_8/doc/Project Documentation.pdf"
+            "$(BASE_DIR)agalimberti_NoCRouter_8/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_8/questa/Makefile"
+            "$(BASE_DIR)agalimberti_NoCRouter_8/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "mkmif2": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/mkmif2/verif/tb_mkmif_spi.v"
+            "$(BASE_DIR)mkmif2/verif/tb_mkmif_spi.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/mkmif2/design/mkmif_spi.v"
+            "$(BASE_DIR)mkmif2/design/mkmif_spi.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/mkmif2/LICENSE.txt",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/mkmif2/spec/spec.md"
+            "$(BASE_DIR)mkmif2/spec/spec.md"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/mkmif2/questa/Makefile"
+            "$(BASE_DIR)mkmif2/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "agalimberti_NoCRouter_5": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_5/src/tb/allocators/tb_separable_input_first_allocator.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_5/src/tb/allocators/tb_separable_input_first_allocator.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_5/src/rtl/allocators/separable_input_first_allocator.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_5/src/rtl/allocators/separable_input_first_allocator.sv"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_5/src/rtl/allocators/round_robin_arbiter.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_5/src/rtl/allocators/round_robin_arbiter.sv"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_5/doc/Project Documentation.pdf"
+            "$(BASE_DIR)agalimberti_NoCRouter_5/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_5/questa/Makefile"
+            "$(BASE_DIR)agalimberti_NoCRouter_5/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "TrafficLightController0": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController0/verif/Divider_test.v"
+            "$(BASE_DIR)TrafficLightController0/verif/Divider_test.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController0/design/Divider.v"
+            "$(BASE_DIR)TrafficLightController0/design/Divider.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController0/spec/spec.txt"
+            "$(BASE_DIR)TrafficLightController0/spec/spec.txt"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController0/questa/Makefile"
+            "$(BASE_DIR)TrafficLightController0/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "SD-card-controller5": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller5/verif/sd_cmd_serial_host_tb.sv"
+            "$(BASE_DIR)SD-card-controller5/verif/sd_cmd_serial_host_tb.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller5/design/sd_cmd_serial_host.v"
+            "$(BASE_DIR)SD-card-controller5/design/sd_cmd_serial_host.v"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller5/design_context/sd_crc_7.v"
+            "$(BASE_DIR)SD-card-controller5/design_context/sd_crc_7.v"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller5/spec/spec.txt"
+            "$(BASE_DIR)SD-card-controller5/spec/spec.txt"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller5/questa/Makefile"
+            "$(BASE_DIR)SD-card-controller5/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "SD-card-controller2": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller2/verif/edge_detect_tb.sv"
+            "$(BASE_DIR)SD-card-controller2/verif/edge_detect_tb.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller2/design/edge_detect.v"
+            "$(BASE_DIR)SD-card-controller2/design/edge_detect.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller2/spec/spec.txt"
+            "$(BASE_DIR)SD-card-controller2/spec/spec.txt"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller2/questa/Makefile"
+            "$(BASE_DIR)SD-card-controller2/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "cryptech_uart": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/cryptech_uart/verif/tb_uart.v"
+            "$(BASE_DIR)cryptech_uart/verif/tb_uart.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/cryptech_uart/design/uart_core.v"
+            "$(BASE_DIR)cryptech_uart/design/uart_core.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/cryptech_uart/spec/spec.md"
+            "$(BASE_DIR)cryptech_uart/spec/spec.md"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/cryptech_uart/questa/Makefile"
+            "$(BASE_DIR)cryptech_uart/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "ethmac1": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/verif/tb_ethernet_with_cop.v"
+            "$(BASE_DIR)ethmac1/verif/tb_ethernet_with_cop.v"
         ],
         "verif_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design_context/eth_cop.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/verif/tb_eth_defines.v"
+            "$(BASE_DIR)ethmac1/design_context/eth_cop.v",
+            "$(BASE_DIR)ethmac1/verif/tb_eth_defines.v"
         ],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/ethmac.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_memory.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_host.v"
+            "$(BASE_DIR)ethmac1/design/ethmac.v",
+            "$(BASE_DIR)ethmac1/design/eth_memory.v",
+            "$(BASE_DIR)ethmac1/design/eth_host.v"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_fifo.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_rxcounters.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_macstatus.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_rxaddrcheck.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_outputcontrol.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_maccontrol.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_random.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_spram_256x32.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_rxethmac.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_miim.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_crc.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/xilinx_dist_ram_16x32.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_rxstatem.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_wishbone.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_txstatem.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_shiftreg.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_transmitcontrol.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_registers.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/timescale.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_txcounters.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_txethmac.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_register.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_clockgen.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/ethmac_defines.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/design/eth_receivecontrol.v"
+            "$(BASE_DIR)ethmac1/design/eth_fifo.v",
+            "$(BASE_DIR)ethmac1/design/eth_rxcounters.v",
+            "$(BASE_DIR)ethmac1/design/eth_macstatus.v",
+            "$(BASE_DIR)ethmac1/design/eth_rxaddrcheck.v",
+            "$(BASE_DIR)ethmac1/design/eth_outputcontrol.v",
+            "$(BASE_DIR)ethmac1/design/eth_maccontrol.v",
+            "$(BASE_DIR)ethmac1/design/eth_random.v",
+            "$(BASE_DIR)ethmac1/design/eth_spram_256x32.v",
+            "$(BASE_DIR)ethmac1/design/eth_rxethmac.v",
+            "$(BASE_DIR)ethmac1/design/eth_miim.v",
+            "$(BASE_DIR)ethmac1/design/eth_crc.v",
+            "$(BASE_DIR)ethmac1/design/xilinx_dist_ram_16x32.v",
+            "$(BASE_DIR)ethmac1/design/eth_rxstatem.v",
+            "$(BASE_DIR)ethmac1/design/eth_wishbone.v",
+            "$(BASE_DIR)ethmac1/design/eth_txstatem.v",
+            "$(BASE_DIR)ethmac1/design/eth_shiftreg.v",
+            "$(BASE_DIR)ethmac1/design/eth_transmitcontrol.v",
+            "$(BASE_DIR)ethmac1/design/eth_registers.v",
+            "$(BASE_DIR)ethmac1/design/timescale.v",
+            "$(BASE_DIR)ethmac1/design/eth_txcounters.v",
+            "$(BASE_DIR)ethmac1/design/eth_txethmac.v",
+            "$(BASE_DIR)ethmac1/design/eth_register.v",
+            "$(BASE_DIR)ethmac1/design/eth_clockgen.v",
+            "$(BASE_DIR)ethmac1/design/ethmac_defines.v",
+            "$(BASE_DIR)ethmac1/design/eth_receivecontrol.v"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/spec/Spec1.pdf",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/spec/Spec0.pdf",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/LICENSE.txt"
+            "$(BASE_DIR)ethmac1/spec/Spec1.pdf",
+            "$(BASE_DIR)ethmac1/spec/Spec0.pdf"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac1/questa/Makefile"
+            "$(BASE_DIR)ethmac1/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "SD-card-controller12": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/verif/sd_controller_top_tb.sv"
+            "$(BASE_DIR)SD-card-controller12/verif/sd_controller_top_tb.sv"
         ],
         "verif_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/wb_master_behavioral.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/wb_master32.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/wb_slave_behavioral.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/sdModel.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/sd_crc_16.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/sd_crc_7.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/wb_bus_mon.v"
+            "$(BASE_DIR)SD-card-controller12/design_context/wb_master_behavioral.v",
+            "$(BASE_DIR)SD-card-controller12/design_context/wb_master32.v",
+            "$(BASE_DIR)SD-card-controller12/design_context/wb_slave_behavioral.v",
+            "$(BASE_DIR)SD-card-controller12/design_context/sdModel.v",
+            "$(BASE_DIR)SD-card-controller12/design_context/sd_crc_16.v",
+            "$(BASE_DIR)SD-card-controller12/design_context/sd_crc_7.v",
+            "$(BASE_DIR)SD-card-controller12/design_context/wb_bus_mon.v"
         ],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design/sdc_controller.v"
+            "$(BASE_DIR)SD-card-controller12/design/sdc_controller.v"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/sd_data_serial_host.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/generic_dpram.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/sd_controller_wb.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/sd_cmd_serial_host.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/sd_data_xfer_trig.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/sd_crc_16.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/monostable_domain_cross.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/sd_wb_sel_ctrl.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/sd_clock_divider.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/bistable_domain_cross.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/edge_detect.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/sd_fifo_filler.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/sd_data_master.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/generic_fifo_dc_gray.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/byte_en_reg.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/sd_cmd_master.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/design_context/sd_crc_7.v"
+            "$(BASE_DIR)SD-card-controller12/design_context/sd_data_serial_host.v",
+            "$(BASE_DIR)SD-card-controller12/design_context/generic_dpram.v",
+            "$(BASE_DIR)SD-card-controller12/design_context/sd_controller_wb.v",
+            "$(BASE_DIR)SD-card-controller12/design_context/sd_cmd_serial_host.v",
+            "$(BASE_DIR)SD-card-controller12/design_context/sd_data_xfer_trig.v",
+            "$(BASE_DIR)SD-card-controller12/design_context/sd_crc_16.v",
+            "$(BASE_DIR)SD-card-controller12/design_context/monostable_domain_cross.v",
+            "$(BASE_DIR)SD-card-controller12/design_context/sd_wb_sel_ctrl.v",
+            "$(BASE_DIR)SD-card-controller12/design_context/sd_clock_divider.v",
+            "$(BASE_DIR)SD-card-controller12/design_context/bistable_domain_cross.v",
+            "$(BASE_DIR)SD-card-controller12/design_context/edge_detect.v",
+            "$(BASE_DIR)SD-card-controller12/design_context/sd_fifo_filler.v",
+            "$(BASE_DIR)SD-card-controller12/design_context/sd_data_master.v",
+            "$(BASE_DIR)SD-card-controller12/design_context/generic_fifo_dc_gray.v",
+            "$(BASE_DIR)SD-card-controller12/design_context/byte_en_reg.v",
+            "$(BASE_DIR)SD-card-controller12/design_context/sd_cmd_master.v",
+            "$(BASE_DIR)SD-card-controller12/design_context/sd_crc_7.v"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/spec/spec.txt"
+            "$(BASE_DIR)SD-card-controller12/spec/spec.txt"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller12/questa/Makefile"
+            "$(BASE_DIR)SD-card-controller12/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "TrafficLightController6": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController6/verif/WalkRegister_test.v"
+            "$(BASE_DIR)TrafficLightController6/verif/WalkRegister_test.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController6/design/WalkRegister.v"
+            "$(BASE_DIR)TrafficLightController6/design/WalkRegister.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController6/spec/spec.txt"
+            "$(BASE_DIR)TrafficLightController6/spec/spec.txt"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/TrafficLightController6/questa/Makefile"
+            "$(BASE_DIR)TrafficLightController6/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "trng2": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng2/verif/tb_mixer.v"
+            "$(BASE_DIR)trng2/verif/tb_mixer.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng2/design/trng_mixer.v"
+            "$(BASE_DIR)trng2/design/trng_mixer.v"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng2/design_context/sha512_h_constants.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng2/design_context/sha512_core.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng2/design_context/sha512_k_constants.v",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng2/design_context/sha512_w_mem.v"
+            "$(BASE_DIR)trng2/design_context/sha512_h_constants.v",
+            "$(BASE_DIR)trng2/design_context/sha512_core.v",
+            "$(BASE_DIR)trng2/design_context/sha512_k_constants.v",
+            "$(BASE_DIR)trng2/design_context/sha512_w_mem.v"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng2/spec/spec.md"
+            "$(BASE_DIR)trng2/spec/spec.md"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/trng2/questa/Makefile"
+            "$(BASE_DIR)trng2/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "SD-card-controller4": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller4/verif/sd_cmd_master_tb.sv"
+            "$(BASE_DIR)SD-card-controller4/verif/sd_cmd_master_tb.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller4/design/sd_cmd_master.v"
+            "$(BASE_DIR)SD-card-controller4/design/sd_cmd_master.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller4/spec/spec.txt"
+            "$(BASE_DIR)SD-card-controller4/spec/spec.txt"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/SD-card-controller4/questa/Makefile"
+            "$(BASE_DIR)SD-card-controller4/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "agalimberti_NoCRouter_4": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_4/src/tb/allocators/tb_round_robin_arbiter.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_4/src/tb/allocators/tb_round_robin_arbiter.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_4/src/rtl/allocators/round_robin_arbiter.sv"
+            "$(BASE_DIR)agalimberti_NoCRouter_4/src/rtl/allocators/round_robin_arbiter.sv"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_4/doc/Project Documentation.pdf"
+            "$(BASE_DIR)agalimberti_NoCRouter_4/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_4/questa/Makefile"
+            "$(BASE_DIR)agalimberti_NoCRouter_4/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "microprocessor": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/verif/top.sv"
+            "$(BASE_DIR)microprocessor/verif/top.sv"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/superscalar.sv"
+            "$(BASE_DIR)microprocessor/design/superscalar.sv"
         ],
         "design_context": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/ff_regfile.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/ff_3r_3w.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/alu_sub.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/ram_2r_4w.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/ff_3r_2w.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/ff_valid.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/ff_2r_6w.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/ff_2r_2w.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/mux.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/ram_3r_3w.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/regfile.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/ff_1r_3w.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/insdec.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/ram_4r_4w.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/alu.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/ram_2r_2w.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/lsq_new.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/alu_lsq_schedule.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/rob.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/ram_4r_2w.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/pencoder.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/ff_2r_4w.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/ff_1r_1w.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/head_tail_control.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/comparator_signed.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/ram_3r_2w.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/lsq.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/decoder.sv",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/design/pc_alu.sv"
+            "$(BASE_DIR)microprocessor/design/ff_regfile.sv",
+            "$(BASE_DIR)microprocessor/design/ff_3r_3w.sv",
+            "$(BASE_DIR)microprocessor/design/alu_sub.sv",
+            "$(BASE_DIR)microprocessor/design/ram_2r_4w.sv",
+            "$(BASE_DIR)microprocessor/design/ff_3r_2w.sv",
+            "$(BASE_DIR)microprocessor/design/ff_valid.sv",
+            "$(BASE_DIR)microprocessor/design/ff_2r_6w.sv",
+            "$(BASE_DIR)microprocessor/design/ff_2r_2w.sv",
+            "$(BASE_DIR)microprocessor/design/mux.sv",
+            "$(BASE_DIR)microprocessor/design/ram_3r_3w.sv",
+            "$(BASE_DIR)microprocessor/design/regfile.sv",
+            "$(BASE_DIR)microprocessor/design/ff_1r_3w.sv",
+            "$(BASE_DIR)microprocessor/design/insdec.sv",
+            "$(BASE_DIR)microprocessor/design/ram_4r_4w.sv",
+            "$(BASE_DIR)microprocessor/design/alu.sv",
+            "$(BASE_DIR)microprocessor/design/ram_2r_2w.sv",
+            "$(BASE_DIR)microprocessor/design/lsq_new.sv",
+            "$(BASE_DIR)microprocessor/design/alu_lsq_schedule.sv",
+            "$(BASE_DIR)microprocessor/design/rob.sv",
+            "$(BASE_DIR)microprocessor/design/ram_4r_2w.sv",
+            "$(BASE_DIR)microprocessor/design/pencoder.sv",
+            "$(BASE_DIR)microprocessor/design/ff_2r_4w.sv",
+            "$(BASE_DIR)microprocessor/design/ff_1r_1w.sv",
+            "$(BASE_DIR)microprocessor/design/head_tail_control.sv",
+            "$(BASE_DIR)microprocessor/design/comparator_signed.sv",
+            "$(BASE_DIR)microprocessor/design/ram_3r_2w.sv",
+            "$(BASE_DIR)microprocessor/design/lsq.sv",
+            "$(BASE_DIR)microprocessor/design/decoder.sv",
+            "$(BASE_DIR)microprocessor/design/pc_alu.sv"
         ],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/spec/CHD_Final_Project.pdf"
+            "$(BASE_DIR)microprocessor/spec/CHD_Final_Project.pdf"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/microprocessor/questa/Makefile"
+            "$(BASE_DIR)microprocessor/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
     },
     "ethmac2": {
         "verif": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac2/verif/tb_cop.v"
+            "$(BASE_DIR)ethmac2/verif/tb_cop.v"
         ],
         "verif_context": [],
         "design": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac2/design/eth_cop.v"
+            "$(BASE_DIR)ethmac2/design/eth_cop.v"
         ],
         "design_context": [],
         "spec": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac2/spec/Spec0.pdf",
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac2/spec/Spec1.pdf"
+            "$(BASE_DIR)ethmac2/spec/Spec0.pdf",
+            "$(BASE_DIR)ethmac2/spec/Spec1.pdf"
         ],
         "makefile": [
-            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/ethmac2/questa/Makefile"
+            "$(BASE_DIR)ethmac2/questa/Makefile"
         ],
         "tags": [],
         "github_link": []
