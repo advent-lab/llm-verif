@@ -1,13 +1,23 @@
-import subprocess
+from subprocess import run, PIPE
 import datetime
 import os
 from storage import FileStore
 from environment import Environment
 import re
+from typing import Union
 
-def run_questasim(env: Environment, tb_path: str, log_file: str, storage: FileStore = None) -> str:
+def run_questasim(env: Union[Environment, str], tb_path: str, log_file: str, storage: FileStore = None) -> str:
     # Get the name of the test bench module
     # We need to do this because the LLM could name the module anything
+
+    questa_dir = ''
+    if isinstance(env, Environment):
+        questa_dir = questa_dir
+    elif isinstance(env, str):
+        questa_dir = env
+    else:
+        return ''
+
     design_dir = os.path.split(tb_path)[0]
 
     tb_file = open(tb_path, 'r')
@@ -24,13 +34,19 @@ def run_questasim(env: Environment, tb_path: str, log_file: str, storage: FileSt
     with open(log_file, 'w+') as f:
         f.write(f"--- QuestaSim Simulation: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n")
         f.flush()
-        # subprocess.run(['make', 'clean', 'all'], stdout=f, stderr=f)
-        subprocess.run(['rm', '-rf', f'{design_dir}/work', 'work', 'transcript'])
-        subprocess.run([f'{env.questa_dir}/vlog', '-cover', 's'] + [os.path.join(design_dir, path) for path in os.listdir(design_dir)])
-        subprocess.run([f'{env.questa_dir}/vsim', f'work.{tb_name}', '-coverage', '-c', '-do', 'questa_coverage.do'])
+        # run(['make', 'clean', 'all'], stdout=f, stderr=f)
+    run(['rm', '-rf', f'{design_dir}/work', 'work', 'transcript'])
+    compile_output = run([f'{questa_dir}/vlog', '-cover', 's'] + [os.path.join(design_dir, path) for path in os.listdir(design_dir)], stdout=PIPE, stderr=PIPE)
     
-    captured_output = subprocess.run([f'{env.questa_dir}/vcover', 'report', 'covergae.ucdb'], capture_output=True)
-
+    sim_output = run([f'{questa_dir}/vsim', f'work.{tb_name}', '-coverage', '-c', '-do', f'coverage exclude -du {tb_name};coverage save -onexit coverage.ucdb;run -all;exit;'], stdout=PIPE, stderr=PIPE)
+    
+    report_output = run([f'{questa_dir}/vcover', 'report', 'covergae.ucdb'], stdout=PIPE, stderr=PIPE)
+    print(f"Compile output: \n{compile_output.stdout.decode()}")
+    print(f"Compile error: \n{compile_output.stdout.decode()}")
+    print(f"Sim output: \n{sim_output.stdout.decode()}")
+    print(f"Sim error: \n{sim_output.stdout.decode()}")
+    print(f"Report output: \n{report_output.stdout.decode()}")
+    print(f"Report error: \n{report_output.stdout.decode()}")
     # Move the log file to the storage directory
     '''
     coverage_report_file = open('./coverage_report.txt', 'a+')
@@ -46,7 +62,7 @@ def run_questasim(env: Environment, tb_path: str, log_file: str, storage: FileSt
     os.remove('./coverage_report.txt')
     '''
 
-    return captured_output.stdout
+    # return captured_output.stdout
 
 def read_last_line(file_path):
     with open(file_path, 'rb') as f:
