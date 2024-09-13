@@ -17,9 +17,13 @@ if __name__=="__main__":
     store = FileStore('./generations')
     chat.load_model()
 
-    for i in range(0,100):
+    num_pass = 0
+    num_fail = 0
+
+    for i in range(0,10):
         # Run generations
         # Initialize conversation history with system message
+        print(f"\n\nRun {i}")
         conversation = [
             {"role": "system", "content": "You are a verification engineering assistant tasked with generating test benches that meet a coverage requirement of 100% statement coverage."}
         ]
@@ -33,5 +37,9 @@ if __name__=="__main__":
         cov = chat.get_coverage(args.compiler, response[0]['test bench'], './sha12/design')
         if cov[0]:
             print(f"Passed!\n{cov[1]}")
+            num_pass = num_pass + 1
         else:
             print(f"Failed!\n{cov[1]}")
+            num_fail = num_fail + 1
+
+    print(f"\n\nPasses: {num_pass}\nFailures: {num_fail}")

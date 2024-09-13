@@ -1,4 +1,4 @@
-from subprocess import run, PIPE
+from subprocess import run, PIPE, TimeoutExpired
 import datetime
 import os
 from storage import FileStore
@@ -20,15 +20,7 @@ def run_questasim(env: Union[Environment, str], tb_path: str, log_file: str, sto
 
     design_dir = os.path.split(tb_path)[0]
 
-    tb_file = open(tb_path, 'r')
-    tb_content = tb_file.readlines()
-    tb_name = ''
-    for line in tb_content:
-        if line.find('module') != -1:
-            split_line = re.split(r'[\W+]', line)
-            tb_name = split_line[1]
-            break
-    tb_file.close()
+    tb_name = get_testbench_name(tb_path)
 
     # Run the simulation and log the output
     with open(log_file, 'w+') as f:
@@ -41,9 +33,12 @@ def run_questasim(env: Union[Environment, str], tb_path: str, log_file: str, sto
     if not check_errors(compile_output.stdout.decode()):
         return False, compile_output.stdout.decode()
 
-    sim_output = run([f'{questa_dir}/vsim', f'work.{tb_name}', '-coverage', '-c', '-do', f'coverage exclude -du {tb_name};coverage save -onexit coverage.ucdb;run -all;exit;'], stdout=PIPE, stderr=PIPE)
-    if not check_errors(sim_output.stdout.decode()):
-        return False, compile_output.stdout.decode()
+    try:
+        sim_output = run([f'{questa_dir}/vsim', f'work.{tb_name}', '-coverage', '-c', '-do', f'coverage exclude -du {tb_name};coverage save -onexit coverage.ucdb;run -all;exit;'], stdout=PIPE, stderr=PIPE, timeout=60)
+        if not check_errors(sim_output.stdout.decode()):
+            return False, sim_output.stdout.decode()
+    except TimeoutExpired:
+        return False, "Simulation timeout"
 
     report_output = run([f'{questa_dir}/vcover', 'report', 'coverage.ucdb'], stdout=PIPE, stderr=PIPE)
     if not check_errors(report_output.stdout.decode()):
@@ -66,3 +61,16 @@ def check_errors(questa_output: str) -> bool:
         return True
 
     return False
+
+def get_testbench_name(tb_path: str) -> str:
+    with open(tb_path, 'r') as tb_file:
+        tb_content = tb_file.readlines()
+        tb_name = ''
+        for line in tb_content:
+            if line.find('module') != -1:
+                split_line = re.split(r'[\W+]', line)
+                stripped_items = [item.strip() for item in split_line]
+                cleaned_items = [x for x in stripped_items if x]
+                return cleaned_items[-1]
+
+    return ''

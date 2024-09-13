@@ -28,7 +28,7 @@ def load_model():
     )
 
 # Function to generate a response from the LLM
-def generate_response(conversation_history) -> str:
+def generate_response(conversation_history, max_new_tokens=5000) -> str:
     # Encode the conversation history
     input_ids = tokenizer.apply_chat_template(
         conversation_history,
@@ -45,7 +45,7 @@ def generate_response(conversation_history) -> str:
     # Generate the response
     outputs = model.generate(
         input_ids,
-        max_new_tokens=3000,
+        max_new_tokens=max_new_tokens,
         eos_token_id=terminators,
         do_sample=True,
         temperature=0.6,
@@ -99,6 +99,9 @@ def convert_json_response_to_dict(generated_response: str) -> tuple:
 
 # TODO: Create call to QuestaSim to get coverage
 def get_coverage(questa_dir: str, generated_response: str, design_dir: str, storage: FileStore = None) -> (bool, str):
+    if not generated_response:
+        return False, "Empty test bench"
+
     # Write the generated testbench to a file
     testbench_file = open(os.path.join(design_dir, "tb_llm.v"), "w+")
     testbench_file.write(generated_response)
