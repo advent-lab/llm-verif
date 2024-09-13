@@ -1,5 +1,5 @@
 User
-Generate a Verilog testbench named tb_llm for the following design specification. The test bench should meet the statement coverage goal of 100%. Generate only the Verilog testbench and no additional words. 
+Generate a Verilog testbench named tb_llm for the following design specification. The test bench should meet the statement coverage goal of 100%. Generate only the Verilog testbench and no additional words. Make sure you are ONLY using Verilog syntax and features, and not SystemVerilog such as for loops.
 
 Module header: 
 module sha1( 
