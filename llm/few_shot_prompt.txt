@@ -64,6 +64,7 @@ Example output:
 	"test bench": "
 		module tb_llm;
 			// Generated test bench code
+			$finish
 		endmodule
 	",
 	"comments": " // Any additonal comments here "
