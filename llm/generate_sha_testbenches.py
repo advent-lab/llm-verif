@@ -31,7 +31,7 @@ if __name__=="__main__":
         print(response)
 
         cov = chat.get_coverage(args.compiler, response[0]['test bench'], './sha12/design')
-        if cov != "":
-            print("Passed!")
+        if cov[0]:
+            print(f"Passed!\n{cov[1]}")
         else:
-            print("Failed!")
+            print(f"Failed!\n{cov[1]}")

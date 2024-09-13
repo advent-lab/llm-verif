@@ -98,17 +98,16 @@ def convert_json_response_to_dict(generated_response: str) -> tuple:
     return parsed_response
 
 # TODO: Create call to QuestaSim to get coverage
-def get_coverage(questa_dir: str, generated_response: str, design_dir: str, storage: FileStore = None):
+def get_coverage(questa_dir: str, generated_response: str, design_dir: str, storage: FileStore = None) -> (bool, str):
     # Write the generated testbench to a file
     testbench_file = open(os.path.join(design_dir, "tb_llm.v"), "w+")
     testbench_file.write(generated_response)
     testbench_file.close()
 
     # Run QuestaSim to get coverage
-    env = Environment(questa_dir)
-    coverage_report = qs.run_questasim(env, os.path.join(design_dir, "tb_llm.v"), "questasim.log", storage)
+    # env = Environment(questa_dir)
+    return qs.run_questasim(questa_dir, os.path.join(design_dir, "tb_llm.v"), "questasim.log", storage)
     
-    return coverage_report
 
 
 if __name__=="__main__":
