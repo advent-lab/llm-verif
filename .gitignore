@@ -2,6 +2,7 @@ generations/
 *.err
 *.out
 *.ucdb
+report.txt
 
 # QuestaSim ignores
 *work/
