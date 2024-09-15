@@ -1,6 +1,7 @@
 generations/
 *.err
 *.out
+*.ucdb
 
 # QuestaSim ignores
 *work/
