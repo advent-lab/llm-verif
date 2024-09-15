@@ -56,6 +56,45 @@ def generate_response(conversation_history, max_new_tokens=10000, temperature=0.
     response = outputs[0][input_ids.shape[-1]:]
     return tokenizer.decode(response, skip_special_tokens=True)
 
+# Function to generate a response from the LLM in batch
+# TODO: Test
+def batch_generate(conversations, batch_size=10, max_new_tokens=10000, temperature=0.6, top_p=0.9) -> list:
+    generated_testbenches = []
+    
+    for i in range(0, len(conversations), batch_size):
+        batch_conversations = conversations[i:i+batch_size]
+        for conversation in batch_conversations:
+            try:
+                # Prepare the input for Llama3.1
+                input_ids = tokenizer.apply_chat_template(
+                    conversation,
+                    add_generation_prompt=True,
+                    return_tensors="pt"
+                ).to(model.device)
+
+                terminators = [
+                    tokenizer.eos_token_id,
+                    tokenizer.convert_tokens_to_ids("<|eot_id|>")
+                ]
+
+                with torch.no_grad():
+                    outputs = model.generate(
+                        input_ids,
+                        max_new_tokens=max_new_tokens,
+                        eos_token_id=terminators,
+                        do_sample=True,
+                        temperature=temperature,
+                        top_p=top_p,
+                    )
+
+                testbench_code = tokenizer.decode(outputs, skip_special_tokens=True)
+                generated_testbenches.append(testbench_code)
+            except Exception as e:
+                print(f"Error generating for conversation {conversation}: {str(e)}")
+                generated_testbenches.append(f"Error for {conversation}")
+    
+    return generated_testbenches
+
 # Function to log the conversation to a file
 def log_conversation(conversation_update, log_file):
     with open(log_file, 'a') as f:
@@ -114,8 +153,10 @@ def get_coverage(questa_dir: str, generated_response: str, tb_path: str, storage
     storage.move(tb_path)
 
     return coverage_response
-    
 
+# TODO: Implement parallel coverage runs
+def parallel_get_coverage():
+    pass
 
 if __name__=="__main__":
     # Initialize model
