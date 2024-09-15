@@ -28,7 +28,7 @@ def load_model():
     )
 
 # Function to generate a response from the LLM
-def generate_response(conversation_history, max_new_tokens=5000, temperature=0.6, top_p=0.9) -> str:
+def generate_response(conversation_history, max_new_tokens=10000, temperature=0.6, top_p=0.9) -> str:
     # Encode the conversation history
     input_ids = tokenizer.apply_chat_template(
         conversation_history,
@@ -48,7 +48,7 @@ def generate_response(conversation_history, max_new_tokens=5000, temperature=0.6
         max_new_tokens=max_new_tokens,
         eos_token_id=terminators,
         do_sample=True,
-        temperature=0.6,
+        temperature=0.5,
         top_p=0.9,
     )
 
