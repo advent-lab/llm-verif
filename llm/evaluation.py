@@ -10,21 +10,12 @@ import numpy as np
 
 def estimate_pass_at_k(
         num_samples: Union[int, List[int], np.ndarray],
-        num_correct: Union[List[int], np.ndarray],
+        num_correct: Union[int, List[int], np.ndarray],
         k: int
 ) -> np.ndarray:
     """
     Estimates pass@k of each run and returns them in an arry
     """
-
-    # Define the estimator used for the combinatorics
-    def estimator(n: int, c: int, k: int) -> float:
-        """
-        Calculates 1 - comb(n - c, k) / comb(n,k)
-        """
-        if n - c < k:
-            return 1.0
-        return 1.0 - np.prod(1.0 - k / np.arange(n - c + 1, n + 1))
     
     # Determine the type of passed arguments
     # Raise error if lengths to not agree
@@ -37,4 +28,10 @@ def estimate_pass_at_k(
     # Return the estimations
     return np.array([estimator(int(n), int(c), k) for n, c in zip(num_samples_it, num_correct)])
 
-
+def pass_at_k(n: int, c: int, k: int) -> float:
+    """
+    Calculates 1 - comb(n - c, k) / comb(n,k)
+    """
+    if n - c < k:
+        return 1.0
+    return 1.0 - np.prod(1.0 - k / np.arange(n - c + 1, n + 1))

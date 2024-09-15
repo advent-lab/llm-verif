@@ -3,6 +3,10 @@ import torch
 import os
 from datetime import datetime
 import json
+import questasim as qs
+from storage import FileStore
+import re
+from environment import Environment
 
 # Set the cache location for the model
 os.environ['HUGGINGFACE_HUB_CACHE'] = "/scratch/slowe8/.cache/"
@@ -24,7 +28,7 @@ def load_model():
     )
 
 # Function to generate a response from the LLM
-def generate_response(conversation_history) -> str:
+def generate_response(conversation_history, max_new_tokens=5000, temperature=0.6, top_p=0.9) -> str:
     # Encode the conversation history
     input_ids = tokenizer.apply_chat_template(
         conversation_history,
@@ -41,7 +45,7 @@ def generate_response(conversation_history) -> str:
     # Generate the response
     outputs = model.generate(
         input_ids,
-        max_new_tokens=3000,
+        max_new_tokens=max_new_tokens,
         eos_token_id=terminators,
         do_sample=True,
         temperature=0.6,
@@ -72,8 +76,9 @@ def get_multiline_input(prompt="Enter your message (end with 'END' on a new line
     return "\n".join(lines)
 
 # Parse JSON Response from LLM to dict
-def convert_json_reponse_to_dict(generated_response: str) -> dict:
+def convert_json_response_to_dict(generated_response: str) -> tuple:
     
+    # Find the first and last JSON curly braces
     first_pos = generated_response.find('{')
     if first_pos != -1:
         generated_response = generated_response[first_pos:]
@@ -82,18 +87,34 @@ def convert_json_reponse_to_dict(generated_response: str) -> dict:
     if last_pos != -1:
         generated_response = generated_response[:last_pos + 1]
 
-    print(generated_response)
-
     try:
-        parsed_response = json.loads(generate_response)
-    except:
-        parsed_response = {}
-    
+        # Parse JSON
+        decoder = json.JSONDecoder(strict=False)
+        parsed_response = decoder.raw_decode(generated_response)
+    except json.JSONDecodeError as e:
+        print(f"JSONDecodeError: {e}")
+        return ({"test bench":""}, 0)
+
     return parsed_response
 
 # TODO: Create call to QuestaSim to get coverage
-def get_coverage(generated_response):
-    generated_testbench = generated_response["test bench"]
+def get_coverage(questa_dir: str, generated_response: str, tb_path: str, storage: FileStore = None) -> qs.CoverageResponse:
+    if not generated_response:
+        return qs.CoverageResponse(False, 5, "Empty test bench (JSON Decode Error)")
+
+    # Write the generated testbench to a file
+    with open(tb_path, "w+") as testbench_file:
+        testbench_file.write(generated_response)
+
+    # Run QuestaSim to get coverage
+    # env = Environment(questa_dir)
+    coverage_response = qs.run_questasim(questa_dir, tb_path, "questasim.log")
+
+    # Move test bench file to storage
+    storage.move(tb_path)
+
+    return coverage_response
+    
 
 
 if __name__=="__main__":

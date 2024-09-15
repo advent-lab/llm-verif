@@ -1,24 +1,20 @@
-User
-Generate a Verilog testbench named tb_llm for the following design specification. The test bench should meet the statement coverage goal of 100%. Generate only the Verilog testbench and no additional words. Make sure you are ONLY using Verilog syntax and features, and not SystemVerilog such as for loops.
+We are going to use a 2 stage process to generate a Verilog test bench for a Verilog design. Right now we are in the first stage. Generate a verification plan with test scenarios that will achieve full statement coverage of design described by the following design specification and module header.
+Module header: module sha1( 
+    // Clock and reset. 
+    input wire clk, 
+    input wire reset_n,
+    // Control.
+    input wire           cs,
+    input wire           we,
 
-Module header: 
-module sha1( 
-	// Clock and reset. 
-	input wire clk, 
-	input wire reset_n,
-
-	// Control.
-	input wire           cs,
-	input wire           we,
-
-	// Data ports.
-    	input wire  [7 : 0]  address,
-    	input wire  [31 : 0] write_data,
-    	output wire [31 : 0] read_data,
-    	output wire          error
+    // Data ports.
+    input wire  [7 : 0]  address,
+    input wire  [31 : 0] write_data,
+    output wire [31 : 0] read_data,
+    output wire          error
 );
-
 Design specification:
+
 sha1.v
 Top level wrapper for the SHA-1 hash function providing a simple memory like interface with 32 bit data access.
 
@@ -56,16 +52,3 @@ Implementation details
 The implementation is iterative with one cycle/round. The initialization takes one cycle. The W memory is based around a sliding window of 16 32-bit registers that are updated in sync with the round processing. The total latency/message block is 82 cycles.
 
 All registers have asynchronous reset.
-
-Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag.
-
-Example output:
-{
-	"test bench": "
-		module tb_llm;
-			// Generated test bench code
-			$finish
-		endmodule
-	",
-	"comments": " // Any additonal comments here "
-}

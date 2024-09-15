@@ -1,0 +1,139 @@
+
+                module sha1_tb;
+                        // Testbench for SHA-1 module
+
+                        // Parameters
+                        localparam CLK_PERIOD = 10;
+                        localparam NUM_TEST_CASES = 10;
+
+                        // Signals
+                        reg clk;
+                        reg reset_n;
+                        reg cs;
+                        reg we;
+                        reg [7:0] address;
+                        reg [31:0] write_data;
+                        wire [31:0] read_data;
+                        wire error;
+
+                        // DUT
+                        sha1 dut (
+                                .clk(clk),
+                                .reset_n(reset_n),
+                                .cs(cs),
+                                .we(we),
+                                .address(address),
+                                .write_data(write_data),
+                                .read_data(read_data),
+                                .error(error)
+                        );
+
+                        // Clock generation
+                        initial begin
+                                clk = 0;
+                                forever #(CLK_PERIOD/2) clk = ~clk;
+                        end
+
+                        // Reset generation
+                        initial begin
+                                reset_n = 0;
+                                #(CLK_PERIOD*2) reset_n = 1;
+                        end
+
+                        // Test cases
+                        initial begin
+                                // Test case 1: Read name0 register
+                                cs = 1;
+                                address = 8'h00;
+                                we = 0;
+                                @(posedge clk);
+                                $display("Name0 register: %s", read_data);
+
+                                // Test case 2: Read version register
+                                address = 8'h02;
+                                @(posedge clk);
+                                $display("Version register: %s", read_data);
+
+                                // Test case 3: Write control register
+                                cs = 1;
+                                address = 8'h08;
+                                we = 1;
+                                write_data = 32'h00000001; // Initialize core
+                                @(posedge clk);
+                                @(posedge clk);
+                                cs = 1;
+                                address = 8'h08;
+                                we = 0;
+                                @(posedge clk);
+                                $display("Control register: %h", read_data);
+
+                                // Test case 4: Write block registers
+                                for (int i = 0; i < 16; i++) begin
+                                        address = 8'h10 + i;
+                                        write_data = i * 32'h00000001;
+                                        we = 1;
+                                        @(posedge clk);
+                                        we = 0;
+                                        @(posedge clk);
+                                        $display("Block %d register: %h", i, read_data);
+                                end
+
+                                // Test case 5: Read digest registers
+                                for (int i = 0; i < 5; i++) begin
+                                        address = 8'h20 + i;
+                                        we = 0;
+                                        @(posedge clk);
+                                        $display("Digest %d register: %h", i, read_data);
+                                end
+
+                                // Test case 6: Write status register
+                                cs = 1;
+                                address = 8'h09;
+                                we = 1;
+                                write_data = 32'h00000001; // Set ready bit
+                                @(posedge clk);
+                                @(posedge clk);
+                                cs = 1;
+                                address = 8'h09;
+                                we = 0;
+                                @(posedge clk);
+                                $display("Status register: %h", read_data);
+
+                                // Test case 7: Read error register
+                                cs = 1;
+                                address = 8'hff;
+                                we = 0;
+                                @(posedge clk);
+                                $display("Error register: %b", error);
+
+                                // Test case 8: Write invalid address
+                                cs = 1;
+                                address = 8'hff;
+                                we = 1;
+                                write_data = 32'h00000001;
+                                @(posedge clk);
+                                @(posedge clk);
+                                cs = 1;
+                                address = 8'hff;
+                                we = 0;
+                                @(posedge clk);
+                                $display("Invalid address: %h", read_data);
+
+                                // Test case 9: Read invalid address
+                                cs = 1;
+                                address = 8'hff;
+                                we = 0;
+                                @(posedge clk);
+                                $display("Invalid address: %h", read_data);
+
+                                // Test case 10: Reset core
+                                reset_n = 0;
+                                #(CLK_PERIOD*2) reset_n = 1;
+                        end
+
+                        // Finish simulation
+                        initial begin
+                                #(CLK_PERIOD*1000) $finish;
+                        end
+                endmodule
+        
