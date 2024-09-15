@@ -28,7 +28,7 @@ def estimate_pass_at_k(
     # Return the estimations
     return np.array([estimator(int(n), int(c), k) for n, c in zip(num_samples_it, num_correct)])
 
-def estimator(n: int, c: int, k: int) -> float:
+def pass_at_k(n: int, c: int, k: int) -> float:
     """
     Calculates 1 - comb(n - c, k) / comb(n,k)
     """

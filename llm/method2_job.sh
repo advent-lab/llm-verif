@@ -1,9 +1,11 @@
 #!/bin/bash
 
 #SBATCH -N 1            # number of nodes
-#SBATCH -c 8            # number of cores 
-#SBATCH -G a100:1
-#SBATCH -c 
+#SBATCH -c 32            # number of cores 
+#SBATCH --mem=128G
+#SBATCH -t 1-00:00:00
+#SBATCH -G a100:2
+#SBATCH -C a100_80
 #SBATCH -p general      # partition 
 #SBATCH -q public       # QOS
 #SBATCH -o slurm.%j.out # file to save job's STDOUT (%j = JobId)
@@ -17,7 +19,9 @@ module load bittware/questa-23.4
 export LM_LICENSE_FILE=27006@en4228283.cidse.dhcp.asu.edu
 
 #Change to the directory of our script
-cd ~/Research/llm_verif_dataset/llm
+cp -r ~/Research/llm_verif_dataset/llm /scratch/slowe8/method2_runs
+cd /scratch/slowe8/method2_runs
 
 #Run the software/python script
-python evaluate_hyperparams.py -c /packages/apps/fpga/Questa/questa_fe/bin
+source venv/bin/activate
+python evaluate_methodology2.py -c /packages/apps/fpga/Questa/questa_fe/bin > method2_job.log
