@@ -121,9 +121,13 @@ if __name__=="__main__":
                             "report fail rate": num_report_fail / (total_pass + total_fail),
                             "decode fail rate": num_decode_fail / (total_fail + total_pass),
                             "max total coverage": max_cov,
-                            "average total coverage": sum_cov_of_success / total_pass,
         }])
         print(df)
+
+    if total_pass == 0:
+        avg_total_coverage = 0
+    else:
+        avg_total_coverage = sum_cov_of_success / total_pass
     
     df = pd.DataFrame([{"temperature": temperature, 
                         "top_p": top_p, 
@@ -143,7 +147,7 @@ if __name__=="__main__":
                         "report fail rate": num_report_fail / (total_pass + total_fail),
                         "decode fail rate": num_decode_fail / (total_fail + total_pass),
                         "max total coverage": max_cov,
-                        "average total coverage": sum_cov_of_success / total_pass,
+                        "average total coverage": avg_total_coverage,
     }])
     
     df.to_csv('methodology2.csv')
