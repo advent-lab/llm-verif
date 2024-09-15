@@ -31,6 +31,6 @@ deactivate
 source venv/bin/activate
 pip install -r requirements.txt
 
-python evaluate_methodology1.py -g 3 -c /packages/apps/fpga/Questa/questa_fe/bin #> method1_job.log
+python evaluate_methodology1.py -g 50 -c /packages/apps/fpga/Questa/questa_fe/bin > method1_job.log
 deactivate
 rm -rf venv

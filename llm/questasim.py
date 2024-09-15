@@ -70,6 +70,10 @@ def run_questasim(env: Union[Environment, str], tb_path: str, log_file: str) -> 
 
     total_coverage = (total_hits / total_active) * 100.0
 
+    # Clean up
+    os.remove("coverage.ucdb")
+    os.remove("report.txt")
+
     return CoverageResponse(True, 0, report_output.stdout.decode(), coverage_dict, total_coverage)
     
 
