@@ -1,3 +1,7 @@
+generations/
+*.err
+*.out
+
 # QuestaSim ignores
 *work/
 *transcript
