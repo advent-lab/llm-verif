@@ -1,3 +1,13 @@
+generations/
+*.err
+*.out
+*.ucdb
+report.txt
+
+# QuestaSim ignores
+*work/
+*transcript
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
