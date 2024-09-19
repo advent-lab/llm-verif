@@ -16,4 +16,4 @@ sim:
 	$(QUESTA_ROOT)/vsim work.tb_rc_unit -coverage -gui -do "coverage save -onexit tb_rc_unit.ucdb; run -all; exit"
 
 clean: 
-	rm -rf work transcript
+	rm -rf work transcript out.vcd

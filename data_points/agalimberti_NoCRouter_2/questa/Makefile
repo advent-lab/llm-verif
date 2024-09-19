@@ -16,4 +16,4 @@ sim:
 	$(QUESTA_ROOT)/vsim work.tb_input_buffer -c -coverage -do "coverage save -onexit tb_input_buffer.ucdb; run -all; exit"
 
 clean: 
-	rm -rf work transcript
+	rm -rf work transcript out.vcd 

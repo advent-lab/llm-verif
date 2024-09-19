@@ -16,4 +16,4 @@ sim:
 	$(QUESTA_ROOT)/vsim work.memory_tb -c -coverage -do "coverage save -onexit memory_tb.ucdb; run -all; exit"
 
 clean: 
-	rm -rf work transcript
+	rm -rf work transcript memory.vcd
