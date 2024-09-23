@@ -1,0 +1,5 @@
+ sd_data_master.v                                             
+                                                                                                                          
+ Description                                                  
+ State machine resposible for controlling data transfers      
+ on 4-bit sd card data interface  ible for comunication with coreface interface      

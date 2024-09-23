@@ -1,0 +1,5 @@
+ sd_data_xfer_trig.v                                          
+                                                              
+ Description                                                  
+ Module resposible for triggering data transfer based on      
+ command transfer completition code  

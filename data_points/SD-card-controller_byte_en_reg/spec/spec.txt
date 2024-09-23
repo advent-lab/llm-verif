@@ -1,0 +1,6 @@
+byte_en_reg.v
+                                                
+Description                                                  
+Register with byte enable. (write is performe only to        
+enebled bytes)                                               
+                 

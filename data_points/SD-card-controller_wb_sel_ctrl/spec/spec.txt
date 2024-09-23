@@ -1,0 +1,6 @@
+ sd_wb_sel_ctrl.v                                             
+
+ Description                                                  
+ Module resposible for controlling wb_sel signal of the       
+ master wishbone if. Handles unaligned access to wishbone     
+ bus.  emory    

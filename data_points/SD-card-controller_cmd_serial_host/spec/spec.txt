@@ -1,0 +1,5 @@
+ sd_cmd_serial_host.v                                         
+                                                              
+ Description                                                  
+ Module resposible for sending and receiving commands         
+ through 1-bit sd card command interface interface      

@@ -1,0 +1,6 @@
+ bistable_domain_cross.v                                      
+                                                              
+Description                                                  
+Clock synchronisation beetween two clock domains.            
+Assumption is that input signal duration has to be at least  
+one clk_b clock period.                                      
