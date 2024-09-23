@@ -11,7 +11,7 @@
             "$(BASE_DIR)/agalimberti_NoCRouter_router/src/if/switch_allocator2crossbar.sv"
         ],
         "design": [
-                "$(BASE_DIR)/agalimberti_NoCRouter_router/src/rtl/router/router.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_router/src/rtl/router/router.sv"
         ],
         "design_context": [
             "$(BASE_DIR)/agalimberti_NoCRouter_router/src/rtl/input_port/rc_unit.sv",

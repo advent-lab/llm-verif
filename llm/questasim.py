@@ -38,6 +38,7 @@ def run_questasim(env: Union[Environment, str], tb_path: str, log_file: str) -> 
     #        # run(['make', 'clean', 'all'], stdout=f, stderr=f)
     run(['rm', '-rf', f'{design_dir}/work', 'work', 'transcript'])
     
+    # TODO: adapt for other designs
     compile_output = run([f'{questa_dir}/vlog', '-cover', 's'] + [os.path.join(design_dir, path) for path in os.listdir(design_dir)], stdout=PIPE, stderr=PIPE)
     if not check_errors(compile_output.stdout.decode()):
         return CoverageResponse(False, 1, compile_output.stdout.decode())
