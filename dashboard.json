@@ -53,20 +53,20 @@
         "tags": ["hand-curated"],
         "github_link": "https://github.com/risclite/verilog-divider"
     },
-    "SD-card-controller1": {
+    "SD-card-controller_byte_en_reg": {
         "verif": [
-            "$(BASE_DIR)/SD-card-controller1/verif/byte_en_reg_tb.sv"
+            "$(BASE_DIR)/SD-card-controller_byte_en_reg/verif/byte_en_reg_tb.sv"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/SD-card-controller1/design/byte_en_reg.v"
+            "$(BASE_DIR)/SD-card-controller_byte_en_reg/design/byte_en_reg.v"
         ],
         "design_context": [],
         "spec": [
-            "$(BASE_DIR)/SD-card-controller1/spec/spec.txt"
+            "$(BASE_DIR)/SD-card-controller_byte_en_reg/spec/spec.txt"
         ],
         "makefile": [
-            "$(BASE_DIR)/SD-card-controller1/questa/Makefile"
+            "$(BASE_DIR)/SD-card-controller_byte_en_reg/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/mczerski/SD-card-controller"
@@ -147,40 +147,40 @@
         "tags": ["hand-curated"],
         "github_link": "https://github.com/neilzheng/counter"
     },
-    "mkmif1": {
+    "mkmif_core": {
         "verif": [
-            "$(BASE_DIR)/mkmif1/verif/tb_mkmif_core.v"
+            "$(BASE_DIR)/mkmif_core/verif/tb_mkmif_core.v"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/mkmif1/design/mkmif_core.v"
+            "$(BASE_DIR)/mkmif_core/design/mkmif_core.v"
         ],
         "design_context": [
-            "$(BASE_DIR)/mkmif1/design_context/mkmif_spi.v"
+            "$(BASE_DIR)/mkmif_core/design_context/mkmif_spi.v"
         ],
         "spec": [
-            "$(BASE_DIR)/mkmif1/spec/spec.md"
+            "$(BASE_DIR)/mkmif_core/spec/spec.md"
         ],
         "makefile": [
-            "$(BASE_DIR)/mkmif1/questa/Makefile"
+            "$(BASE_DIR)/mkmif_core/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/secworks/mkmif"
     },
-    "TrafficLightController3": {
+    "TrafficLightController_TimeParameter": {
         "verif": [
-            "$(BASE_DIR)/TrafficLightController3/verif/TimeParameter_test.v"
+            "$(BASE_DIR)/TrafficLightController_TimeParameter/verif/TimeParameter_test.v"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/TrafficLightController3/design/TimeParameter.v"
+            "$(BASE_DIR)/TrafficLightController_TimeParameter/design/TimeParameter.v"
         ],
         "design_context": [],
         "spec": [
-            "$(BASE_DIR)/TrafficLightController3/spec/spec.txt"
+            "$(BASE_DIR)/TrafficLightController_TimeParameter/spec/spec.txt"
         ],
         "makefile": [
-            "$(BASE_DIR)/TrafficLightController3/questa/Makefile"
+            "$(BASE_DIR)/TrafficLightController_TimeParameter/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/Archfx/TrafficLightController"
@@ -204,160 +204,251 @@
         "tags": ["hand-curated"],
         "github_link": "https://github.com/neilzheng/counter"
     },
-    "trng1": {
+    "trng_csprng": {
         "verif": [
-            "$(BASE_DIR)/trng1/verif/tb_csprng.v"
+            "$(BASE_DIR)/trng_csprng/verif/tb_csprng.v"
         ],
         "verif_context": [
-            "$(BASE_DIR)/trng1/design_context/chacha_core.v",
-            "$(BASE_DIR)/trng1/design_context/chacha_qr.v",
-            "$(BASE_DIR)/trng1/design_context/trng_csprng_fifo.v"
+            "$(BASE_DIR)/trng_csprng/design_context/chacha_core.v",
+            "$(BASE_DIR)/trng_csprng/design_context/chacha_qr.v",
+            "$(BASE_DIR)/trng_csprng/design_context/trng_csprng_fifo.v"
         ],
         "design": [
-            "$(BASE_DIR)/trng1/design/trng_csprng.v"
+            "$(BASE_DIR)/trng_csprng/design/trng_csprng.v"
         ],
         "design_context": [],
         "spec": [
-            "$(BASE_DIR)/trng1/spec/spec.md"
+            "$(BASE_DIR)/trng_csprng/spec/spec.md"
         ],
         "makefile": [
-            "$(BASE_DIR)/trng1/questa/Makefile"
+            "$(BASE_DIR)/trng_csprng/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/secworks/trng"
     },
-    "TrafficLightController4": {
+    "TrafficLightController_Timer": {
         "verif": [
-            "$(BASE_DIR)/TrafficLightController4/verif/Timer_test.v"
+            "$(BASE_DIR)/TrafficLightController_Timer/verif/Timer_test.v"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/TrafficLightController4/design/Timer.v"
+            "$(BASE_DIR)/TrafficLightController_Timer/design/Timer.v"
         ],
         "design_context": [],
         "spec": [
-            "$(BASE_DIR)/TrafficLightController4/spec/spec.txt"
+            "$(BASE_DIR)/TrafficLightController_Timer/spec/spec.txt"
         ],
         "makefile": [
-            "$(BASE_DIR)/TrafficLightController4/questa/Makefile"
+            "$(BASE_DIR)/TrafficLightController_Timer/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/Archfx/TrafficLightController"
     },
-    "ethmac0": {
+    "ethmac_cop": {
         "verif": [
-            "$(BASE_DIR)/ethmac0/verif/tb_ethernet.v"
+            "$(BASE_DIR)/ethmac_cop/verif/tb_cop.v"
         ],
-        "verif_context": [
-            "$(BASE_DIR)/ethmac0/design_context/wb_slave_behavioral.v",
-            "$(BASE_DIR)/ethmac0/design_context/timescale.v",
-            "$(BASE_DIR)/ethmac0/design_context/wb_model_defines.v",
-            "$(BASE_DIR)/ethmac0/design_context/wb_bus_mon.v",
-            "$(BASE_DIR)/ethmac0/design/ethmac.v",
-            "$(BASE_DIR)/ethmac0/design/eth_wishbone.v",
-            "$(BASE_DIR)/ethmac0/design/eth_rxethmac.v",
-            "$(BASE_DIR)/ethmac0/design/eth_shiftreg.v",
-            "$(BASE_DIR)/ethmac0/design/eth_rxaddrcheck.v",
-            "$(BASE_DIR)/ethmac0/design/eth_transmitcontrol.v",
-            "$(BASE_DIR)/ethmac0/design/eth_random.v",
-            "$(BASE_DIR)/ethmac0/design/eth_outputcontrol.v",
-            "$(BASE_DIR)/ethmac0/design/xilinx_dist_ram_16x32.v",
-            "$(BASE_DIR)/ethmac0/design/eth_rxcounters.v",
-            "$(BASE_DIR)/ethmac0/design/eth_macstatus.v",
-            "$(BASE_DIR)/ethmac0/design/eth_miim.v",
-            "$(BASE_DIR)/ethmac0/design/eth_txstatem.v",
-            "$(BASE_DIR)/ethmac0/design/ethmac_defines.v",
-            "$(BASE_DIR)/ethmac0/design/eth_registers.v",
-            "$(BASE_DIR)/ethmac0/design/eth_rxstatem.v",
-            "$(BASE_DIR)/ethmac0/design/eth_receivecontrol.v",
-            "$(BASE_DIR)/ethmac0/design/eth_maccontrol.v",
-            "$(BASE_DIR)/ethmac0/design/eth_crc.v",
-            "$(BASE_DIR)/ethmac0/design/eth_clockgen.v",
-            "$(BASE_DIR)/ethmac0/design/eth_fifo.v",
-            "$(BASE_DIR)/ethmac0/design/eth_register.v",
-            "$(BASE_DIR)/ethmac0/design/eth_txethmac.v",
-            "$(BASE_DIR)/ethmac0/design/eth_txcounters.v",
-            "$(BASE_DIR)/ethmac0/design/eth_spram_256x32.v",
-            "$(BASE_DIR)/ethmac0/verif/eth_phy.v",
-            "$(BASE_DIR)/ethmac0/verif/tb_eth_defines.v",
-            "$(BASE_DIR)/ethmac0/verif/eth_phy_defines.v",
-            "$(BASE_DIR)/ethmac0/design_context/wb_master_behavioral.v",
-            "$(BASE_DIR)/ethmac0/design_context/wb_master32.v"
+        "verif_context": [        ],
+        "design": [
+            "$(BASE_DIR)/ethmac_cop/design/eth_cop.v"
         ],
-        "design": [],
-        "design_context": [],
+        "design_context": [
+            "$(BASE_DIR)/ethmac_cop/design_context/timescale.v",
+            "$(BASE_DIR)/ethmac_cop/design_context/wb_bus_mos.v",
+            "$(BASE_DIR)/ethmac_cop/design_context/wb_master_behavioral.v",
+            "$(BASE_DIR)/ethmac_cop/design_context/wb_master32.v",
+            "$(BASE_DIR)/ethmac_cop/design_context/wb_model_defines.v",
+            "$(BASE_DIR)/ethmac_cop/design_context/wb_slave_behavioral.v"
+        ],
         "spec": [
-            "$(BASE_DIR)/ethmac0/spec/Spec0.pdf",
-            "$(BASE_DIR)/ethmac0/spec/Spec1.pdf"
+            "$(BASE_DIR)/ethmac_cop/spec/Spec0.pdf",
+            "$(BASE_DIR)/ethmac_cop/spec/Spec1.pdf"
         ],
         "makefile": [
-            "$(BASE_DIR)/ethmac0/questa/Makefile"
+            "$(BASE_DIR)/ethmac_cop/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/freecores/ethmac"
     },
-    "trng0": {
+    "ethmac_eth": {
         "verif": [
-            "$(BASE_DIR)/trng0/verif/tb_trng.v"
+            "$(BASE_DIR)/ethmac_eth/verif/tb_ethernet.v"
+        ],
+        "verif_context": [        
+            "$(BASE_DIR)/ethmac_eth/verif/eth_host.v",
+            "$(BASE_DIR)/ethmac_eth/verif/eth_memory.v",
+            "$(BASE_DIR)/ethmac_eth/verif/eth_phy_defines.v",
+            "$(BASE_DIR)/ethmac_eth/verif/eth_phy.v",
+            "$(BASE_DIR)/ethmac_eth/verif/tb_eth_defines.v"
+        ],
+        "design": [
+            "$(BASE_DIR)/ethmac_eth/design/eth_clockgen.v",
+            "$(BASE_DIR)/ethmac_eth/design/eth_cop.v",
+            "$(BASE_DIR)/ethmac_eth/design/eth_crc.v",
+            "$(BASE_DIR)/ethmac_eth/design/eth_fifo.v",
+            "$(BASE_DIR)/ethmac_eth/design/eth_maccontrol.v",
+            "$(BASE_DIR)/ethmac_eth/design/eth_macstatus.v",
+            "$(BASE_DIR)/ethmac_eth/design/eth_miim.v",
+            "$(BASE_DIR)/ethmac_eth/design/eth_outputcontrol.v",
+            "$(BASE_DIR)/ethmac_eth/design/eth_random.v",
+            "$(BASE_DIR)/ethmac_eth/design/eth_receivecontrol.v",
+            "$(BASE_DIR)/ethmac_eth/design/eth_register.v",
+            "$(BASE_DIR)/ethmac_eth/design/eth_registers.v",
+            "$(BASE_DIR)/ethmac_eth/design/eth_rxaddrcheck.v",
+            "$(BASE_DIR)/ethmac_eth/design/eth_rxcounters.v",
+            "$(BASE_DIR)/ethmac_eth/design/eth_rxethmac.v",
+            "$(BASE_DIR)/ethmac_eth/design/eth_shiftreg.v",
+            "$(BASE_DIR)/ethmac_eth/design/eth_spram_256x32.v",
+            "$(BASE_DIR)/ethmac_eth/design/eth_transmitcontrol.v",
+            "$(BASE_DIR)/ethmac_eth/design/eth_txcounters.v",
+            "$(BASE_DIR)/ethmac_eth/design/eth_txethmac.v",
+            "$(BASE_DIR)/ethmac_eth/design/eth_txstatem.v",
+            "$(BASE_DIR)/ethmac_eth/design/eth_wishbone.v",
+            "$(BASE_DIR)/ethmac_eth/design/ethmac_defines.v",
+            "$(BASE_DIR)/ethmac_eth/design/ethmac.v",
+            "$(BASE_DIR)/ethmac_eth/design/xilinx_dist_ram_16x32.v"
+        ],
+        "design_context": [
+            "$(BASE_DIR)/ethmac_eth/design_context/timescale.v",
+            "$(BASE_DIR)/ethmac_eth/design_context/wb_bus_mon.v",
+            "$(BASE_DIR)/ethmac_eth/design_context/wb_master_behavioral.v",
+            "$(BASE_DIR)/ethmac_eth/design_context/wb_master32.v",
+            "$(BASE_DIR)/ethmac_eth/design_context/wb_model_defines.v",
+            "$(BASE_DIR)/ethmac_eth/design_context/wb_slave_behavioral.v"
+        ],
+        "spec": [
+            "$(BASE_DIR)/ethmac_eth/spec/Spec0.pdf",
+            "$(BASE_DIR)/ethmac_eth/spec/Spec1.pdf"
+        ],
+        "makefile": [
+            "$(BASE_DIR)/ethmac_eth/questa/Makefile"
+        ],
+        "tags": ["hand-curated"],
+        "github_link": "https://github.com/freecores/ethmac"
+    },
+    "ethmac_eth_with_cop": {
+        "verif": [
+            "$(BASE_DIR)/ethmac_eth_with_cop/verif/tb_ethernet.v"
+        ],
+        "verif_context": [        
+            "$(BASE_DIR)/ethmac_eth_with_cop/verif/eth_host.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/verif/eth_memory.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/verif/eth_phy_defines.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/verif/eth_phy.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/verif/tb_eth_defines.v"
+        ],
+        "design": [
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_clockgen.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_crc.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_fifo.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_host.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_maccontrol.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_macstatus.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_memory.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_miim.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_outputcontrol.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_random.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_receivecontrol.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_register.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_registers.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_rxaddrcheck.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_rxcounters.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_rxethmac.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_rxstatem.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_shiftreg.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_spram_256x32.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_transmitcontrol.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_txcounters.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_txethmac.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_txstatem.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_wishbone.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/ethmac_defines.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/ethmac.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/timescale.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/xilinx_dist_ram_16x32.v"
+        ],
+        "design_context": [
+            "$(BASE_DIR)/ethmac_eth_with_cop/design_context/eth_cop.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design_context/wb_bus_mon.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design_context/wb_master_behavioral.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design_context/wb_master32.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design_context/wb_model_defines.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design_context/wb_slave_behavioral.v"
+        ],
+        "spec": [
+            "$(BASE_DIR)/ethmac_eth_with_cop/spec/Spec0.pdf",
+            "$(BASE_DIR)/ethmac_eth_with_cop/spec/Spec1.pdf"
+        ],
+        "makefile": [
+            "$(BASE_DIR)/ethmac_eth_with_cop/questa/Makefile"
+        ],
+        "tags": ["hand-curated"],
+        "github_link": "https://github.com/freecores/ethmac"
+    },
+    "trng_top": {
+        "verif": [
+            "$(BASE_DIR)/trng_top/verif/tb_trng.v"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/trng0/design/trng.v"
+            "$(BASE_DIR)/trng_top/design/trng.v"
         ],
         "design_context": [
-            "$(BASE_DIR)/trng0/design_context/trng_csprng.v",
-            "$(BASE_DIR)/trng0/design_context/trng_csprng_fifo.v",
-            "$(BASE_DIR)/trng0/design_context/chacha_qr.v",
-            "$(BASE_DIR)/trng0/design_context/rosc_entropy.v",
-            "$(BASE_DIR)/trng0/design_context/sha512_h_constants.v",
-            "$(BASE_DIR)/trng0/design_context/avalanche_entropy.v",
-            "$(BASE_DIR)/trng0/design_context/chacha_core.v",
-            "$(BASE_DIR)/trng0/design_context/sha512_w_mem.v",
-            "$(BASE_DIR)/trng0/design_context/trng_mixer.v",
-            "$(BASE_DIR)/trng0/design_context/sha512_core.v",
-            "$(BASE_DIR)/trng0/design_context/sha512_k_constants.v"
+            "$(BASE_DIR)/trng_top/design_context/trng_csprng.v",
+            "$(BASE_DIR)/trng_top/design_context/trng_csprng_fifo.v",
+            "$(BASE_DIR)/trng_top/design_context/chacha_qr.v",
+            "$(BASE_DIR)/trng_top/design_context/rosc_entropy.v",
+            "$(BASE_DIR)/trng_top/design_context/sha512_h_constants.v",
+            "$(BASE_DIR)/trng_top/design_context/avalanche_entropy.v",
+            "$(BASE_DIR)/trng_top/design_context/chacha_core.v",
+            "$(BASE_DIR)/trng_top/design_context/sha512_w_mem.v",
+            "$(BASE_DIR)/trng_top/design_context/trng_mixer.v",
+            "$(BASE_DIR)/trng_top/design_context/sha512_core.v",
+            "$(BASE_DIR)/trng_top/design_context/sha512_k_constants.v"
         ],
         "spec": [
-            "$(BASE_DIR)/trng0/spec/spec.md"
+            "$(BASE_DIR)/trng_top/spec/spec.md"
         ],
         "makefile": [
-            "$(BASE_DIR)/trng0/questa/Makefile"
+            "$(BASE_DIR)/trng_top/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/secworks/trng"
     },
-    "SD-card-controller9": {
+    "SD-card-controller_data_xfer_trig": {
         "verif": [
-            "$(BASE_DIR)/SD-card-controller9/verif/sd_data_xfer_trig_tb.sv"
+            "$(BASE_DIR)/SD-card-controller_data_xfer_trig/verif/sd_data_xfer_trig_tb.sv"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/SD-card-controller9/design/sd_data_xfer_trig.v"
+            "$(BASE_DIR)/SD-card-controller_data_xfer_trig/design/sd_data_xfer_trig.v"
         ],
-        "design_context": [],
+        "design_context": [
+            "$(BASE_DIR)/SD-card-controller_data_xfer_trig/design_context/sd_defines.h"
+        ],
         "spec": [
-            "$(BASE_DIR)/SD-card-controller9/spec/spec.txt"
+            "$(BASE_DIR)/SD-card-controller_data_xfer_trig/spec/spec.txt"
         ],
         "makefile": [
-            "$(BASE_DIR)/SD-card-controller9/questa/Makefile"
+            "$(BASE_DIR)/SD-card-controller_data_xfer_trig/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/mczerski/SD-card-controller"
     },
-    "sha11": {
+    "sha1_w_mem": {
         "verif": [
-            "$(BASE_DIR)/sha11/verif/tb_sha1_w_mem.v"
+            "$(BASE_DIR)/sha1_w_mem/verif/tb_sha1_w_mem.v"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/sha11/design/sha1_w_mem.v"
+            "$(BASE_DIR)/sha1_w_mem/design/sha1_w_mem.v"
         ],
         "design_context": [],
         "spec": [
-            "$(BASE_DIR)/sha11/spec/spec.md"
+            "$(BASE_DIR)/sha1_w_mem/spec/spec.md"
         ],
         "makefile": [
-            "$(BASE_DIR)/sha11/questa/Makefile"
+            "$(BASE_DIR)/sha1_w_mem/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/secworks/sha1/tree/master/src"
@@ -398,41 +489,41 @@
         "tags": ["scripted"],
         "github_link": "https://github.com/agalimberti/NoCRouter"
     },
-    "chacha1": {
+    "chacha_core": {
         "verif": [
-            "$(BASE_DIR)/chacha1/verif/tb_chacha_core.v"
+            "$(BASE_DIR)/chacha_core/verif/tb_chacha_core.v"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/chacha1/design/chacha_core.v"
+            "$(BASE_DIR)/chacha_core/design/chacha_core.v"
         ],
         "design_context": [
-            "$(BASE_DIR)/chacha1/design_context/chacha_qr.v"
+            "$(BASE_DIR)/chacha_core/design_context/chacha_qr.v"
         ],
         "spec": [
-            "$(BASE_DIR)/chacha1/spec/spec.md",
-            "$(BASE_DIR)/chacha1/spec/README.md"
+            "$(BASE_DIR)/chacha_core/spec/spec.md",
+            "$(BASE_DIR)/chacha_core/spec/README.md"
         ],
         "makefile": [
-            "$(BASE_DIR)/chacha1/questa/Makefile"
+            "$(BASE_DIR)/chacha_core/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/secworks/chacha"
     },
-    "chacha2": {
+    "chacha_qr": {
         "verif": [
-            "$(BASE_DIR)/chacha2/verif/tb_chacha_qr.v"
+            "$(BASE_DIR)/chacha_qr/verif/tb_chacha_qr.v"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/chacha2/design/chacha_qr.v"
+            "$(BASE_DIR)/chacha_qr/design/chacha_qr.v"
         ],
         "design_context": [],
         "spec": [
-            "$(BASE_DIR)/chacha2/spec/spec.md"
+            "$(BASE_DIR)/chacha_qr/spec/spec.md"
         ],
         "makefile": [
-            "$(BASE_DIR)/chacha2/questa/Makefile"
+            "$(BASE_DIR)/chacha_qr/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/secworks/chacha"
@@ -490,38 +581,40 @@
         "tags": ["hand-curated"],
         "github_link": "https://github.com/smelvinsky/fsm-verilog"
     },
-    "SD-card-controller7": {
+    "SD-card-controller_data_master": {
         "verif": [
-            "$(BASE_DIR)/SD-card-controller7/verif/sd_data_master_tb.sv"
+            "$(BASE_DIR)/SD-card-controller_data_master/verif/sd_data_master_tb.sv"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/SD-card-controller7/design/sd_data_master.v"
+            "$(BASE_DIR)/SD-card-controller_data_master/design/sd_data_master.v"
         ],
-        "design_context": [],
+        "design_context": [
+            "$(BASE_DIR)/SD-card-controller_data_master/design_context/sd_defines.h"
+        ],
         "spec": [
-            "$(BASE_DIR)/SD-card-controller7/spec/spec.txt"
+            "$(BASE_DIR)/SD-card-controller_data_master/spec/spec.txt"
         ],
         "makefile": [
-            "$(BASE_DIR)/SD-card-controller7/questa/Makefile"
+            "$(BASE_DIR)/SD-card-controller_data_master/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/mczerski/SD-card-controller"
     },
-    "SD-card-controller3": {
+    "SD-card-controller_monostable_domain_cross": {
         "verif": [
-            "$(BASE_DIR)/SD-card-controller3/verif/monostable_domain_cross_tb.sv"
+            "$(BASE_DIR)/SD-card-controller_monostable_domain_cross/verif/monostable_domain_cross_tb.sv"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/SD-card-controller3/design/monostable_domain_cross.v"
+            "$(BASE_DIR)/SD-card-controller_monostable_domain_cross/design/monostable_domain_cross.v"
         ],
         "design_context": [],
         "spec": [
-            "$(BASE_DIR)/SD-card-controller3/spec/spec.txt"
+            "$(BASE_DIR)/SD-card-controller_monostable_domain_cross/spec/spec.txt"
         ],
         "makefile": [
-            "$(BASE_DIR)/SD-card-controller3/questa/Makefile"
+            "$(BASE_DIR)/SD-card-controller_monostable_domain_cross/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/mczerski/SD-card-controller"
@@ -577,27 +670,27 @@
         "tags": ["scripted"],
         "github_link": "https://github.com/agalimberti/NoCRouter"
     },
-    "TrafficLightController5": {
+    "TrafficLightController_Main": {
         "verif": [
-            "$(BASE_DIR)/TrafficLightController5/verif/TrafficControllerMain_test.v"
+            "$(BASE_DIR)/TrafficLightController_Main/verif/TrafficControllerMain_test.v"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/TrafficLightController5/design/TrafficControllerMain.v"
+            "$(BASE_DIR)/TrafficLightController_Main/design/TrafficControllerMain.v"
         ],
         "design_context": [
-            "$(BASE_DIR)/TrafficLightController5/design_context/WalkRegister.v",
-            "$(BASE_DIR)/TrafficLightController5/design_context/Timer.v",
-            "$(BASE_DIR)/TrafficLightController5/design_context/Synchronizer.v",
-            "$(BASE_DIR)/TrafficLightController5/design_context/TimeParameter.v",
-            "$(BASE_DIR)/TrafficLightController5/design_context/Divider.v",
-            "$(BASE_DIR)/TrafficLightController5/design_context/FSM.v"
+            "$(BASE_DIR)/TrafficLightController_Main/design_context/WalkRegister.v",
+            "$(BASE_DIR)/TrafficLightController_Main/design_context/Timer.v",
+            "$(BASE_DIR)/TrafficLightController_Main/design_context/Synchronizer.v",
+            "$(BASE_DIR)/TrafficLightController_Main/design_context/TimeParameter.v",
+            "$(BASE_DIR)/TrafficLightController_Main/design_context/Divider.v",
+            "$(BASE_DIR)/TrafficLightController_Main/design_context/FSM.v"
         ],
         "spec": [
-            "$(BASE_DIR)/TrafficLightController5/spec/spec.txt"
+            "$(BASE_DIR)/TrafficLightController_Main/spec/spec.txt"
         ],
         "makefile": [
-            "$(BASE_DIR)/TrafficLightController5/questa/Makefile"
+            "$(BASE_DIR)/TrafficLightController_Main/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/Archfx/TrafficLightController"
@@ -650,20 +743,20 @@
         "tags": ["scripted"],
         "github_link": "https://github.com/agalimberti/NoCRouter"
     },
-    "SD-card-controller11": {
+    "SD-card-controller_wb_sel_ctrl": {
         "verif": [
-            "$(BASE_DIR)/SD-card-controller11/verif/sd_wb_sel_ctrl_tb.sv"
+            "$(BASE_DIR)/SD-card-controller_wb_sel_ctrl/verif/sd_wb_sel_ctrl_tb.sv"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/SD-card-controller11/design/sd_wb_sel_ctrl.v"
+            "$(BASE_DIR)/SD-card-controller_wb_sel_ctrl/design/sd_wb_sel_ctrl.v"
         ],
         "design_context": [],
         "spec": [
-            "$(BASE_DIR)/SD-card-controller11/spec/spec.txt"
+            "$(BASE_DIR)/SD-card-controller_wb_sel_ctrl/spec/spec.txt"
         ],
         "makefile": [
-            "$(BASE_DIR)/SD-card-controller11/questa/Makefile"
+            "$(BASE_DIR)/SD-card-controller_wb_sel_ctrl/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/mczerski/SD-card-controller"
@@ -704,41 +797,41 @@
         "tags": ["scripted"],
         "github_link": "https://github.com/agalimberti/NoCRouter"
     },
-    "chacha0": {
+    "chacha_top": {
         "verif": [
-            "$(BASE_DIR)/chacha0/verif/tb_chacha.v"
+            "$(BASE_DIR)/chacha_top/verif/tb_chacha.v"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/chacha0/design/chacha.v"
+            "$(BASE_DIR)/chacha_top/design/chacha.v"
         ],
         "design_context": [
-            "$(BASE_DIR)/chacha0/design_context/chacha_core.v",
-            "$(BASE_DIR)/chacha0/design_context/chacha_qr.v"
+            "$(BASE_DIR)/chacha_top/design_context/chacha_core.v",
+            "$(BASE_DIR)/chacha_top/design_context/chacha_qr.v"
         ],
         "spec": [
-            "$(BASE_DIR)/chacha0/spec/spec.md"
+            "$(BASE_DIR)/chacha_top/spec/spec.md"
         ],
         "makefile": [
-            "$(BASE_DIR)/chacha0/questa/Makefile"
+            "$(BASE_DIR)/chacha_top/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/secworks/chacha"
     },
-    "TrafficLightController2": {
+    "TrafficLightController_Synchronizer": {
         "verif": [
-            "$(BASE_DIR)/TrafficLightController2/verif/Synchronizer_test.v"
+            "$(BASE_DIR)/TrafficLightController_Synchronizer/verif/Synchronizer_test.v"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/TrafficLightController2/design/Synchronizer.v"
+            "$(BASE_DIR)/TrafficLightController_Synchronizer/design/Synchronizer.v"
         ],
         "design_context": [],
         "spec": [
-            "$(BASE_DIR)/TrafficLightController2/spec/spec.txt"
+            "$(BASE_DIR)/TrafficLightController_Synchronizer/spec/spec.txt"
         ],
         "makefile": [
-            "$(BASE_DIR)/TrafficLightController2/questa/Makefile"
+            "$(BASE_DIR)/TrafficLightController_Synchronizer/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/Archfx/TrafficLightController"
@@ -811,63 +904,65 @@
         "tags": ["hand-curated"],
         "github_link": "https://github.com/smelvinsky/fsm-verilog"
     },
-    "SD-card-controller8": {
+    "SD-card-controller_data_serial_host": {
         "verif": [
-            "$(BASE_DIR)/SD-card-controller8/verif/sd_data_serial_host_tb.sv"
+            "$(BASE_DIR)/SD-card-controller_data_serial_host/verif/sd_data_serial_host_tb.sv"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/SD-card-controller8/design/sd_data_serial_host.v"
+            "$(BASE_DIR)/SD-card-controller_data_serial_host/design/sd_data_serial_host.v"
         ],
         "design_context": [
-            "$(BASE_DIR)/SD-card-controller8/design_context/sd_crc_16.v"
+            "$(BASE_DIR)/SD-card-controller_data_serial_host/design_context/sd_crc_16.v",
+            "$(BASE_DIR)/SD-card-controller_data_serial_host/design_context/sd_defines.h"
         ],
         "spec": [
-            "$(BASE_DIR)/SD-card-controller8/spec/spec.txt"
+            "$(BASE_DIR)/SD-card-controller_data_serial_host/spec/spec.txt"
         ],
         "makefile": [
-            "$(BASE_DIR)/SD-card-controller8/questa/Makefile"
+            "$(BASE_DIR)/SD-card-controller_data_serial_host/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/mczerski/SD-card-controller"
     },
-    "SD-card-controller6": {
+    "SD-card-controller_wb": {
         "verif": [
-            "$(BASE_DIR)/SD-card-controller6/verif/sd_controller_wb_tb.sv"
+            "$(BASE_DIR)/SD-card-controller_wb/verif/sd_controller_wb_tb.sv"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/SD-card-controller6/design/sd_controller_wb.v"
+            "$(BASE_DIR)/SD-card-controller_wb/design/sd_controller_wb.v"
         ],
         "design_context": [
-            "$(BASE_DIR)/SD-card-controller6/design_context/byte_en_reg.v"
+            "$(BASE_DIR)/SD-card-controller_wb/design_context/byte_en_reg.v",
+            "$(BASE_DIR)/SD-card-controller_wb/design_context/sd_defines.h"
         ],
         "spec": [
-            "$(BASE_DIR)/SD-card-controller6/spec/spec.txt"
+            "$(BASE_DIR)/SD-card-controller_wb/spec/spec.txt"
         ],
         "makefile": [
-            "$(BASE_DIR)/SD-card-controller6/questa/Makefile"
+            "$(BASE_DIR)/SD-card-controller_wb/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/mczerski/SD-card-controller"
     },
-    "mkmif0": {
+    "mkmif_top": {
         "verif": [
-            "$(BASE_DIR)/mkmif0/verif/tb_mkmif.v"
+            "$(BASE_DIR)/mkmif_top/verif/tb_mkmif.v"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/mkmif0/design/mkmif.v"
+            "$(BASE_DIR)/mkmif_top/design/mkmif.v"
         ],
         "design_context": [
-            "$(BASE_DIR)/mkmif0/design_context/mkmif_core.v",
-            "$(BASE_DIR)/mkmif0/design_context/mkmif_spi.v"
+            "$(BASE_DIR)/mkmif_top/design_context/mkmif_core.v",
+            "$(BASE_DIR)/mkmif_top/design_context/mkmif_spi.v"
         ],
         "spec": [
-            "$(BASE_DIR)/mkmif0/spec/spec.md"
+            "$(BASE_DIR)/mkmif_top/spec/spec.md"
         ],
         "makefile": [
-            "$(BASE_DIR)/mkmif0/questa/Makefile"
+            "$(BASE_DIR)/mkmif_top/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/secworks/mkmif"
@@ -935,23 +1030,23 @@
         "tags": ["hand-curated"],
         "github_link": "https://github.com/neilzheng/counter"
     },
-    "sha12": {
+    "sha1_top": {
         "verif": [
-            "$(BASE_DIR)/sha12/verif/tb_sha1.v"
+            "$(BASE_DIR)/sha1_top/verif/tb_sha1.v"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/sha12/design/sha1.v"
+            "$(BASE_DIR)/sha1_top/design/sha1.v"
         ],
         "design_context": [
-            "$(BASE_DIR)/sha12/design_context/sha1_w_mem.v",
-            "$(BASE_DIR)/sha12/design_context/sha1_core.v"
+            "$(BASE_DIR)/sha1_top/design_context/sha1_w_mem.v",
+            "$(BASE_DIR)/sha1_top/design_context/sha1_core.v"
         ],
         "spec": [
-            "$(BASE_DIR)/sha12/spec/spec.md"
+            "$(BASE_DIR)/sha1_top/spec/spec.md"
         ],
         "makefile": [
-            "$(BASE_DIR)/sha12/questa/Makefile"
+            "$(BASE_DIR)/sha1_top/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/secworks/sha1/tree/master/src"
@@ -976,20 +1071,20 @@
         "tags": ["scripted"],
         "github_link": "https://github.com/agalimberti/NoCRouter"
     },
-    "TrafficLightController1": {
+    "TrafficLightController_FSM": {
         "verif": [
-            "$(BASE_DIR)/TrafficLightController1/verif/FSM_test.v"
+            "$(BASE_DIR)/TrafficLightController_FSM/verif/FSM_test.v"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/TrafficLightController1/design/FSM.v"
+            "$(BASE_DIR)/TrafficLightController_FSM/design/FSM.v"
         ],
         "design_context": [],
         "spec": [
-            "$(BASE_DIR)/TrafficLightController1/spec/spec.txt"
+            "$(BASE_DIR)/TrafficLightController_FSM/spec/spec.txt"
         ],
         "makefile": [
-            "$(BASE_DIR)/TrafficLightController1/questa/Makefile"
+            "$(BASE_DIR)/TrafficLightController_FSM/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/Archfx/TrafficLightController"
@@ -1010,41 +1105,41 @@
         "tags": ["hand-curated"],
         "github_link": "https://github.com/neilzheng/counter"
     },
-    "SD-card-controller0": {
+    "SD-card-controller_bistable_domain_cross": {
         "verif": [
-            "$(BASE_DIR)/SD-card-controller0/verif/bistable_domain_cross_tb.sv"
+            "$(BASE_DIR)/SD-card-controller_bistable_domain_cross/verif/bistable_domain_cross_tb.sv"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/SD-card-controller0/design/bistable_domain_cross.v"
+            "$(BASE_DIR)/SD-card-controller_bistable_domain_cross/design/bistable_domain_cross.v"
         ],
         "design_context": [],
         "spec": [
-            "$(BASE_DIR)/SD-card-controller0/spec/1.1 Purpose of the IP core.txt",
-            "$(BASE_DIR)/SD-card-controller0/spec/spec.txt"
+            "$(BASE_DIR)/SD-card-controller_bistable_domain_cross/spec/1.1 Purpose of the IP core.txt",
+            "$(BASE_DIR)/SD-card-controller_bistable_domain_cross/spec/spec.txt"
         ],
         "makefile": [
-            "$(BASE_DIR)/SD-card-controller0/questa/Makefile"
+            "$(BASE_DIR)/SD-card-controller_bistable_domain_cross/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/mczerski/SD-card-controller"
     },
-    "sha10": {
+    "sha1_core": {
         "verif": [
-            "$(BASE_DIR)/sha10/verif/tb_sha1_core.v"
+            "$(BASE_DIR)/sha1_core/verif/tb_sha1_core.v"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/sha10/design/sha1_core.v"
+            "$(BASE_DIR)/sha1_core/design/sha1_core.v"
         ],
         "design_context": [
-            "$(BASE_DIR)/sha10/design_context/sha1_w_mem.v"
+            "$(BASE_DIR)/sha1_core/design_context/sha1_w_mem.v"
         ],
         "spec": [
-            "$(BASE_DIR)/sha10/spec/spec.md"
+            "$(BASE_DIR)/sha1_core/spec/spec.md"
         ],
         "makefile": [
-            "$(BASE_DIR)/sha10/questa/Makefile"
+            "$(BASE_DIR)/sha1_core/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/secworks/sha1/tree/master/src"
@@ -1127,58 +1222,60 @@
         "tags": ["scripted"],
         "github_link": "https://github.com/agalimberti/NoCRouter"
     },
-    "TrafficLightController0": {
+    "TrafficLightController_Divider": {
         "verif": [
-            "$(BASE_DIR)/TrafficLightController0/verif/Divider_test.v"
+            "$(BASE_DIR)/TrafficLightController_Divider/verif/Divider_test.v"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/TrafficLightController0/design/Divider.v"
+            "$(BASE_DIR)/TrafficLightController_Divider/design/Divider.v"
         ],
         "design_context": [],
         "spec": [
-            "$(BASE_DIR)/TrafficLightController0/spec/spec.txt"
+            "$(BASE_DIR)/TrafficLightController_Divider/spec/spec.txt"
         ],
         "makefile": [
-            "$(BASE_DIR)/TrafficLightController0/questa/Makefile"
+            "$(BASE_DIR)/TrafficLightController_Divider/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/Archfx/TrafficLightController"
     },
-    "SD-card-controller5": {
+    "SD-card-controller_cmd_serial_host": {
         "verif": [
-            "$(BASE_DIR)/SD-card-controller5/verif/sd_cmd_serial_host_tb.sv"
+            "$(BASE_DIR)/SD-card-controller_cmd_serial_host/verif/sd_cmd_serial_host_tb.sv"
         ],
-        "verif_context": [],
+        "verif_context": [
+            "$(BASE_DIR)/SD-card-controller_cmd_serial_host/design_context/sd_defines.h"
+        ],
         "design": [
-            "$(BASE_DIR)/SD-card-controller5/design/sd_cmd_serial_host.v"
+            "$(BASE_DIR)/SD-card-controller_cmd_serial_host/design/sd_cmd_serial_host.v"
         ],
         "design_context": [
-            "$(BASE_DIR)/SD-card-controller5/design_context/sd_crc_7.v"
+            "$(BASE_DIR)/SD-card-controller_cmd_serial_host/design_context/sd_crc_7.v"
         ],
         "spec": [
-            "$(BASE_DIR)/SD-card-controller5/spec/spec.txt"
+            "$(BASE_DIR)/SD-card-controller_cmd_serial_host/spec/spec.txt"
         ],
         "makefile": [
-            "$(BASE_DIR)/SD-card-controller5/questa/Makefile"
+            "$(BASE_DIR)/SD-card-controller_cmd_serial_host/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/mczerski/SD-card-controller"
     },
-    "SD-card-controller2": {
+    "SD-card-controller_edge_detect": {
         "verif": [
-            "$(BASE_DIR)/SD-card-controller2/verif/edge_detect_tb.sv"
+            "$(BASE_DIR)/SD-card-controller_edge_detect/verif/edge_detect_tb.sv"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/SD-card-controller2/design/edge_detect.v"
+            "$(BASE_DIR)/SD-card-controller_edge_detect/design/edge_detect.v"
         ],
         "design_context": [],
         "spec": [
-            "$(BASE_DIR)/SD-card-controller2/spec/spec.txt"
+            "$(BASE_DIR)/SD-card-controller_edge_detect/spec/spec.txt"
         ],
         "makefile": [
-            "$(BASE_DIR)/SD-card-controller2/questa/Makefile"
+            "$(BASE_DIR)/SD-card-controller_edge_detect/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/mczerski/SD-card-controller"
@@ -1201,114 +1298,64 @@
         "tags": ["hand-curated"],
         "github_link": "https://github.com/secworks/uart"
     },
-    "ethmac1": {
+    "SD-card-controller_top": {
         "verif": [
-            "$(BASE_DIR)/ethmac1/verif/tb_ethernet_with_cop.v"
+            "$(BASE_DIR)/SD-card-controller_top/verif/sd_controller_top_tb.sv"
         ],
         "verif_context": [
-            "$(BASE_DIR)/ethmac1/design_context/eth_cop.v",
-            "$(BASE_DIR)/ethmac1/verif/tb_eth_defines.v"
+            "$(BASE_DIR)/SD-card-controller_top/design_context/wb_master_behavioral.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/wb_master32.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/wb_slave_behavioral.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sdModel.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_crc_16.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_crc_7.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/wb_bus_mon.v"
         ],
         "design": [
-            "$(BASE_DIR)/ethmac1/design/ethmac.v",
-            "$(BASE_DIR)/ethmac1/design/eth_memory.v",
-            "$(BASE_DIR)/ethmac1/design/eth_host.v"
+            "$(BASE_DIR)/SD-card-controller_top/design/sdc_controller.v"
         ],
         "design_context": [
-            "$(BASE_DIR)/ethmac1/design/eth_fifo.v",
-            "$(BASE_DIR)/ethmac1/design/eth_rxcounters.v",
-            "$(BASE_DIR)/ethmac1/design/eth_macstatus.v",
-            "$(BASE_DIR)/ethmac1/design/eth_rxaddrcheck.v",
-            "$(BASE_DIR)/ethmac1/design/eth_outputcontrol.v",
-            "$(BASE_DIR)/ethmac1/design/eth_maccontrol.v",
-            "$(BASE_DIR)/ethmac1/design/eth_random.v",
-            "$(BASE_DIR)/ethmac1/design/eth_spram_256x32.v",
-            "$(BASE_DIR)/ethmac1/design/eth_rxethmac.v",
-            "$(BASE_DIR)/ethmac1/design/eth_miim.v",
-            "$(BASE_DIR)/ethmac1/design/eth_crc.v",
-            "$(BASE_DIR)/ethmac1/design/xilinx_dist_ram_16x32.v",
-            "$(BASE_DIR)/ethmac1/design/eth_rxstatem.v",
-            "$(BASE_DIR)/ethmac1/design/eth_wishbone.v",
-            "$(BASE_DIR)/ethmac1/design/eth_txstatem.v",
-            "$(BASE_DIR)/ethmac1/design/eth_shiftreg.v",
-            "$(BASE_DIR)/ethmac1/design/eth_transmitcontrol.v",
-            "$(BASE_DIR)/ethmac1/design/eth_registers.v",
-            "$(BASE_DIR)/ethmac1/design/timescale.v",
-            "$(BASE_DIR)/ethmac1/design/eth_txcounters.v",
-            "$(BASE_DIR)/ethmac1/design/eth_txethmac.v",
-            "$(BASE_DIR)/ethmac1/design/eth_register.v",
-            "$(BASE_DIR)/ethmac1/design/eth_clockgen.v",
-            "$(BASE_DIR)/ethmac1/design/ethmac_defines.v",
-            "$(BASE_DIR)/ethmac1/design/eth_receivecontrol.v"
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_data_serial_host.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/generic_dpram.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_controller_wb.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_cmd_serial_host.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_data_xfer_trig.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_crc_16.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/monostable_domain_cross.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_wb_sel_ctrl.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_clock_divider.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/bistable_domain_cross.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/edge_detect.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_fifo_filler.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_data_master.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/generic_fifo_dc_gray.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/byte_en_reg.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_cmd_master.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_crc_7.v"
         ],
         "spec": [
-            "$(BASE_DIR)/ethmac1/spec/Spec1.pdf",
-            "$(BASE_DIR)/ethmac1/spec/Spec0.pdf"
+            "$(BASE_DIR)/SD-card-controller_top/spec/spec.txt"
         ],
         "makefile": [
-            "$(BASE_DIR)/ethmac1/questa/Makefile"
-        ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/freecores/ethmac"
-    },
-    "SD-card-controller12": {
-        "verif": [
-            "$(BASE_DIR)/SD-card-controller12/verif/sd_controller_top_tb.sv"
-        ],
-        "verif_context": [
-            "$(BASE_DIR)/SD-card-controller12/design_context/wb_master_behavioral.v",
-            "$(BASE_DIR)/SD-card-controller12/design_context/wb_master32.v",
-            "$(BASE_DIR)/SD-card-controller12/design_context/wb_slave_behavioral.v",
-            "$(BASE_DIR)/SD-card-controller12/design_context/sdModel.v",
-            "$(BASE_DIR)/SD-card-controller12/design_context/sd_crc_16.v",
-            "$(BASE_DIR)/SD-card-controller12/design_context/sd_crc_7.v",
-            "$(BASE_DIR)/SD-card-controller12/design_context/wb_bus_mon.v"
-        ],
-        "design": [
-            "$(BASE_DIR)/SD-card-controller12/design/sdc_controller.v"
-        ],
-        "design_context": [
-            "$(BASE_DIR)/SD-card-controller12/design_context/sd_data_serial_host.v",
-            "$(BASE_DIR)/SD-card-controller12/design_context/generic_dpram.v",
-            "$(BASE_DIR)/SD-card-controller12/design_context/sd_controller_wb.v",
-            "$(BASE_DIR)/SD-card-controller12/design_context/sd_cmd_serial_host.v",
-            "$(BASE_DIR)/SD-card-controller12/design_context/sd_data_xfer_trig.v",
-            "$(BASE_DIR)/SD-card-controller12/design_context/sd_crc_16.v",
-            "$(BASE_DIR)/SD-card-controller12/design_context/monostable_domain_cross.v",
-            "$(BASE_DIR)/SD-card-controller12/design_context/sd_wb_sel_ctrl.v",
-            "$(BASE_DIR)/SD-card-controller12/design_context/sd_clock_divider.v",
-            "$(BASE_DIR)/SD-card-controller12/design_context/bistable_domain_cross.v",
-            "$(BASE_DIR)/SD-card-controller12/design_context/edge_detect.v",
-            "$(BASE_DIR)/SD-card-controller12/design_context/sd_fifo_filler.v",
-            "$(BASE_DIR)/SD-card-controller12/design_context/sd_data_master.v",
-            "$(BASE_DIR)/SD-card-controller12/design_context/generic_fifo_dc_gray.v",
-            "$(BASE_DIR)/SD-card-controller12/design_context/byte_en_reg.v",
-            "$(BASE_DIR)/SD-card-controller12/design_context/sd_cmd_master.v",
-            "$(BASE_DIR)/SD-card-controller12/design_context/sd_crc_7.v"
-        ],
-        "spec": [
-            "$(BASE_DIR)/SD-card-controller12/spec/spec.txt"
-        ],
-        "makefile": [
-            "$(BASE_DIR)/SD-card-controller12/questa/Makefile"
+            "$(BASE_DIR)/SD-card-controller_top/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/mczerski/SD-card-controller"
     },
-    "TrafficLightController6": {
+    "TrafficLightController_WalkRegister": {
         "verif": [
-            "$(BASE_DIR)/TrafficLightController6/verif/WalkRegister_test.v"
+            "$(BASE_DIR)/TrafficLightController_WalkRegister/verif/WalkRegister_test.v"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/TrafficLightController6/design/WalkRegister.v"
+            "$(BASE_DIR)/TrafficLightController_WalkRegister/design/WalkRegister.v"
         ],
         "design_context": [],
         "spec": [
-            "$(BASE_DIR)/TrafficLightController6/spec/spec.txt"
+            "$(BASE_DIR)/TrafficLightController_WalkRegister/spec/spec.txt"
         ],
         "makefile": [
-            "$(BASE_DIR)/TrafficLightController6/questa/Makefile"
+            "$(BASE_DIR)/TrafficLightController_WalkRegister/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/Archfx/TrafficLightController"
@@ -1336,20 +1383,20 @@
         "tags": ["hand-curated"],
         "github_link": "https://github.com/secworks/trng"
     },
-    "SD-card-controller4": {
+    "SD-card-controller_cmd_master": {
         "verif": [
-            "$(BASE_DIR)/SD-card-controller4/verif/sd_cmd_master_tb.sv"
+            "$(BASE_DIR)/SD-card-controller_cmd_master/verif/sd_cmd_master_tb.sv"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/SD-card-controller4/design/sd_cmd_master.v"
+            "$(BASE_DIR)/SD-card-controller_cmd_master/design/sd_cmd_master.v"
         ],
         "design_context": [],
         "spec": [
-            "$(BASE_DIR)/SD-card-controller4/spec/spec.txt"
+            "$(BASE_DIR)/SD-card-controller_cmd_master/spec/spec.txt"
         ],
         "makefile": [
-            "$(BASE_DIR)/SD-card-controller4/questa/Makefile"
+            "$(BASE_DIR)/SD-card-controller_cmd_master/questa/Makefile"
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/mczerski/SD-card-controller"
@@ -1419,24 +1466,5 @@
         ],
         "tags": ["hand-curated"],
         "github_link": "https://github.com/yuxuanZh/SystemVerilog"
-    },
-    "ethmac2": {
-        "verif": [
-            "$(BASE_DIR)/ethmac2/verif/tb_cop.v"
-        ],
-        "verif_context": [],
-        "design": [
-            "$(BASE_DIR)/ethmac2/design/eth_cop.v"
-        ],
-        "design_context": [],
-        "spec": [
-            "$(BASE_DIR)/ethmac2/spec/Spec0.pdf",
-            "$(BASE_DIR)/ethmac2/spec/Spec1.pdf"
-        ],
-        "makefile": [
-            "$(BASE_DIR)/ethmac2/questa/Makefile"
-        ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/freecores/ethmac"
     }
 }
