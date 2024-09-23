@@ -1,29 +1,36 @@
 {
-    "agalimberti_NoCRouter_10": {
+    "agalimberti_NoCRouter_router": {
         "verif": [
             "$(BASE_DIR)/agalimberti_NoCRouter_10/src/tb/router/tb_router.sv"
         ],
-        "verif_context": [],
+        "verif_context": [
+            "$(BASE_DIR)/agalimberti_NoCRouter_router/src/if/input_block2crossbar.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_router/src/if/input_block2switch_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_router/src/if/input_block2vc_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_router/src/if/router2router.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_router/src/if/switch_allocator2crossbar.sv"
+        ],
         "design": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_10/src/rtl/router/router.sv"
+                "$(BASE_DIR)/agalimberti_NoCRouter_router/src/rtl/router/router.sv"
         ],
         "design_context": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_10/src/rtl/allocators/separable_input_first_allocator.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_10/src/rtl/allocators/round_robin_arbiter.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_10/src/rtl/input_port/rc_unit.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_10/src/rtl/input_port/input_port.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_10/src/rtl/allocators/vc_allocator.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_10/src/rtl/input_port/input_buffer.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_10/src/rtl/input_port/circular_buffer.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_10/src/rtl/allocators/switch_allocator.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_10/src/rtl/input_port/input_block.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_10/src/rtl/crossbar/crossbar.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_router/src/rtl/input_port/rc_unit.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_router/src/rtl/input_port/circular_buffer.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_router/src/rtl/crossbar/crossbar.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_router/src/rtl/allocators/switch_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_router/src/rtl/input_port/input_port.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_router/src/rtl/input_port/input_block.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_router/src/rtl/allocators/separable_input_first_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_router/src/rtl/input_port/input_buffer.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_router/src/rtl/allocators/vc_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_router/src/rtl/allocators/round_robin_arbiter.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_router/src/rtl/noc/noc.sv"
         ],
         "spec": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_10/doc/Project Documentation.pdf"
+            "$(BASE_DIR)/agalimberti_NoCRouter_router/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_10/questa/Makefile"
+            "$(BASE_DIR)/agalimberti_NoCRouter_router/questa/Makefile"
         ],
         "tags": ["scripted"],
         "github_link": "https://github.com/agalimberti/NoCRouter"
@@ -64,22 +71,23 @@
         "tags": ["hand-curated"],
         "github_link": "https://github.com/mczerski/SD-card-controller"
     },
-    "agalimberti_NoCRouter_2": {
+    "agalimberti_NoCRouter_input_buffer": {
         "verif": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_2/src/tb/input_port/tb_input_buffer.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_input_buffer/src/tb/input_port/tb_input_buffer.sv"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_2/src/rtl/input_port/input_buffer.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_input_buffer/src/rtl/input_port/input_buffer.sv"
         ],
         "design_context": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_2/src/rtl/input_port/circular_buffer.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_input_buffer/src/rtl/input_port/circular_buffer.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_input_buffer/src/rtl/noc/noc.sv"
         ],
         "spec": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_2/doc/Project Documentation.pdf"
+            "$(BASE_DIR)/agalimberti_NoCRouter_input_buffer/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_2/questa/Makefile"
+            "$(BASE_DIR)/agalimberti_NoCRouter_input_buffer/questa/Makefile"
         ],
         "tags": ["scripted"],
         "github_link": "https://github.com/agalimberti/NoCRouter"
@@ -354,17 +362,32 @@
         "tags": ["hand-curated"],
         "github_link": "https://github.com/secworks/sha1/tree/master/src"
     },
-    "agalimberti_NoCRouter_6": {
+    "agalimberti_NoCRouter_top_router": {
         "verif": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_6/src/tb/allocators/tb_switch_allocator.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_top_router/src/tb/router/tb_all_modules.sv"
         ],
-        "verif_context": [],
+        "verif_context": [
+            "$(BASE_DIR)/agalimberti_NoCRouter_top_router/src/if/input_block2crossbar.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_top_router/src/if/input_block2switch_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_top_router/src/if/input_block2vc_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_top_router/src/if/router2router.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_top_router/src/if/switch_allocator2crossbar.sv"
+        ],
         "design": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_6/src/rtl/allocators/switch_allocator.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_top_router/src/rtl/allocators/switch_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_top_router/src/rtl/crossbar/crossbar.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_top_router/src/rtl/allocators/vc_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_top_router/src/rtl/input_port/input_block.sv"
         ],
         "design_context": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_6/src/rtl/allocators/round_robin_arbiter.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_6/src/rtl/allocators/separable_input_first_allocator.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_top_router/src/rtl/allocators/round_robin_arbiter.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_top_router/src/rtl/allocators/separable_input_first_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_top_router/src/rtl/input_port/input_buffer.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_top_router/src/rtl/input_port/rc_unit.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_top_router/src/rtl/input_port/circular_buffer.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_top_router/src/rtl/input_port/input_port.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_top_router/src/rtl/router/router.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_top_router/src/rtl/noc/noc.sv"
         ],
         "spec": [
             "$(BASE_DIR)/agalimberti_NoCRouter_6/doc/Project Documentation.pdf"
@@ -503,47 +526,53 @@
         "tags": ["hand-curated"],
         "github_link": "https://github.com/mczerski/SD-card-controller"
     },
-    "agalimberti_NoCRouter_1": {
+    "agalimberti_NoCRouter_circular_buffer": {
         "verif": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_1/src/tb/input_port/tb_circular_buffer.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_circular_buffer/src/tb/input_port/tb_circular_buffer.sv"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_1/src/rtl/input_port/circular_buffer.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_circular_buffer/src/rtl/input_port/circular_buffer.sv"
         ],
-        "design_context": [],
+        "design_context": [
+            "$(BASE_DIR)/agalimberti_NoCRouter_circular_buffer/src/rtl/noc/noc.sv"
+        ],
         "spec": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_1/doc/Project Documentation.pdf"
+            "$(BASE_DIR)/agalimberti_NoCRouter_circular_buffer/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_1/questa/Makefile"
+            "$(BASE_DIR)/agalimberti_NoCRouter_circular_buffer/questa/Makefile"
         ],
         "tags": ["scripted"],
         "github_link": "https://github.com/agalimberti/NoCRouter"
     },
-    "agalimberti_NoCRouter_12": {
+    "agalimberti_NoCRouter_crossbar": {
         "verif": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_12/src/tb/crossbar/tb_crossbar.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_crossbar/src/tb/crossbar/tb_crossbar.sv"
         ],
-        "verif_context": [],
+        "verif_context": [
+            "$(BASE_DIR)/agalimberti_NoCRouter_crossbar/src/if/input_block2crossbar.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/src/if/switch_allocator2crossbar.sv"
+        ],
         "design": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_12/src/rtl/input_port/input_block.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_12/src/rtl/allocators/switch_allocator.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_12/src/rtl/crossbar/crossbar.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_crossbar/src/rtl/input_port/input_block.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_crossbar/src/rtl/allocators/switch_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_crossbar/src/rtl/crossbar/crossbar.sv"
         ],
         "design_context": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_12/src/rtl/input_port/input_buffer.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_12/src/rtl/input_port/input_port.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_12/src/rtl/input_port/rc_unit.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_12/src/rtl/input_port/circular_buffer.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_12/src/rtl/allocators/round_robin_arbiter.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_12/src/rtl/allocators/separable_input_first_allocator.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_crossbar/src/rtl/input_port/input_buffer.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_crossbar/src/rtl/input_port/input_port.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_crossbar/src/rtl/input_port/rc_unit.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_crossbar/src/rtl/input_port/circular_buffer.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_crossbar/src/rtl/allocators/round_robin_arbiter.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_crossbar/src/rtl/allocators/separable_input_first_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_crossbar/src/rtl/noc/noc.sv"
         ],
         "spec": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_12/doc/Project Documentation.pdf"
+            "$(BASE_DIR)/agalimberti_NoCRouter_crossbar/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_12/questa/Makefile"
+            "$(BASE_DIR)/agalimberti_NoCRouter_crossbar/questa/Makefile"
         ],
         "tags": ["scripted"],
         "github_link": "https://github.com/agalimberti/NoCRouter"
@@ -573,45 +602,50 @@
         "tags": ["hand-curated"],
         "github_link": "https://github.com/Archfx/TrafficLightController"
     },
-    "agalimberti_NoCRouter_7": {
+    "agalimberti_NoCRouter_vc_alloc": {
         "verif": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_7/src/tb/allocators/tb_vc_allocator.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_vc_alloc/src/tb/allocators/tb_vc_allocator.sv"
         ],
-        "verif_context": [],
+        "verif_context": [
+            "$(BASE_DIR)/agalimberti_NoCRouter_vc_alloc/src/if/input_block2vc_allocator.sv"
+
+        ],
         "design": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_7/src/rtl/allocators/vc_allocator.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_vc_alloc/src/rtl/allocators/vc_allocator.sv"
         ],
         "design_context": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_7/src/rtl/allocators/separable_input_first_allocator.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_7/src/rtl/allocators/round_robin_arbiter.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_vc_alloc/src/rtl/allocators/separable_input_first_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_vc_alloc/src/rtl/allocators/round_robin_arbiter.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_vc_alloc/src/rtl/noc/noc.sv"
         ],
         "spec": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_7/doc/Project Documentation.pdf"
+            "$(BASE_DIR)/agalimberti_NoCRouter_vc_alloc/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_7/questa/Makefile"
+            "$(BASE_DIR)/agalimberti_NoCRouter_vc_alloc/questa/Makefile"
         ],
         "tags": ["scripted"],
         "github_link": "https://github.com/agalimberti/NoCRouter"
     },
-    "agalimberti_NoCRouter_3": {
+    "agalimberti_NoCRouter_input_port": {
         "verif": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_3/src/tb/input_port/tb_input_port.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_input_port/src/tb/input_port/tb_input_port.sv"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_3/src/rtl/input_port/input_port.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_input_port/src/rtl/input_port/input_port.sv"
         ],
         "design_context": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_3/src/rtl/input_port/circular_buffer.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_3/src/rtl/input_port/input_buffer.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_3/src/rtl/input_port/rc_unit.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_input_port/src/rtl/input_port/circular_buffer.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_input_port/src/rtl/input_port/input_buffer.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_input_port/src/rtl/input_port/rc_unit.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_input_port/src/rtl/noc/noc.sv"
         ],
         "spec": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_3/doc/Project Documentation.pdf"
+            "$(BASE_DIR)/agalimberti_NoCRouter_input_port/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_3/questa/Makefile"
+            "$(BASE_DIR)/agalimberti_NoCRouter_input_port/questa/Makefile"
         ],
         "tags": ["scripted"],
         "github_link": "https://github.com/agalimberti/NoCRouter"
@@ -634,31 +668,38 @@
         "tags": ["hand-curated"],
         "github_link": "https://github.com/mczerski/SD-card-controller"
     },
-    "agalimberti_NoCRouter_9": {
+    "agalimberti_NoCRouter_two_routers": {
         "verif": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_9/src/tb/mesh/tb_two_routers.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_two_routers/src/tb/mesh/tb_two_routers.sv"
         ],
-        "verif_context": [],
+        "verif_context": [
+            "$(BASE_DIR)/agalimberti_NoCRouter_two_routers/src/if/input_block2crossbar.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_two_routers/src/if/input_block2switch_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_two_routers/src/if/input_block2vc_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_two_routers/src/if/router2router.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_two_routers/src/if/switch_allocator2crossbar.sv"
+        ],
         "design": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_9/src/rtl/router/router.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_two_routers/src/rtl/router/router.sv"
         ],
         "design_context": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_9/src/rtl/allocators/round_robin_arbiter.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_9/src/rtl/input_port/input_port.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_9/src/rtl/input_port/circular_buffer.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_9/src/rtl/input_port/rc_unit.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_9/src/rtl/allocators/vc_allocator.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_9/src/rtl/input_port/input_buffer.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_9/src/rtl/allocators/switch_allocator.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_9/src/rtl/input_port/input_block.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_9/src/rtl/crossbar/crossbar.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_9/src/rtl/allocators/separable_input_first_allocator.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_two_routers/src/rtl/allocators/round_robin_arbiter.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_two_routers/src/rtl/input_port/input_port.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_two_routers/src/rtl/input_port/circular_buffer.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_two_routers/src/rtl/input_port/rc_unit.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_two_routers/src/rtl/allocators/vc_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_two_routers/src/rtl/input_port/input_buffer.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_two_routers/src/rtl/allocators/switch_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_two_routers/src/rtl/input_port/input_block.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_two_routers/src/rtl/crossbar/crossbar.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_two_routers/src/rtl/allocators/separable_input_first_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_two_routers/src/rtl/noc/noc.sv"
         ],
         "spec": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_9/doc/Project Documentation.pdf"
+            "$(BASE_DIR)/agalimberti_NoCRouter_two_routers/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_9/questa/Makefile"
+            "$(BASE_DIR)/agalimberti_NoCRouter_two_routers/questa/Makefile"
         ],
         "tags": ["scripted"],
         "github_link": "https://github.com/agalimberti/NoCRouter"
@@ -831,25 +872,46 @@
         "tags": ["hand-curated"],
         "github_link": "https://github.com/secworks/mkmif"
     },
-    "gsoc-museum-edsac_0": {
+    "gsoc-museum-edsac_memory": {
         "verif": [
-            "$(BASE_DIR)/gsoc-museum-edsac_0/test/edsac/memory/memory_tb.v"
+            "$(BASE_DIR)/gsoc-museum-edsac_memory/test/edsac/memory/memory_tb.v"
         ],
         "verif_context": [
-            "$(BASE_DIR)/gsoc-museum-edsac_0/src/edsac/memory/delay_line.v"
+            "$(BASE_DIR)/gsoc-museum-edsac_memory/src/edsac/memory/delay_line.v"
         ],
         "design": [
-            "$(BASE_DIR)/gsoc-museum-edsac_0/src/edsac/memory/memory.v"
+            "$(BASE_DIR)/gsoc-museum-edsac_memory/src/edsac/memory/memory.v"
         ],
         "design_context": [],
         "spec": [
-            "$(BASE_DIR)/gsoc-museum-edsac_0/doc/gating_emfs.md",
-            "$(BASE_DIR)/gsoc-museum-edsac_0/doc/instruction_set.md",
-            "$(BASE_DIR)/gsoc-museum-edsac_0/doc/main_control_unit.md",
-            "$(BASE_DIR)/gsoc-museum-edsac_0/doc/computer.md"
+            "$(BASE_DIR)/gsoc-museum-edsac_memory/doc/gating_emfs.md",
+            "$(BASE_DIR)/gsoc-museum-edsac_memory/doc/instruction_set.md",
+            "$(BASE_DIR)/gsoc-museum-edsac_memory/doc/main_control_unit.md",
+            "$(BASE_DIR)/gsoc-museum-edsac_memory/doc/computer.md"
         ],
         "makefile": [
-            "$(BASE_DIR)/gsoc-museum-edsac_0/questa/Makefile"
+            "$(BASE_DIR)/gsoc-museum-edsac_memory/questa/Makefile"
+        ],
+        "tags": ["scripted"],
+        "github_link": "https://github.com/librecores/gsoc-museum-edsac"
+    },
+    "gsoc-museum-edsac_flipflop": {
+        "verif": [
+            "$(BASE_DIR)/gsoc-museum-edsac_flipflop/test/edsac/misc/flipflop_tb.v"
+        ],
+        "verif_context": [],
+        "design": [
+            "$(BASE_DIR)/gsoc-museum-edsac_flipflop/src/edsac/misc/flipflop.v"
+        ],
+        "design_context": [],
+        "spec": [
+            "$(BASE_DIR)/gsoc-museum-edsac_flipflop/doc/gating_emfs.md",
+            "$(BASE_DIR)/gsoc-museum-edsac_flipflop/doc/instruction_set.md",
+            "$(BASE_DIR)/gsoc-museum-edsac_flipflop/doc/main_control_unit.md",
+            "$(BASE_DIR)/gsoc-museum-edsac_flipflop/doc/computer.md"
+        ],
+        "makefile": [
+            "$(BASE_DIR)/gsoc-museum-edsac_flipflop/questa/Makefile"
         ],
         "tags": ["scripted"],
         "github_link": "https://github.com/librecores/gsoc-museum-edsac"
@@ -894,20 +956,22 @@
         "tags": ["hand-curated"],
         "github_link": "https://github.com/secworks/sha1/tree/master/src"
     },
-    "agalimberti_NoCRouter_0": {
+    "agalimberti_NoCRouter_rc_unit": {
         "verif": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_0/src/tb/input_port/tb_rc_unit.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_rc_unit/src/tb/input_port/tb_rc_unit.sv"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_0/src/rtl/input_port/rc_unit.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_rc_unit/src/rtl/input_port/rc_unit.sv"
         ],
-        "design_context": [],
+        "design_context": [
+            "$(BASE_DIR)/agalimberti_NoCRouter_rc_unit/src/rtl/noc/noc.sv"
+        ],
         "spec": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_0/doc/Project Documentation.pdf"
+            "$(BASE_DIR)/agalimberti_NoCRouter_rc_unit/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_0/questa/Makefile"
+            "$(BASE_DIR)/agalimberti_NoCRouter_rc_unit/questa/Makefile"
         ],
         "tags": ["scripted"],
         "github_link": "https://github.com/agalimberti/NoCRouter"
@@ -985,34 +1049,41 @@
         "tags": ["hand-curated"],
         "github_link": "https://github.com/secworks/sha1/tree/master/src"
     },
-    "agalimberti_NoCRouter_8": {
+    "agalimberti_NoCRouter_mesh": {
         "verif": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_8/src/tb/mesh/tb_mesh.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/src/tb/mesh/tb_mesh.sv"
         ],
-        "verif_context": [],
+        "verif_context": [
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/src/if/input_block2crossbar.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/src/if/input_block2switch_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/src/if/input_block2vc_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/src/if/router2router.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/src/if/switch_allocator2crossbar.sv"
+        ],
         "design": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_8/src/rtl/noc/mesh.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/src/rtl/noc/mesh.sv"
         ],
         "design_context": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_8/src/rtl/input_port/circular_buffer.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_8/src/rtl/input_port/input_port.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_8/src/rtl/noc/router_link.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_8/src/rtl/allocators/switch_allocator.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_8/src/rtl/router/router.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_8/src/rtl/crossbar/crossbar.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_8/src/rtl/allocators/separable_input_first_allocator.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_8/src/rtl/noc/node_link.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_8/src/rtl/input_port/rc_unit.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_8/src/rtl/allocators/vc_allocator.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_8/src/rtl/allocators/round_robin_arbiter.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_8/src/rtl/input_port/input_buffer.sv",
-            "$(BASE_DIR)/agalimberti_NoCRouter_8/src/rtl/input_port/input_block.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/src/rtl/input_port/circular_buffer.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/src/rtl/input_port/input_port.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/src/rtl/noc/router_link.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/src/rtl/allocators/switch_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/src/rtl/router/router.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/src/rtl/crossbar/crossbar.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/src/rtl/allocators/separable_input_first_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/src/rtl/noc/node_link.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/src/rtl/input_port/rc_unit.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/src/rtl/allocators/vc_allocator.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/src/rtl/allocators/round_robin_arbiter.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/src/rtl/input_port/input_buffer.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/src/rtl/input_port/input_block.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/src/rtl/noc/noc.sv"
         ],
         "spec": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_8/doc/Project Documentation.pdf"
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_8/questa/Makefile"
+            "$(BASE_DIR)/agalimberti_NoCRouter_mesh/questa/Makefile"
         ],
         "tags": ["scripted"],
         "github_link": "https://github.com/agalimberti/NoCRouter"
@@ -1035,22 +1106,23 @@
         "tags": ["hand-curated"],
         "github_link": "https://github.com/secworks/mkmif"
     },
-    "agalimberti_NoCRouter_5": {
+    "agalimberti_NoCRouter_input_first_alloc": {
         "verif": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_5/src/tb/allocators/tb_separable_input_first_allocator.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_input_first_alloc/src/tb/allocators/tb_separable_input_first_allocator.sv"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_5/src/rtl/allocators/separable_input_first_allocator.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_input_first_alloc/src/rtl/allocators/separable_input_first_allocator.sv"
         ],
         "design_context": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_5/src/rtl/allocators/round_robin_arbiter.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_input_first_alloc/src/rtl/allocators/round_robin_arbiter.sv",
+            "$(BASE_DIR)/agalimberti_NoCRouter_input_first_alloc/src/rtl/noc/noc.sv"
         ],
         "spec": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_5/doc/Project Documentation.pdf"
+            "$(BASE_DIR)/agalimberti_NoCRouter_input_first_alloc/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_5/questa/Makefile"
+            "$(BASE_DIR)/agalimberti_NoCRouter_input_first_alloc/questa/Makefile"
         ],
         "tags": ["scripted"],
         "github_link": "https://github.com/agalimberti/NoCRouter"
@@ -1282,20 +1354,20 @@
         "tags": ["hand-curated"],
         "github_link": "https://github.com/mczerski/SD-card-controller"
     },
-    "agalimberti_NoCRouter_4": {
+    "agalimberti_NoCRouter_round_robin_arbiter": {
         "verif": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_4/src/tb/allocators/tb_round_robin_arbiter.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_round_robin_arbiter/src/tb/allocators/tb_round_robin_arbiter.sv"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_4/src/rtl/allocators/round_robin_arbiter.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_round_robin_arbiter/src/rtl/allocators/round_robin_arbiter.sv"
         ],
         "design_context": [],
         "spec": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_4/doc/Project Documentation.pdf"
+            "$(BASE_DIR)/agalimberti_NoCRouter_round_robin_arbiter/doc/Project Documentation.pdf"
         ],
         "makefile": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_4/questa/Makefile"
+            "$(BASE_DIR)/agalimberti_NoCRouter_round_robin_arbiter/questa/Makefile"
         ],
         "tags": ["scripted"],
         "github_link": "https://github.com/agalimberti/NoCRouter"
