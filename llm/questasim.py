@@ -44,7 +44,7 @@ def run_questasim(env: Union[Environment, str], tb_path: str, log_file: str) -> 
         return CoverageResponse(False, 1, compile_output.stdout.decode())
 
     try:
-        sim_output = run([f'{questa_dir}/vsim', f'work.{tb_name}', '-coverage', '-c', '-do', f'coverage exclude -du {tb_name};coverage save -onexit coverage.ucdb;run -all;exit;'], stdout=PIPE, stderr=PIPE, timeout=60)
+        sim_output = run([f'{questa_dir}/vsim', f'work.{tb_name}', '-coverage', '-c', '-do', f'coverage exclude -du {tb_name};coverage save -onexit coverage.ucdb;run -all;exit;'], stdout=PIPE, stderr=PIPE, timeout=60*5)
         if not check_errors(sim_output.stdout.decode()):
             return CoverageResponse(False, 2, sim_output.stdout.decode())
     except TimeoutExpired:

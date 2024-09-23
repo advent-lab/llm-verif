@@ -15,21 +15,21 @@
 #SBATCH --export=NONE   # Purge the job-submitting shell environment
 
 #Load required software
-module load mamba/latest
-module load bittware/questa-23.4
-export LM_LICENSE_FILE=27006@en4228283.cidse.dhcp.asu.edu
-
 #Change to the directory of our script
 rm -rf ~/Research/llm_verif_dataset/llm/venv
 cp -r ~/Research/llm_verif_dataset/llm /scratch/slowe8/method2_runs
 cd /scratch/slowe8/method2_runs
 
 #Run the software/python script
+module load mamba/latest
 source activate scicomp
 python -m venv venv
 deactivate
 source venv/bin/activate
 pip install -r requirements.txt
+
+module load bittware/questa-23.4
+export LM_LICENSE_FILE=27006@en4228283l.cidse.dhcp.asu.edu
 
 python evaluate_methodology2.py -g 50 -c /packages/apps/fpga/Questa/questa_fe/bin > method2_job.log
 deactivate

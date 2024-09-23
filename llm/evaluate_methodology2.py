@@ -103,51 +103,30 @@ if __name__=="__main__":
             else:
                 num_decode_fail = num_decode_fail + 1
 
-        df = pd.DataFrame([{"temperature": temperature, 
-                            "top_p": top_p, 
-                            "pass rate": total_pass / (total_pass + total_fail),
-                            "pass@1": pass_at_k((total_pass + total_fail), total_pass, 1),
-                            "pass@5": pass_at_k((total_pass + total_fail), total_pass, 5),
-                            "pass@10": pass_at_k((total_pass + total_fail), total_pass, 10),
-                            "pass@25": pass_at_k((total_pass + total_fail), total_pass, 25),
-                            "compile fails": num_compile_fail,
-                            "sim fails": num_sim_fail,
-                            "timeout fails": num_timeout_fail,
-                            "report fails": num_report_fail,
-                            "decode fails": num_decode_fail,
-                            "compile fail rate": num_compile_fail / (total_pass + total_fail),
-                            "sim fail rate": num_sim_fail / (total_pass + total_fail),
-                            "timeout fail rate": num_timeout_fail / (total_pass + total_fail),
-                            "report fail rate": num_report_fail / (total_pass + total_fail),
-                            "decode fail rate": num_decode_fail / (total_fail + total_pass),
-                            "max total coverage": max_cov,
-        }])
+        df = pd.concat([df, pd.DataFrame([{
+            "temperature": temperature, 
+            "top_p": top_p, 
+            "pass rate": total_pass / (total_pass + total_fail) if (total_pass + total_fail) != 0 else 0,
+            "pass@1": pass_at_k((total_pass + total_fail), total_pass, 1),
+            "pass@5": pass_at_k((total_pass + total_fail), total_pass, 5),
+            "pass@10": pass_at_k((total_pass + total_fail), total_pass, 10),
+            "pass@25": pass_at_k((total_pass + total_fail), total_pass, 25),
+            "compile fails": num_compile_fail,
+            "sim fails": num_sim_fail,
+            "timeout fails": num_timeout_fail,
+            "report fails": num_report_fail,
+            "decode fails": num_decode_fail,
+            "compile fail rate": num_compile_fail / (total_pass + total_fail) if (total_pass + total_fail) != 0 else 0,
+            "sim fail rate": num_sim_fail / (total_pass + total_fail) if (total_pass + total_fail) != 0 else 0,
+            "timeout fail rate": num_timeout_fail / (total_pass + total_fail) if (total_pass + total_fail) != 0 else 0,
+            "report fail rate": num_report_fail / (total_pass + total_fail) if (total_pass + total_fail) != 0 else 0,
+            "decode fail rate": num_decode_fail / (total_fail + total_pass) if (total_pass + total_fail) != 0 else 0,
+            "max total coverage": max_cov
+        }])], ignore_index=True)  # Appending to df
+
         print(df)
 
-    if total_pass == 0:
-        avg_total_coverage = 0
-    else:
-        avg_total_coverage = sum_cov_of_success / total_pass
+    # No need to recreate the DataFrame here, as it has been filled during the loop
+    df["average total coverage"] = sum_cov_of_success / total_pass if total_pass != 0 else 0
     
-    df = pd.DataFrame([{"temperature": temperature, 
-                        "top_p": top_p, 
-                        "pass rate": total_pass / (total_pass + total_fail),
-                        "pass@1": pass_at_k((total_pass + total_fail), total_pass, 1),
-                        "pass@5": pass_at_k((total_pass + total_fail), total_pass, 5),
-                        "pass@10": pass_at_k((total_pass + total_fail), total_pass, 10),
-                        "pass@25": pass_at_k((total_pass + total_fail), total_pass, 25),
-                        "compile fails": num_compile_fail,
-                        "sim fails": num_sim_fail,
-                        "timeout fails": num_timeout_fail,
-                        "report fails": num_report_fail,
-                        "decode fails": num_decode_fail,
-                        "compile fail rate": num_compile_fail / (total_pass + total_fail),
-                        "sim fail rate": num_sim_fail / (total_pass + total_fail),
-                        "timeout fail rate": num_timeout_fail / (total_pass + total_fail),
-                        "report fail rate": num_report_fail / (total_pass + total_fail),
-                        "decode fail rate": num_decode_fail / (total_fail + total_pass),
-                        "max total coverage": max_cov,
-                        "average total coverage": avg_total_coverage,
-    }])
-    
-    df.to_csv('methodology2.csv')
+    df.to_csv('methodology2.csv', index=False)
