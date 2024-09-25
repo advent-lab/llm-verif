@@ -1,4 +1,5 @@
 import os
+import shutil
 from typing import List
 
 class FileStore:
@@ -22,7 +23,7 @@ class FileStore:
         
     # Move a file from src_path to the storage directory
     def move(self, src_path: str):
-        os.rename(src_path, os.path.join(self.storage_path, os.path.split(src_path)[1]))
+        shutil.move(src_path, os.path.join(self.storage_path, os.path.split(src_path)[1]))
 
     # Delete a file
     def delete(self, file_name: str):
