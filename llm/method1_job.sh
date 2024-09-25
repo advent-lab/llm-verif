@@ -31,6 +31,6 @@ pip install -r requirements.txt
 module load bittware/questa-23.4
 export LM_LICENSE_FILE=27006@en4228283l.cidse.dhcp.asu.edu
 
-python evaluate_methodology1.py -g 50 -c /packages/apps/fpga/Questa/questa_fe/bin > method1_job.log
+python evaluate_methodology1.py -d "/home/slowe8/Research/llm_verif_dataset/data_points/mkmif_top/design" -s "/home/slowe8/Research/llm_verif_dataset/data_points/mkmif_top/spec/spec.md" -m "/home/slowe8/Research/llm_verif_dataset/data_points/mkmif_top/spec/module_header.txt" -g 10 -c /packages/apps/fpga/Questa/questa_fe/bin #> method1_job.log
 deactivate
 rm -rf venv

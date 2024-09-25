@@ -108,3 +108,4 @@ def get_testbench_name(tb_path: str) -> str:
                 return cleaned_items[-1]
 
     return ''
+

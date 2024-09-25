@@ -158,6 +158,16 @@ def get_coverage(questa_dir: str, generated_response: str, tb_path: str, storage
 def parallel_get_coverage():
     pass
 
+def get_design_name(design_path: str) -> str:
+    split_filename = os.path.split(design_path)[1].split('.')
+    if len(split_filename) != 2:
+        return ''
+
+    if split_filename[1] != 'v':
+        return ''
+
+    return split_filename[0]
+
 if __name__=="__main__":
     # Initialize model
     load_model()

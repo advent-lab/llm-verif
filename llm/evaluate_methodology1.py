@@ -5,10 +5,14 @@ import argparse
 import pandas as pd
 import numpy as np
 from evaluation import pass_at_k
+from prompt_templates import m1_prompt
 
 if __name__=="__main__":
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('-d', '--design', type=str, required=True)
+    parser.add_argument('-s', '--specification', type=str, required=True)
+    parser.add_argument('-m', '--module', type=str, required=True)
     parser.add_argument('-g', '--generations', type=int, required=True)
     parser.add_argument('-c', '--compiler', type=str, required=True)
     args = parser.parse_args()
@@ -18,8 +22,8 @@ if __name__=="__main__":
                                 "pass rate",
                                 "pass@1",
                                 "pass@5",
+                                "pass@8",
                                 "pass@10",
-                                "pass@25",
                                 "compile fails",
                                 "sim fails",
                                 "timeout fails",
@@ -35,8 +39,15 @@ if __name__=="__main__":
                                 ])
     
     # Read the prompt
-    prompt_file = open('few_shot_prompt.txt', 'r')
-    prompt = prompt_file.read()
+    with open(args.specification, 'r') as spec:
+        design_specification = spec.read()
+
+    with open(args.module, 'r') as header:
+        module_header = header.read()
+
+    prompt = m1_prompt(design_specification, module_header)
+
+    design_name = chat.get_design_name(args.design)
 
     # Create a directory to store generations
     store = FileStore('./generations')
@@ -72,7 +83,7 @@ if __name__=="__main__":
         response = chat.convert_json_response_to_dict(response)
         print(response)
 
-        cov = chat.get_coverage(args.compiler, response[0]['test bench'], f'./sha12/design/tb_llm_{i}.v', storage=store)
+        cov = chat.get_coverage(args.compiler, response[0]['test bench'], f'{args.design}/tb_llm_{design_name}_{i}.v', storage=store)
         if cov.success:
             print(f"Passed!\n{cov.error_message}")
             total_pass = total_pass + 1
@@ -99,8 +110,8 @@ if __name__=="__main__":
             "pass rate": total_pass / (total_pass + total_fail) if (total_pass + total_fail) != 0 else 0,
             "pass@1": pass_at_k((total_pass + total_fail), total_pass, 1),
             "pass@5": pass_at_k((total_pass + total_fail), total_pass, 5),
-            "pass@10": pass_at_k((total_pass + total_fail), total_pass, 10),
-            "pass@25": pass_at_k((total_pass + total_fail), total_pass, 25),
+            "pass@8": pass_at_k((total_pass + total_fail), total_pass, 10),
+            "pass@10": pass_at_k((total_pass + total_fail), total_pass, 25),
             "compile fails": num_compile_fail,
             "sim fails": num_sim_fail,
             "timeout fails": num_timeout_fail,
