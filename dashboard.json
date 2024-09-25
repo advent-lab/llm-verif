@@ -1,7 +1,7 @@
 {
     "agalimberti_NoCRouter_router": {
         "verif": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_10/src/tb/router/tb_router.sv"
+            "$(BASE_DIR)/agalimberti_NoCRouter_router/src/tb/router/tb_router.sv"
         ],
         "verif_context": [
             "$(BASE_DIR)/agalimberti_NoCRouter_router/src/if/input_block2crossbar.sv",

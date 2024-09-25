@@ -17,7 +17,8 @@ if __name__=="__main__":
     parser.add_argument('-c', '--compiler', type=str, required=True)
     args = parser.parse_args()
 
-    df = pd.DataFrame(columns=["temperature", 
+    df = pd.DataFrame(columns=[ "design",
+                                "temperature", 
                                 "top_p", 
                                 "pass rate",
                                 "pass@1",
@@ -105,6 +106,7 @@ if __name__=="__main__":
                 num_decode_fail = num_decode_fail + 1
 
         df = pd.concat([df, pd.DataFrame([{
+            "design": design_name,
             "temperature": temperature, 
             "top_p": top_p, 
             "pass rate": total_pass / (total_pass + total_fail) if (total_pass + total_fail) != 0 else 0,
