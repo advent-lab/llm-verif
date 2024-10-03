@@ -8,8 +8,12 @@ worklib:
 	$(QUESTA_ROOT)/vlib work
 
 compile:
-	echo "compiling design files"
+	echo "compiling design and test bench files"
 	$(QUESTA_ROOT)/vlog -cover bcs $(BASE_DIR)/verif/tb_chacha_core.v $(BASE_DIR)/design_context/chacha_qr.v $(BASE_DIR)/design/chacha_core.v 
+
+compile_design:
+	echo "compiling design files"
+	$(QUESTA_ROOT)/vlog -cover s $(BASE_DIR)/design_context/chacha_qr.v $(BASE_DIR)/design/chacha_core.v 
 
 sim: 
 	echo "simulating test bench and generating .ucdb coverate report"

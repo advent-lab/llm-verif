@@ -17,27 +17,28 @@ if __name__=="__main__":
     parser.add_argument('-c', '--compiler', type=str, required=True)
     args = parser.parse_args()
 
-    df = pd.DataFrame(columns=[ "design",
-                                "temperature", 
-                                "top_p", 
-                                "pass rate",
-                                "pass@1",
-                                "pass@5",
-                                "pass@8",
-                                "pass@10",
-                                "compile fails",
-                                "sim fails",
-                                "timeout fails",
-                                "report fails",
-                                "decode fails",
-                                "compile fail rate",
-                                "sim fail rate",
-                                "timeout fail rate",
-                                "report fail rate",
-                                "decode fail rate",
-                                "max total coverage",
-                                "average total coverage",
-                                ])
+    df = pd.DataFrame(columns=[
+        "design",
+        "temperature", 
+        "top_p", 
+        "pass rate",
+        "pass@1",
+        "pass@5",
+        "pass@8",
+        "pass@10",
+        "compile fails",
+        "sim fails",
+        "timeout fails",
+        "report fails",
+        "decode fails",
+        "compile fail rate",
+        "sim fail rate",
+        "timeout fail rate",
+        "report fail rate",
+        "decode fail rate",
+        "max total coverage",
+        "average total coverage",
+    ])
     
     # Read the prompt
     with open(args.specification, 'r') as spec:

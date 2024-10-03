@@ -15,7 +15,7 @@ class CoverageResponse:
         self.coverage_list = coverage_list
         self.total_coverage = total_coverage
 
-def run_questasim(env: Union[Environment, str], tb_path: str, log_file: str) -> (bool, int, str):
+def run_questasim(env: Union[Environment, str], tb_path: str, makefile: str, log_file: str) -> (bool, int, str):
     # Get the name of the test bench module
     # We need to do this because the LLM could name the module anything
 
@@ -27,9 +27,11 @@ def run_questasim(env: Union[Environment, str], tb_path: str, log_file: str) -> 
     else:
         return ''
 
-    design_dir = os.path.split(tb_path)[0]
+    design_dir = os.path.split(os.path.split(tb_path)[0])[0]
 
     tb_name = get_testbench_name(tb_path)
+
+    compile_command = get_makefile_design_compilation(makefile, questa_dir, design_dir)
 
     # Run the simulation and log the output
     # with open(log_file, 'w+') as f:
@@ -39,7 +41,13 @@ def run_questasim(env: Union[Environment, str], tb_path: str, log_file: str) -> 
     run(['rm', '-rf', f'{design_dir}/work', 'work', 'transcript'])
     
     # TODO: adapt for other designs
-    compile_output = run([f'{questa_dir}/vlog', '-cover', 's'] + [os.path.join(design_dir, path) for path in os.listdir(design_dir)], stdout=PIPE, stderr=PIPE)
+    # compile_output = run([f'{questa_dir}/vlog', '-cover', 's'] + [os.path.join(design_dir, path) for path in os.listdir(design_dir)], stdout=PIPE, stderr=PIPE)
+    print(compile_command.split())
+    compile_output = run(compile_command.split(), stdout=PIPE, stderr=PIPE)
+    if not check_errors(compile_output.stdout.decode()):
+        return CoverageResponse(False, 1, compile_output.stdout.decode())
+
+    compile_output = run([f'{questa_dir}/vlog', '-cover', 's', tb_path], stdout=PIPE, stderr=PIPE)
     if not check_errors(compile_output.stdout.decode()):
         return CoverageResponse(False, 1, compile_output.stdout.decode())
 
@@ -109,3 +117,17 @@ def get_testbench_name(tb_path: str) -> str:
 
     return ''
 
+def get_makefile_design_compilation(makefile: str, questa_dir: str, design_dir: str) -> str:
+    with open(makefile, 'r') as f:
+        lines = f.readlines()
+
+    compile_command = ''
+    for idx, line in enumerate(lines):
+        if "compile_design:" in line:
+            compile_command = lines[idx + 2]
+            break
+    
+    compile_command = compile_command.strip()
+    compile_command = (compile_command.replace('$(QUESTA_ROOT)', questa_dir)).replace('$(BASE_DIR)', design_dir)
+
+    return compile_command
