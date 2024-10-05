@@ -1,6 +1,6 @@
 
 `include "eth_phy_defines.v"
-`include "wb_model_defines.v"
+`include "../design_context/wb_model_defines.v"
 `include "tb_eth_defines.v"
 `include "../design/ethmac_defines.v"
 `include "../design/timescale.v"
