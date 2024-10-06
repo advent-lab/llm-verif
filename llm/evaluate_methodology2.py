@@ -5,43 +5,51 @@ import argparse
 import pandas as pd
 import numpy as np
 from evaluation import pass_at_k
+from prompt_templates import m2_prompts
 
 if __name__=="__main__":
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('-d', '--design', type=str, required=True)
+    parser.add_argument('-s', '--specification', type=str, required=True)
+    parser.add_argument('-m', '--module', type=str, required=True)
     parser.add_argument('-g', '--generations', type=int, required=True)
     parser.add_argument('-c', '--compiler', type=str, required=True)
     args = parser.parse_args()
 
-    df = pd.DataFrame(columns=["temperature", 
-                                "top_p", 
-                                "pass rate",
-                                "pass@1",
-                                "pass@5",
-                                "pass@10",
-                                "pass@25",
-                                "compile fails",
-                                "sim fails",
-                                "timeout fails",
-                                "report fails",
-                                "decode fails",
-                                "compile fail rate",
-                                "sim fail rate",
-                                "timeout fail rate",
-                                "report fail rate",
-                                "decode fail rate",
-                                "max total coverage",
-                                "average total coverage",
+    df = pd.DataFrame(columns=[
+        "design",
+        "temperature", 
+        "top_p", 
+        "pass rate",
+        "pass@1",
+        "pass@5",
+        "pass@8",
+        "pass@10",
+        "compile fails",
+        "sim fails",
+        "timeout fails",
+        "report fails",
+        "decode fails",
+        "compile fail rate",
+        "sim fail rate",
+        "timeout fail rate",
+        "report fail rate",
+        "decode fail rate",
+        "max total coverage",
+        "average total coverage",
     ])
     
     # Read the prompt
-    prompt1_file = open('method2_stage1_prompt.txt', 'r')
-    prompt1 = prompt1_file.read()
-    prompt1_file.close()
+    with open(args.specification, 'r') as spec:
+        design_specification = spec.read()
 
-    prompt2_file = open('method2_stage2_prompt.txt', 'r')
-    prompt2 = prompt2_file.read()
-    prompt2_file.close()
+    with open(args.module, 'r') as header:
+        module_header = header.read()
+
+    prompt1, prompt2 = m2_prompts(design_specification, module_header)
+
+    design_name = chat.get_design_name(args.design)
 
     # Create a directory to store generations
     store = FileStore('./generations')
@@ -60,6 +68,7 @@ if __name__=="__main__":
 
     max_cov = 0
     sum_cov_of_success = 0
+    avg_total_coverage = 0
 
     runs = args.generations
 
