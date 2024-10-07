@@ -10,7 +10,7 @@ from prompt_templates import m1_prompt
 if __name__=="__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--design', type=str, required=True)
+    parser.add_argument('-d', '--dataset', type=str, required=True)
     parser.add_argument('-s', '--specification', type=str, required=True)
     parser.add_argument('-m', '--module', type=str, required=True)
     parser.add_argument('-g', '--generations', type=int, required=True)
