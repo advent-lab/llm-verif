@@ -168,6 +168,33 @@ def get_design_name(design_path: str) -> str:
 
     return split_filename[0]
 
+def extract_verilog_module_header(design_path: str) -> str:
+
+    # Open file and read design
+    with open(design_path, 'r') as f:
+        verilog_code = f.read()
+
+    # Regular expression to capture the module name and header
+    module_pattern = re.compile(
+        r"module\s+(\w+)\s*\((.*?)\);\s*", 
+        re.DOTALL
+    )
+    
+    # Extracting module declaration
+    match = module_pattern.search(verilog_code)
+    if match:
+        module_name = match.group(1)  # Module name
+        port_list = match.group(2)    # Port list (inputs and outputs)
+
+        # Cleaning up whitespace and formatting the result
+        port_list = re.sub(r"\s+", " ", port_list.strip())  # Remove excessive whitespace
+        formatted_ports = "\n    ".join(port_list.split(","))  # Format each port on a new line
+
+        # Return formatted header
+        return f"module {module_name}(\n    {formatted_ports},\n);"
+    else:
+        return "No module found."
+
 if __name__=="__main__":
     # Initialize model
     load_model()
