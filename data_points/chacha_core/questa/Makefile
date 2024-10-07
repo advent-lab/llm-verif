@@ -1,5 +1,6 @@
 QUESTA_ROOT ?= /mnt/vault0/tools/Intel/intelFPGA_pro/23.4/questa_fe/bin
-BASE_DIR ?= /mnt/vault0/ehilaneh/hw-for-ml-data/Hand_Data/chacha1
+DATASET_ROOT ?= /mnt/vault0/ehilaneh/llm_verif_dataset/data_points/
+BASE_DIR ?= $(DATASET_ROOT)chacha_core
 
 all: worklib compile sim 
 
