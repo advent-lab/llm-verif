@@ -15,7 +15,7 @@ class CoverageResponse:
         self.coverage_list = coverage_list
         self.total_coverage = total_coverage
 
-def run_questasim(env: Union[Environment, str], tb_path: str, makefile: str, log_file: str) -> (bool, int, str):
+def run_questasim(env: Union[Environment, str], tb_path: str, log_file: str) -> (bool, int, str):
     # Get the name of the test bench module
     # We need to do this because the LLM could name the module anything
 
@@ -30,6 +30,8 @@ def run_questasim(env: Union[Environment, str], tb_path: str, makefile: str, log
     design_dir = os.path.split(os.path.split(tb_path)[0])[0]
 
     tb_name = get_testbench_name(tb_path)
+
+    makefile = os.path.join(design_dir, "questa/Makefile")
 
     compile_command = get_makefile_design_compilation(makefile, questa_dir, design_dir)
 
@@ -131,3 +133,7 @@ def get_makefile_design_compilation(makefile: str, questa_dir: str, design_dir: 
     compile_command = (compile_command.replace('$(QUESTA_ROOT)', questa_dir)).replace('$(BASE_DIR)', design_dir)
 
     return compile_command
+
+# TODO: Write Makefile parser
+def parse_makefile(makefile: str):
+    pass

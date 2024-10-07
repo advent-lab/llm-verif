@@ -14,6 +14,8 @@
 #SBATCH --mail-user="%u@asu.edu"
 #SBATCH --export=NONE   # Purge the job-submitting shell environment
 
+DATASET_DIR
+
 #Load required software
 #Change to the directory of our script
 rm -rf ~/Research/llm_verif_dataset/llm/venv
