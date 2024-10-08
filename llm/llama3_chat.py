@@ -1,4 +1,5 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from accelerate import infer_auto_device_map
 import torch
 import os
 from datetime import datetime
@@ -26,6 +27,10 @@ def load_model():
         torch_dtype=torch.bfloat16,
         device_map="auto",
     )
+
+    device_map = infer_auto_device_map(model)
+    with open("./device_map.json", 'w+') as j:
+        json.dump(device_map, j)
 
 # Function to generate a response from the LLM
 def generate_response(conversation_history, max_new_tokens=10000, temperature=0.6, top_p=0.9) -> str:
