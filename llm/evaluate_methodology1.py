@@ -47,7 +47,9 @@ if __name__=="__main__":
 
     dataset = Dataset(dashboard_path)
     
-    # Read the prompt
+    # Create the prompt
+    # Read the specification file
+    # TODO: Add support for PDF specification files/documentation
     design_specification_path = dataset.get_design_spec(design_name)
     design_specification = ''
     if not design_specification_path:
@@ -71,13 +73,12 @@ if __name__=="__main__":
         # Here we assume the top item in the spec tag is the correct specification
         # This should not really happen because there should only be one specification file in the spec tag
         top_design_file_path = top_design_file_path[0]
-        with open(top_design_file_path, 'r') as module:
-            module_header = module.read()
+        module_header = chat.extract_verilog_module_header(top_design_file_path)
     else:
-        with open(top_design_file_path, 'r') as module:
-            module_header = module.read()
+        module_header = chat.extract_verilog_module_header(top_design_file_path)
 
     prompt = m1_prompt(design_specification, module_header)
+    print(prompt)
 
     design_module_name = chat.get_design_name(top_design_file_path)
 
