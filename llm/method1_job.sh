@@ -14,11 +14,13 @@
 #SBATCH --mail-user="%u@asu.edu"
 #SBATCH --export=NONE   # Purge the job-submitting shell environment
 
+DATA_POINT=chacha_top
+
 #Load required software
 #Change to the directory of our script
-rm -rf ~/Research/llm_verif_dataset/llm/venv
-cp -r ~/Research/llm_verif_dataset/llm /scratch/$USER/method1_runs
-cd /scratch/$USER/method1_runs
+rm -rf ~/Research/llm_verif_dataset/llm/venv /scratch/$USER/${DATA_POINT}_method1_runs
+cp -rf ~/Research/llm_verif_dataset/llm /scratch/$USER/${DATA_POINT}_method1_runs
+cd /scratch/$USER/${DATA_POINT}_method1_runs
 
 #Run the software/python script
 module load mamba/latest
@@ -26,11 +28,11 @@ source activate scicomp
 python -m venv venv
 deactivate
 source venv/bin/activate
-pip install -r requirements.txt
+xargs --max-args=1 --max-procs=4 pip install -r requirements.txt
 
 module load bittware/questa-23.4
 export LM_LICENSE_FILE=27006@en4228283l.cidse.dhcp.asu.edu
 
-python evaluate_methodology1.py -d /home/slowe8/Research/llm_verif_dataset/data_points/chacha_top -g 10 -c /packages/apps/fpga/Questa/questa_fe/bin #> method1_job.log
+python evaluate_methodology1.py -d /home/slowe8/Research/llm_verif_dataset/data_points/$DATA_POINT -g 10 -c /packages/apps/fpga/Questa/questa_fe/bin #> method1_job.log
 deactivate
 rm -rf venv
