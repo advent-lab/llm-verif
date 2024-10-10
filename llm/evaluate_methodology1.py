@@ -116,7 +116,7 @@ if __name__=="__main__":
         response = chat.convert_json_response_to_dict(response)
         print(response)
 
-        cov = chat.get_coverage(args.compiler, response[0]['test bench'], f'{args.design}/tb_llm_{design_name}_{i}.v', storage=store)
+        cov = chat.get_coverage(args.compiler, response[0]['test bench'], f'{args.design}/tb_llm_{design_name}_{i}.v', data_point=dataset.get_data_point(design_name), storage=store)
         if cov.success:
             print(f"Passed!\n{cov.error_message}")
             total_pass = total_pass + 1

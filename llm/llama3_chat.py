@@ -21,9 +21,22 @@ def load_model():
     global tokenizer
     global model
     model_id = "meta-llama/Meta-Llama-3.1-70B-Instruct"
+
+    # Define quantization
+    '''
+    compute_dtype = getattr(torch, "float16")
+
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=compute_dtype,
+        bnb_4bit_use_double_quant=False,
+    )
+    '''
     tokenizer = AutoTokenizer.from_pretrained(model_id)
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
+        # quantization_config=bnb_config,
         torch_dtype=torch.bfloat16,
         device_map="auto",
     )
@@ -142,7 +155,7 @@ def convert_json_response_to_dict(generated_response: str) -> tuple:
     return parsed_response
 
 # TODO: Create call to QuestaSim to get coverage
-def get_coverage(questa_dir: str, generated_response: str, tb_path: str, storage: FileStore = None) -> qs.CoverageResponse:
+def get_coverage(questa_dir: str, generated_response: str, tb_path: str, data_point: dict, storage: FileStore = None) -> qs.CoverageResponse:
     if not generated_response:
         return qs.CoverageResponse(False, 5, "Empty test bench (JSON Decode Error)")
 
@@ -152,7 +165,7 @@ def get_coverage(questa_dir: str, generated_response: str, tb_path: str, storage
 
     # Run QuestaSim to get coverage
     # env = Environment(questa_dir)
-    coverage_response = qs.run_questasim(questa_dir, tb_path, "questasim.log")
+    coverage_response = qs.run_questasim(env=questa_dir, tb_path=tb_path, data_point=data_point, log_file="questasim.log")
 
     # Move test bench file to storage
     storage.move(tb_path)
