@@ -1,5 +1,6 @@
 QUESTA_ROOT ?= /mnt/vault0/tools/Intel/intelFPGA_pro/23.4/questa_fe/bin
-BASE_DIR ?= /mnt/vault0/ehilaneh/hw-for-ml-data/Hand_Data/SD-card-controller4
+DATASET_ROOT ?= /mnt/vault0/ehilaneh/llm_verif_dataset/data_points/
+BASE_DIR ?= $(DATASET_ROOT)SD-card-controller_cmd_master
 
 all: worklib compile sim 
 
@@ -8,8 +9,12 @@ worklib:
 	$(QUESTA_ROOT)/vlib work
 
 compile:
-	echo "compiling design files"
+	echo "compiling design files and test files"
 	$(QUESTA_ROOT)/vlog -cover bcs $(BASE_DIR)/verif/sd_cmd_master_tb.sv $(BASE_DIR)/design/sd_cmd_master.v   
+
+compile_design:
+	echo "compiling design files"
+	$(QUESTA_ROOT)/vlog -cover bcs $(BASE_DIR)/design/sd_cmd_master.v   
 
 sim: 
 	echo "simulating test bench and generating .ucdb coverate report"
