@@ -6,6 +6,7 @@ from environment import Environment
 import re
 from typing import Union, Dict
 import xml.etree.ElementTree as ET
+from dashboard import Dataset
 
 class CoverageResponse:
     def __init__(self, success: bool, error_code: int, error_message: str = "", coverage_list: Dict[str, Dict[str, str]] = {}, total_coverage: int = 0):
@@ -15,7 +16,7 @@ class CoverageResponse:
         self.coverage_list = coverage_list
         self.total_coverage = total_coverage
 
-def run_questasim(env: Union[Environment, str], tb_path: str, log_file: str) -> (bool, int, str):
+def run_questasim(env: Union[Environment, str], tb_path: str, data_point: dict, log_file: str) -> (bool, int, str):
     # Get the name of the test bench module
     # We need to do this because the LLM could name the module anything
 
@@ -31,9 +32,7 @@ def run_questasim(env: Union[Environment, str], tb_path: str, log_file: str) -> 
 
     tb_name = get_testbench_name(tb_path)
 
-    makefile = os.path.join(design_dir, "questa/Makefile")
-
-    compile_command = get_makefile_design_compilation(makefile, questa_dir, design_dir)
+    compile_command = vlog_builder(tb_path=tb_path, data_point=data_point)
 
     # Run the simulation and log the output
     # with open(log_file, 'w+') as f:
@@ -137,3 +136,6 @@ def get_makefile_design_compilation(makefile: str, questa_dir: str, design_dir: 
 # TODO: Write Makefile parser
 def parse_makefile(makefile: str):
     pass
+
+def vlog_builder(tb_path: str, data_point: dict) -> str:
+    return f"vlog -cover s {tb_path} {' '.join(data_point['design'])} {' '.join(data_point['design_context'])}"

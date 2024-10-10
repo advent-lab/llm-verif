@@ -6,13 +6,13 @@ import pandas as pd
 import numpy as np
 from evaluation import pass_at_k
 from prompt_templates import m1_prompt
+from pathlib import Path
+from dashboard import Dataset
 
 if __name__=="__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--dataset', type=str, required=True)
-    parser.add_argument('-s', '--specification', type=str, required=True)
-    parser.add_argument('-m', '--module', type=str, required=True)
+    parser.add_argument('-d', '--design', type=str, required=True, help="This is the path of the design directory that you would like to generate test benches for, not the path of the design file.")
     parser.add_argument('-g', '--generations', type=int, required=True)
     parser.add_argument('-c', '--compiler', type=str, required=True)
     args = parser.parse_args()
@@ -39,17 +39,48 @@ if __name__=="__main__":
         "max total coverage",
         "average total coverage",
     ])
-    
-    # Read the prompt
-    with open(args.specification, 'r') as spec:
-        design_specification = spec.read()
 
-    with open(args.module, 'r') as header:
-        module_header = header.read()
+    design_dir = args.design
+    design_name = os.path.split(design_dir)[1]
+    design_dir_path = Path(args.design)
+    dashboard_path = f'{str(design_dir_path.parents[1])}/dashboard.json'
+
+    dataset = Dataset(dashboard_path)
+    
+    # Create the prompt
+    # Read the specification file
+    # TODO: Add support for PDF specification files/documentation
+    design_specification_path = dataset.get_design_spec(design_name)
+    design_specification = ''
+    if not design_specification_path:
+        print("Error: No design specification avaliable for this design")
+        exit()
+    elif isinstance(design_specification_path, list):
+        # Here we assume the top item in the spec tag is the correct specification
+        # This should not really happen because there should only be one specification file in the spec tag
+        with open(design_specification_path[0], 'r') as spec:
+            design_specification = spec.read()
+    else:
+        with open(design_specification_path, 'r') as spec:
+            design_specification = spec.read()
+
+    top_design_file_path = dataset.get_design(design_name)
+    module_header = ''
+    if not top_design_file_path:
+        print("Error: No design file(s) avaliable for this design")
+        exit()
+    elif isinstance(top_design_file_path, list):
+        # Here we assume the top item in the spec tag is the correct specification
+        # This should not really happen because there should only be one specification file in the spec tag
+        top_design_file_path = top_design_file_path[0]
+        module_header = chat.extract_verilog_module_header(top_design_file_path)
+    else:
+        module_header = chat.extract_verilog_module_header(top_design_file_path)
 
     prompt = m1_prompt(design_specification, module_header)
+    print(prompt)
 
-    design_name = chat.get_design_name(args.design)
+    design_module_name = chat.get_design_name(top_design_file_path)
 
     # Create a directory to store generations
     store = FileStore('./generations')
@@ -85,7 +116,7 @@ if __name__=="__main__":
         response = chat.convert_json_response_to_dict(response)
         print(response)
 
-        cov = chat.get_coverage(args.compiler, response[0]['test bench'], f'{args.design}/tb_llm_{design_name}_{i}.v', storage=store)
+        cov = chat.get_coverage(args.compiler, response[0]['test bench'], f'{args.design}/tb_llm_{design_name}_{i}.v', data_point=dataset.get_data_point(design_name), storage=store)
         if cov.success:
             print(f"Passed!\n{cov.error_message}")
             total_pass = total_pass + 1

@@ -1,4 +1,5 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from accelerate import infer_auto_device_map
 import torch
 import os
 from datetime import datetime
@@ -20,12 +21,29 @@ def load_model():
     global tokenizer
     global model
     model_id = "meta-llama/Meta-Llama-3.1-70B-Instruct"
+
+    # Define quantization
+    '''
+    compute_dtype = getattr(torch, "float16")
+
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=compute_dtype,
+        bnb_4bit_use_double_quant=False,
+    )
+    '''
     tokenizer = AutoTokenizer.from_pretrained(model_id)
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
+        # quantization_config=bnb_config,
         torch_dtype=torch.bfloat16,
         device_map="auto",
     )
+
+    device_map = infer_auto_device_map(model)
+    with open("./device_map.json", 'w+') as j:
+        json.dump(device_map, j)
 
 # Function to generate a response from the LLM
 def generate_response(conversation_history, max_new_tokens=10000, temperature=0.6, top_p=0.9) -> str:
@@ -137,7 +155,7 @@ def convert_json_response_to_dict(generated_response: str) -> tuple:
     return parsed_response
 
 # TODO: Create call to QuestaSim to get coverage
-def get_coverage(questa_dir: str, generated_response: str, tb_path: str, storage: FileStore = None) -> qs.CoverageResponse:
+def get_coverage(questa_dir: str, generated_response: str, tb_path: str, data_point: dict, storage: FileStore = None) -> qs.CoverageResponse:
     if not generated_response:
         return qs.CoverageResponse(False, 5, "Empty test bench (JSON Decode Error)")
 
@@ -147,7 +165,7 @@ def get_coverage(questa_dir: str, generated_response: str, tb_path: str, storage
 
     # Run QuestaSim to get coverage
     # env = Environment(questa_dir)
-    coverage_response = qs.run_questasim(questa_dir, tb_path, "questasim.log")
+    coverage_response = qs.run_questasim(env=questa_dir, tb_path=tb_path, data_point=data_point, log_file="questasim.log")
 
     # Move test bench file to storage
     storage.move(tb_path)
@@ -167,6 +185,33 @@ def get_design_name(design_path: str) -> str:
         return ''
 
     return split_filename[0]
+
+def extract_verilog_module_header(design_path: str) -> str:
+
+    # Open file and read design
+    with open(design_path, 'r') as f:
+        verilog_code = f.read()
+
+    # Regular expression to capture the module name and header
+    module_pattern = re.compile(
+        r"module\s+(\w+)\s*\((.*?)\);\s*", 
+        re.DOTALL
+    )
+    
+    # Extracting module declaration
+    match = module_pattern.search(verilog_code)
+    if match:
+        module_name = match.group(1)  # Module name
+        port_list = match.group(2)    # Port list (inputs and outputs)
+
+        # Cleaning up whitespace and formatting the result
+        port_list = re.sub(r"\s+", " ", port_list.strip())  # Remove excessive whitespace
+        formatted_ports = "\n    ".join(port_list.split(","))  # Format each port on a new line
+
+        # Return formatted header
+        return f"module {module_name}(\n    {formatted_ports},\n);"
+    else:
+        return "No module found."
 
 if __name__=="__main__":
     # Initialize model

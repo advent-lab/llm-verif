@@ -1,8 +1,12 @@
+# Project specific ignores
 generations/
 *.err
 *.out
 *.ucdb
 report.txt
+
+# VSCode ignores
+.vscode/
 
 # QuestaSim ignores
 *work/
