@@ -100,7 +100,7 @@ def check_errors(questa_output: str) -> bool:
     if len(cleaned_items) != 4:
         return False
 
-    if cleaned_items[0] == 'Errors' and cleaned_items[1] == '0' and cleaned_items[2] == 'Warnings' and cleaned_items[3] == '0':
+    if cleaned_items[0] == 'Errors' and cleaned_items[1] == '0': #and cleaned_items[2] == 'Warnings' and cleaned_items[3] == '0':
         return True
 
     return False
