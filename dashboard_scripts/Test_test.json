@@ -1,0 +1,478 @@
+[
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/crossbar/crossbar.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "switch_allocator2crossbar.sv"
+            },
+            {
+                "type": "module",
+                "location": "input_block2crossbar.sv"
+            },
+            {
+                "type": "module",
+                "location": "tb_crossbar.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [
+            "crossbar"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [
+            "noc_params"
+        ],
+        "module_instances": [
+            "module"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/tb/crossbar/tb_crossbar.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/noc/noc.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/if/switch_allocator2crossbar.sv",
+        "type": [
+            {
+                "type": "interface",
+                "location": "tb_crossbar.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [],
+        "interface_definitions": [
+            "switch_allocator2crossbar"
+        ],
+        "function_definitions": [],
+        "package_instances": [
+            "noc_params"
+        ],
+        "module_instances": [
+            "crossbar",
+            "switch_allocator"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/crossbar/crossbar.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/allocators/switch_allocator.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/noc/noc.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/allocators/switch_allocator.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "switch_allocator2crossbar.sv"
+            },
+            {
+                "type": "module",
+                "location": "tb_crossbar.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [
+            "switch_allocator"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [
+            "noc_params"
+        ],
+        "module_instances": [
+            "module",
+            "separable_input_first_allocator"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/tb/crossbar/tb_crossbar.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/allocators/separable_input_first_allocator.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/noc/noc.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/input_port/input_port.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "input_block.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [
+            "input_port"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [
+            "noc_params"
+        ],
+        "module_instances": [
+            "module",
+            "rc_unit",
+            "input_buffer"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/tb/crossbar/tb_crossbar.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/input_port/rc_unit.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/input_port/input_buffer.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/noc/noc.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/allocators/round_robin_arbiter.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "separable_input_first_allocator.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [
+            "round_robin_arbiter"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [],
+        "module_instances": [
+            "module"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/tb/crossbar/tb_crossbar.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/if/input_block2crossbar.sv",
+        "type": [
+            {
+                "type": "interface",
+                "location": "tb_crossbar.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [],
+        "interface_definitions": [
+            "input_block2crossbar"
+        ],
+        "function_definitions": [],
+        "package_instances": [
+            "noc_params"
+        ],
+        "module_instances": [
+            "crossbar",
+            "input_block"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/crossbar/crossbar.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/input_port/input_block.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/noc/noc.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/tb/crossbar/tb_crossbar.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "crossbar.sv"
+            },
+            {
+                "type": "module",
+                "location": "switch_allocator.sv"
+            },
+            {
+                "type": "module",
+                "location": "input_port.sv"
+            },
+            {
+                "type": "module",
+                "location": "round_robin_arbiter.sv"
+            },
+            {
+                "type": "module",
+                "location": "input_block.sv"
+            },
+            {
+                "type": "module",
+                "location": "separable_input_first_allocator.sv"
+            },
+            {
+                "type": "module",
+                "location": "rc_unit.sv"
+            },
+            {
+                "type": "module",
+                "location": "input_buffer.sv"
+            },
+            {
+                "type": "module",
+                "location": "circular_buffer.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [
+            "tb_crossbar",
+            "module"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [
+            "check_flits",
+            "corresp_output",
+            "mock_in"
+        ],
+        "package_instances": [
+            "noc_params"
+        ],
+        "module_instances": [
+            "crossbar",
+            "switch_allocator",
+            "input_block"
+        ],
+        "interface_instances": [
+            "switch_allocator2crossbar",
+            "input_block2crossbar"
+        ],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/crossbar/crossbar.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/allocators/switch_allocator.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/input_port/input_block.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/if/switch_allocator2crossbar.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/if/input_block2crossbar.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/noc/noc.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/input_port/input_block.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "input_block2crossbar.sv"
+            },
+            {
+                "type": "module",
+                "location": "tb_crossbar.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [
+            "input_block"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [
+            "noc_params"
+        ],
+        "module_instances": [
+            "input_port",
+            "module"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/input_port/input_port.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/tb/crossbar/tb_crossbar.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/noc/noc.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/allocators/separable_input_first_allocator.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "switch_allocator.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [
+            "separable_input_first_allocator"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [
+            "noc_params"
+        ],
+        "module_instances": [
+            "round_robin_arbiter",
+            "module"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/allocators/round_robin_arbiter.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/tb/crossbar/tb_crossbar.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/noc/noc.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/input_port/rc_unit.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "input_port.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [
+            "rc_unit"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [
+            "noc_params"
+        ],
+        "module_instances": [
+            "module"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/tb/crossbar/tb_crossbar.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/noc/noc.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/input_port/input_buffer.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "input_port.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [
+            "input_buffer"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [
+            "noc_params"
+        ],
+        "module_instances": [
+            "module",
+            "circular_buffer"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/tb/crossbar/tb_crossbar.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/input_port/circular_buffer.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/noc/noc.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/noc/noc.sv",
+        "type": [
+            {
+                "type": "package",
+                "location": "crossbar.sv"
+            },
+            {
+                "type": "package",
+                "location": "switch_allocator2crossbar.sv"
+            },
+            {
+                "type": "package",
+                "location": "switch_allocator.sv"
+            },
+            {
+                "type": "package",
+                "location": "input_port.sv"
+            },
+            {
+                "type": "package",
+                "location": "input_block2crossbar.sv"
+            },
+            {
+                "type": "package",
+                "location": "tb_crossbar.sv"
+            },
+            {
+                "type": "package",
+                "location": "input_block.sv"
+            },
+            {
+                "type": "package",
+                "location": "separable_input_first_allocator.sv"
+            },
+            {
+                "type": "package",
+                "location": "rc_unit.sv"
+            },
+            {
+                "type": "package",
+                "location": "input_buffer.sv"
+            },
+            {
+                "type": "package",
+                "location": "circular_buffer.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [
+            "noc_params"
+        ],
+        "module_definitions": [],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [],
+        "module_instances": [],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": []
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/input_port/circular_buffer.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "input_buffer.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [
+            "circular_buffer"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [
+            "increase_ptr",
+            "update_empty_on_read",
+            "update_full_on_write"
+        ],
+        "package_instances": [
+            "noc_params"
+        ],
+        "module_instances": [
+            "module"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/tb/crossbar/tb_crossbar.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/src/rtl/noc/noc.sv"
+        ]
+    }
+]
