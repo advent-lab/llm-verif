@@ -1,0 +1,620 @@
+[
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/src/functions.sv",
+        "type": [
+            {
+                "type": "include",
+                "location": "slv_monitor.sv"
+            },
+            {
+                "type": "include",
+                "location": "mst_driver.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [],
+        "interface_definitions": [],
+        "function_definitions": [
+            "is_misroute",
+            "gen_resp_for_master",
+            "gen_resp_for_slave",
+            "gen_data",
+            "next_data",
+            "gen_size",
+            "gen_burst",
+            "gen_lock",
+            "gen_cache",
+            "gen_prot",
+            "gen_qos",
+            "gen_region",
+            "gen_auser",
+            "gen_wuser",
+            "gen_buser",
+            "gen_ruser"
+        ],
+        "package_instances": [],
+        "module_instances": [],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": []
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/src/axicb_crossbar_top_testbench.sv",
+        "type": [],
+        "includes": [
+            "svut_h.sv"
+        ],
+        "package_definitions": [],
+        "module_definitions": [
+            "axicb_crossbar_top_testbench"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [],
+        "module_instances": [
+            "slv_monitor",
+            "axicb_crossbar_top",
+            "mst_driver"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/src/slv_monitor.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_crossbar_top.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/src/mst_driver.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/svut_h.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_pipeline.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "axicb_switch_top.sv"
+            },
+            {
+                "type": "module",
+                "location": "axicb_pipeline_testbench.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [
+            "axicb_pipeline"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [],
+        "module_instances": [],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": []
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/src/slv_monitor.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "axicb_crossbar_top_testbench.sv"
+            },
+            {
+                "type": "function",
+                "location": "slv_monitor.sv"
+            },
+            {
+                "type": "function",
+                "location": "mst_driver.sv"
+            }
+        ],
+        "includes": [
+            "functions.sv",
+            "svlogger.sv"
+        ],
+        "package_definitions": [],
+        "module_definitions": [
+            "slv_monitor"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [
+            "gen_resp"
+        ],
+        "package_instances": [],
+        "module_instances": [
+            "axicb_scfifo",
+            "lfsr32"
+        ],
+        "interface_instances": [],
+        "function_instances": [
+            "gen_resp"
+        ],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_scfifo.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/src/lfsr.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/src/slv_monitor.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/src/mst_driver.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/src/functions.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_crossbar_top.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "axicb_crossbar_top_testbench.sv"
+            },
+            {
+                "type": "module",
+                "location": "axicb_crossbar_lite_top.sv"
+            }
+        ],
+        "includes": [
+            "axicb_checker.sv"
+        ],
+        "package_definitions": [],
+        "module_definitions": [
+            "axicb_crossbar_top"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [],
+        "module_instances": [
+            "axicb_switch_top",
+            "axicb_mst_if",
+            "axicb_slv_if"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_switch_top.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_mst_if.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_slv_if.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_checker.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_slv_switch.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "axicb_switch_top.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [
+            "axicb_slv_switch"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [],
+        "module_instances": [
+            "axicb_scfifo",
+            "axicb_round_robin"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_scfifo.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_round_robin.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_scfifo.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "slv_monitor.sv"
+            },
+            {
+                "type": "module",
+                "location": "axicb_slv_switch.sv"
+            },
+            {
+                "type": "module",
+                "location": "axicb_mst_if.sv"
+            },
+            {
+                "type": "module",
+                "location": "axicb_slv_if.sv"
+            },
+            {
+                "type": "module",
+                "location": "axicb_mst_switch.sv"
+            },
+            {
+                "type": "module",
+                "location": "mst_driver.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [
+            "axicb_scfifo"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [],
+        "module_instances": [
+            "axicb_scfifo_ram"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_scfifo_ram.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_round_robin_core.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "axicb_round_robin.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [
+            "axicb_round_robin_core"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [],
+        "module_instances": [],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": []
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_crossbar_lite_top.sv",
+        "type": [],
+        "includes": [
+            "axicb_checker.sv"
+        ],
+        "package_definitions": [],
+        "module_definitions": [
+            "axicb_crossbar_lite_top"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [],
+        "module_instances": [
+            "axicb_crossbar_top"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_crossbar_top.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_checker.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_switch_top.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "axicb_crossbar_top.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [
+            "axicb_switch_top"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [],
+        "module_instances": [
+            "axicb_pipeline",
+            "axicb_slv_switch",
+            "axicb_mst_switch"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_pipeline.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_slv_switch.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_mst_switch.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_mst_if.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "axicb_crossbar_top.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [
+            "axicb_mst_if"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [],
+        "module_instances": [
+            "axicb_scfifo"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_scfifo.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/svut_h.sv",
+        "type": [
+            {
+                "type": "include",
+                "location": "axicb_crossbar_top_testbench.sv"
+            },
+            {
+                "type": "include",
+                "location": "axicb_pipeline_testbench.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [],
+        "interface_definitions": [],
+        "function_definitions": [
+            "create_msg"
+        ],
+        "package_instances": [],
+        "module_instances": [],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": []
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_slv_if.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "axicb_crossbar_top.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [
+            "axicb_slv_if"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [],
+        "module_instances": [
+            "axicb_scfifo"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_scfifo.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_scfifo_ram.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "axicb_scfifo.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [
+            "axicb_scfifo_ram"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [],
+        "module_instances": [],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": []
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_round_robin.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "axicb_slv_switch.sv"
+            },
+            {
+                "type": "module",
+                "location": "axicb_mst_switch.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [
+            "axicb_round_robin"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [],
+        "module_instances": [
+            "axicb_round_robin_core"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_round_robin_core.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/src/pipeline_checker.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "axicb_pipeline_testbench.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [
+            "pipeline_checker"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [],
+        "module_instances": [
+            "lfsr32"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/src/lfsr.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_checker.sv",
+        "type": [
+            {
+                "type": "include",
+                "location": "axicb_crossbar_top.sv"
+            },
+            {
+                "type": "include",
+                "location": "axicb_crossbar_lite_top.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [],
+        "module_instances": [],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": []
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/src/lfsr.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "slv_monitor.sv"
+            },
+            {
+                "type": "module",
+                "location": "pipeline_checker.sv"
+            },
+            {
+                "type": "module",
+                "location": "mst_driver.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [
+            "lfsr32"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [],
+        "module_instances": [],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": []
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_mst_switch.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "axicb_switch_top.sv"
+            }
+        ],
+        "includes": [],
+        "package_definitions": [],
+        "module_definitions": [
+            "axicb_mst_switch"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [],
+        "module_instances": [
+            "axicb_scfifo",
+            "axicb_round_robin"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_scfifo.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_round_robin.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/src/axicb_pipeline_testbench.sv",
+        "type": [],
+        "includes": [
+            "svut_h.sv"
+        ],
+        "package_definitions": [],
+        "module_definitions": [
+            "axicb_pipeline_testbench"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [],
+        "package_instances": [],
+        "module_instances": [
+            "axicb_pipeline",
+            "pipeline_checker"
+        ],
+        "interface_instances": [],
+        "function_instances": [],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_pipeline.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/src/pipeline_checker.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/svut_h.sv"
+        ]
+    },
+    {
+        "file": "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/src/mst_driver.sv",
+        "type": [
+            {
+                "type": "module",
+                "location": "axicb_crossbar_top_testbench.sv"
+            },
+            {
+                "type": "function",
+                "location": "slv_monitor.sv"
+            },
+            {
+                "type": "function",
+                "location": "mst_driver.sv"
+            }
+        ],
+        "includes": [
+            "functions.sv",
+            "svlogger.sv"
+        ],
+        "package_definitions": [],
+        "module_definitions": [
+            "mst_driver"
+        ],
+        "interface_definitions": [],
+        "function_definitions": [
+            "gen_resp",
+            "req_is_misroute"
+        ],
+        "package_instances": [],
+        "module_instances": [
+            "axicb_scfifo",
+            "lfsr32"
+        ],
+        "interface_instances": [],
+        "function_instances": [
+            "gen_resp"
+        ],
+        "file_dep": [
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_scfifo.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/src/lfsr.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/src/slv_monitor.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/src/mst_driver.sv",
+            "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/src/functions.sv"
+        ]
+    }
+]

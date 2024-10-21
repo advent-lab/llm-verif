@@ -1,0 +1,41 @@
+
+    {
+        "dpretet_axi-crossbar": {
+            "verif": [
+                "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_crossbar_lite_top.sv"
+            ],
+            "verif_context": [],
+            "design": [
+                "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_crossbar_top.sv"
+            ],
+            "design_context": [
+                "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_round_robin.sv",
+                "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_checker.sv",
+                "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_switch_top.sv",
+                "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_mst_if.sv",
+                "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_pipeline.sv",
+                "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_slv_if.sv",
+                "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_scfifo_ram.sv",
+                "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_scfifo.sv",
+                "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_round_robin_core.sv",
+                "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_slv_switch.sv",
+                "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/rtl/axicb_mst_switch.sv"
+            ],
+            "include": [],
+            "spec": [
+                "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/doc/io_parameter.md",
+                "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/syn/yosys/README.md",
+                "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/doc/architecture.md",
+                "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/README.md",
+                "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/doc/id.md",
+                "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/test/svut/README.md"
+            ],
+            "read_me": [],
+            "license": [
+                "/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/dpretet_axi-crossbar/LICENSE"
+            ],
+            "makefile": [],
+            "tags": [],
+            "repo_link": ""
+        }
+    }

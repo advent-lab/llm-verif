@@ -107,7 +107,7 @@ def main():
         data.set_data_points()
         list.extend(data.to_dict())
 
-        to_json(list, 'Test.json')
+        to_json(list, 'DataPoint.json')
         print("Done creating data points for " + data.path)
 
     else:

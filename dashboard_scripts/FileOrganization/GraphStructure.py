@@ -8,11 +8,11 @@ from FileRead import find_instance, find_all_regex
 #TODO: Fix how functions are found with the regex pattern. Figure out how functions and classes work in sytemverilog
 
 
-MODULE_PATTERN = re.compile(r'module\s+(\w+)')
+MODULE_PATTERN = re.compile(r'\bmodule\s+(\w+)')
 INCLUDE_PATTERN = re.compile(r'`include\s+"([^"]+)"')
 IMPORT_PATTERN = re.compile(r'import\s+([\w.]+)\s*::.*;')
-PACKAGE_PATTERN = re.compile(r'package\s+(\w+)')
-INTERFACE_PATTERN = re.compile(r'interface\s+(\w+)')
+PACKAGE_PATTERN = re.compile(r'\bpackage\s+(\w+)')
+INTERFACE_PATTERN = re.compile(r'\binterface\s+(\w+)')
 FUNCTION_PATTERN = re.compile(r'function\s+[\w\s\[\]:-]+\s+(\w+)\s*\(')
 CLASS_PATTERN = re.compile(r'class')
 
@@ -181,7 +181,7 @@ class Graph:
 
         print([node.file for node in self.top_nodes])
 
-        with open("/mnt/vault0/asbabbit/ml_for_hdl/scripts/temp/FileOrganization/Test_test.json", 'w') as file:
+        with open("GraphStructure.json", 'w') as file:
             json.dump(dict_list, file, indent=4)
 
 
@@ -196,11 +196,8 @@ class Graph:
         return dict_list
 
 def main():
-    if True:
-        '''
-        For testing purposes, let root equal '/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points/agalimberti_NoCRouter_crossbar/'
-        '''
-        root = '/mnt/vault0/asbabbit/ml_for_hdl/compiled_repos/suraj1singh2460_UART/'
+    if len(sys.argv) == 2:
+        root = sys.argv[1]
 
         files = RepoFiles(root)
         files.sort_files()
@@ -211,6 +208,7 @@ def main():
         graph.fill_all_edges()
         graph.find_top_nodes()
         graph.to_json()
+
     else:
         print(f"Usage: {sys.argv[0]} <repos path>")
         print(f"Expected: 1 arguments, got {len(sys.argv)-1}")

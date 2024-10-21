@@ -25,6 +25,15 @@ clean:
 \trm -rf work transcript
 """
 
+def relative_path(path, name):
+    path = path.split(os.sep)
+    
+    # Find the index of the directory_name
+    if name in path:
+        index = path.index(name)
+        # Join the parts after the directory_name
+        return os.sep.join(path[index + 1:])
+
 def generate_makefile_from_json(json_file_path, base_dir):
     with open(json_file_path, 'r') as file:
         data = json.load(file)
@@ -45,7 +54,7 @@ def generate_makefile_from_json(json_file_path, base_dir):
                 if category in ["verif","verif_context","design","design_context"]:
                     # Create string of project files
                     for file in file_list:
-                        rel_path = os.path.relpath(file, project_dir)
+                        rel_path = relative_path(file, project)
                         project_files = project_files + f" $(PROJECT_DIR)/{rel_path}"
                 # Assuming there is only one includes folder
                 if category == "include" and os.path.dirname(file) not in include_dir:
@@ -69,7 +78,7 @@ def generate_makefile_from_json(json_file_path, base_dir):
         print(f'Makefile created at {makefile_path}')
         
 # Define your JSON file path, destination base path, and Questa root
-json_file_path = '/mnt/vault0/asbabbit/ml_for_hdl/scripts/temp/FileOrganization/Test.json'
+json_file_path = '/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/dashboard_scripts/DataPoint.json'
 base_dir = '/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points'
 
 # Generate the Makefile
