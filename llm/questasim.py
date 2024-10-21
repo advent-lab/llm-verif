@@ -65,7 +65,7 @@ def run_questasim(env: Union[Environment, str], tb_path: str, data_point: dict, 
         return CoverageResponse(False, 4, report_output.stdout.decode())
     """
 
-    report_output = run([f'{questa_dir}/vsim', '-viewcov', 'coverage.ucdb', '-c', '-do', f'coverage report -output report.txt -srcfile=* -assert -directive -cvg -code s -xml;exit;'], stdout=PIPE, stderr=PIPE)
+    report_output = run([f'{questa_dir}/vsim', '-viewcov', 'coverage.ucdb', '-c', '-do', f'coverage report -output report.txt -srcfile=* -detail -all -dump -annotate -option -assert -directive -cvg -codeAll -xml;exit;'], stdout=PIPE, stderr=PIPE)
 
     xml_tree = ET.parse('report.txt')
     coverage_dict = {}
