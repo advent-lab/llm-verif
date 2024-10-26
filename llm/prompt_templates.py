@@ -1,3 +1,7 @@
+from questasim import CoverageResponse
+import os
+import pathlib
+
 # This function returns the initial prompt used for generating a test bench
 def m1_prompt(design_specification: str, module_header: str) -> str:
     return f'''Generate a Verilog testbench named tb_llm for the following design specification.
@@ -44,3 +48,48 @@ Example output:
 }
 '''
     return (p1, p2)
+
+def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
+
+	design_filename = os.path.split(design_file)[1]
+
+	formatted_coverage_report = ""
+	missed_lines = []
+	for inst in coverage.coverage_list:
+		if os.path.split(inst['path'])[1] == design_filename:
+			for stmt in inst['coverage_detail']:
+				if stmt['hits'] == '0':
+					missed_lines.append(int(stmt['ln']))
+		
+		formatted_coverage_report += f"File: {os.path.split(inst['path'])[1]}\tActive: {inst['coverage']['active']}\tHits: {inst['coverage']['hits']}\tPercent: {inst['coverage']['percent']}\n"
+
+	with open(design_file, 'r') as f:
+		lines = f.readlines()
+
+	lines[missed_lines[0] - 1] = lines[missed_lines[0] - 1].replace('\n', " // This is the line that was not covered")
+
+	missed_line = lines[missed_lines[0] - 1]
+	design_chunk = ''.join(lines[missed_lines[0] - 10:missed_lines[0] + 11])
+
+	return '''The test bench that you generated did not meet coverage goals. Use this coverage data and context to generate a test bench that achieves better coverage.
+Coverage report:
+''' + formatted_coverage_report + f'''
+I will give you some extra context to help. Try to target this coverage hole at line {missed_lines[0]} in the file {design_filename}: {missed_line.strip()}
+{design_chunk}
+
+Generate a Verilog testbench named tb_llm for the following design specification.
+The test bench should meet the statement coverage goal of 100%.
+Generate only the Verilog testbench and no additional words.
+Make sure you are ONLY using Verilog syntax and features, and not SystemVerilog such as for loops.\n
+Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag.\n
+''' + '''Example output:
+{
+	"test bench": "
+		module tb_llm;
+			// Generated test bench code
+			$finish
+		endmodule
+	",
+	"comments": " // Any additonal comments here "
+}
+'''
