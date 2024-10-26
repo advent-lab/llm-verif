@@ -4,12 +4,12 @@ import os
 from storage import FileStore
 from environment import Environment
 import re
-from typing import Union, Dict
+from typing import Union, Dict, List
 import xml.etree.ElementTree as ET
 from dashboard import Dataset
 
 class CoverageResponse:
-    def __init__(self, success: bool, error_code: int, error_message: str = "", coverage_list: Dict[str, Dict[str, str]] = {}, total_coverage: int = 0):
+    def __init__(self, success: bool, error_code: int, error_message: str = "", coverage_list: List[Dict[str, str]] = [], total_coverage: int = 0):
         self.success = success
         self.error_code = error_code
         self.error_message = error_message
@@ -65,18 +65,28 @@ def run_questasim(env: Union[Environment, str], tb_path: str, data_point: dict, 
         return CoverageResponse(False, 4, report_output.stdout.decode())
     """
 
-    report_output = run([f'{questa_dir}/vsim', '-viewcov', 'coverage.ucdb', '-c', '-do', f'coverage report -output report.txt -srcfile=* -assert -directive -cvg -code s -xml;exit;'], stdout=PIPE, stderr=PIPE)
+    report_output = run([f'{questa_dir}/vsim', '-viewcov', 'coverage.ucdb', '-c', '-do', f'coverage report -output report.txt -srcfile=* -detail -all -dump -annotate -option -assert -directive -cvg -codeAll -xml;exit;'], stdout=PIPE, stderr=PIPE)
 
     xml_tree = ET.parse('report.txt')
-    coverage_dict = {}
+    coverage_list = []
     root = xml_tree.getroot()
 
     total_active = 0
     total_hits = 0
     for child in root[0]:
-        coverage_dict[child.attrib['path']] = child[0].attrib
+        coverage_dict = {}
+        attrib_list = []
+        for cchild in child:
+            attrib_list.append(cchild.attrib)
+
+        coverage_dict['path'] = child.attrib['path']
+        coverage_dict['coverage'] = attrib_list[0]
+        coverage_dict['coverage_detail'] = attrib_list[1:]
+        
         total_active = total_active + int(child[0].attrib['active'])
         total_hits = total_hits + int(child[0].attrib['hits'])
+
+        coverage_list.append(coverage_dict)
 
     total_coverage = (total_hits / total_active) * 100.0
 
@@ -84,7 +94,7 @@ def run_questasim(env: Union[Environment, str], tb_path: str, data_point: dict, 
     os.remove("coverage.ucdb")
     os.remove("report.txt")
 
-    return CoverageResponse(True, 0, report_output.stdout.decode(), coverage_dict, total_coverage)
+    return CoverageResponse(True, 0, report_output.stdout.decode(), coverage_list, total_coverage)
     
 
 def check_errors(questa_output: str) -> bool:
