@@ -4,7 +4,7 @@ import os
 from storage import FileStore
 from environment import Environment
 import re
-from typing import Union, Dict
+from typing import Union, Dict, List
 import xml.etree.ElementTree as ET
 from dashboard import Dataset
 
@@ -85,6 +85,8 @@ def run_questasim(env: Union[Environment, str], tb_path: str, data_point: dict, 
         
         total_active = total_active + int(child[0].attrib['active'])
         total_hits = total_hits + int(child[0].attrib['hits'])
+
+        coverage_list.append(coverage_dict)
 
     total_coverage = (total_hits / total_active) * 100.0
 
