@@ -32,8 +32,12 @@
         "makefile": [
             "$(BASE_DIR)/agalimberti_NoCRouter_router/questa/Makefile"
         ],
-        "tags": ["scripted"],
-        "github_link": "https://github.com/agalimberti/NoCRouter"
+        "tags": [
+            "scripted",
+            "MIT License"
+        ],
+        "github_link": "https://github.com/agalimberti/NoCRouter",
+        "license": "(BASE_DIR)/agalimberti_NoCRouter_router/LICENSE"
     },
     "verilog-divider": {
         "verif": [
@@ -50,8 +54,12 @@
         "makefile": [
             "$(BASE_DIR)/verilog-divider/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/risclite/verilog-divider"
+        "tags": [
+            "hand-curated",
+            "Apache License"
+        ],
+        "github_link": "https://github.com/risclite/verilog-divider",
+        "license": "(BASE_DIR)/verilog-divider/LICENSE.txt"
     },
     "SD-card-controller_byte_en_reg": {
         "verif": [
@@ -68,8 +76,12 @@
         "makefile": [
             "$(BASE_DIR)/SD-card-controller_byte_en_reg/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/mczerski/SD-card-controller"
+        "tags": [
+            "hand-curated",
+            "GNU Lesser General Public License (LGPL)"
+        ],
+        "github_link": "https://github.com/mczerski/SD-card-controller",
+        "license": "(BASE_DIR)/SD-card-controller_byte_en_reg/License"
     },
     "agalimberti_NoCRouter_input_buffer": {
         "verif": [
@@ -89,8 +101,12 @@
         "makefile": [
             "$(BASE_DIR)/agalimberti_NoCRouter_input_buffer/questa/Makefile"
         ],
-        "tags": ["scripted"],
-        "github_link": "https://github.com/agalimberti/NoCRouter"
+        "tags": [
+            "scripted",
+            "MIT License"
+        ],
+        "github_link": "https://github.com/agalimberti/NoCRouter",
+        "license": "(BASE_DIR)/agalimberti_NoCRouter_input_buffer/LICENSE"
     },
     "stop-watch": {
         "verif": [
@@ -107,8 +123,11 @@
         "makefile": [
             "$(BASE_DIR)/stop-watch/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/AhsanAliUet/stop-watch-on-Nexys-A7-FPGA-with-Verilog"
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/AhsanAliUet/stop-watch-on-Nexys-A7-FPGA-with-Verilog",
+        "license": ""
     },
     "onehzclk2": {
         "verif": [
@@ -122,12 +141,17 @@
             "$(BASE_DIR)/onehzclk2/design_context/cntclk2.v",
             "$(BASE_DIR)/onehzclk2/design_context/counter2.v"
         ],
-        "spec": ["hand-curated"],
+        "spec": [
+            ""
+        ],
         "makefile": [
             "$(BASE_DIR)/onehzclk2/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/neilzheng/counter"
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/neilzheng/counter",
+        "license": ""
     },
     "cntclk2": {
         "verif": [
@@ -144,8 +168,11 @@
         "makefile": [
             "$(BASE_DIR)/cntclk2/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/neilzheng/counter"
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/neilzheng/counter",
+        "license": ""
     },
     "mkmif_core": {
         "verif": [
@@ -164,8 +191,12 @@
         "makefile": [
             "$(BASE_DIR)/mkmif_core/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/secworks/mkmif"
+        "tags": [
+            "hand-curated",
+            "3-Clause BSD License"
+        ],
+        "github_link": "https://github.com/secworks/mkmif",
+        "license": "(BASE_DIR)/mkmif_core/LICENSE.txt"
     },
     "TrafficLightController_TimeParameter": {
         "verif": [
@@ -182,8 +213,11 @@
         "makefile": [
             "$(BASE_DIR)/TrafficLightController_TimeParameter/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/Archfx/TrafficLightController"
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/Archfx/TrafficLightController",
+        "license": ""
     },
     "tlfsm": {
         "verif": [
@@ -201,8 +235,11 @@
         "makefile": [
             "$(BASE_DIR)/tlfsm/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/neilzheng/counter"
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/neilzheng/counter",
+        "license": ""
     },
     "trng_csprng": {
         "verif": [
@@ -223,8 +260,12 @@
         "makefile": [
             "$(BASE_DIR)/trng_csprng/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/secworks/trng"
+        "tags": [
+            "hand-curated",
+            "3-Clause BSD License"
+        ],
+        "github_link": "https://github.com/secworks/trng",
+        "license": "(BASE_DIR)/trng_csprng/LICENSE"
     },
     "TrafficLightController_Timer": {
         "verif": [
@@ -241,14 +282,17 @@
         "makefile": [
             "$(BASE_DIR)/TrafficLightController_Timer/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/Archfx/TrafficLightController"
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/Archfx/TrafficLightController",
+        "license": ""
     },
     "ethmac_cop": {
         "verif": [
             "$(BASE_DIR)/ethmac_cop/verif/tb_cop.v"
         ],
-        "verif_context": [        ],
+        "verif_context": [],
         "design": [
             "$(BASE_DIR)/ethmac_cop/design/eth_cop.v"
         ],
@@ -267,14 +311,18 @@
         "makefile": [
             "$(BASE_DIR)/ethmac_cop/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/freecores/ethmac"
+        "tags": [
+            "hand-curated",
+            "GNU Lesser General Public License (LGPL)"
+        ],
+        "github_link": "https://github.com/freecores/ethmac",
+        "license": "(BASE_DIR)/ethmac_cop/License"
     },
     "ethmac_eth": {
         "verif": [
             "$(BASE_DIR)/ethmac_eth/verif/tb_ethernet.v"
         ],
-        "verif_context": [        
+        "verif_context": [
             "$(BASE_DIR)/ethmac_eth/verif/eth_host.v",
             "$(BASE_DIR)/ethmac_eth/verif/eth_memory.v",
             "$(BASE_DIR)/ethmac_eth/verif/eth_phy_defines.v",
@@ -323,14 +371,18 @@
         "makefile": [
             "$(BASE_DIR)/ethmac_eth/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/freecores/ethmac"
+        "tags": [
+            "hand-curated",
+            "GNU Lesser General Public License (LGPL)"
+        ],
+        "github_link": "https://github.com/freecores/ethmac",
+        "license": "(BASE_DIR)/ethmac_eth/LICENSE.txt"
     },
     "ethmac_eth_with_cop": {
         "verif": [
             "$(BASE_DIR)/ethmac_eth_with_cop/verif/tb_ethernet.v"
         ],
-        "verif_context": [        
+        "verif_context": [
             "$(BASE_DIR)/ethmac_eth_with_cop/verif/eth_host.v",
             "$(BASE_DIR)/ethmac_eth_with_cop/verif/eth_memory.v",
             "$(BASE_DIR)/ethmac_eth_with_cop/verif/eth_phy_defines.v",
@@ -382,8 +434,12 @@
         "makefile": [
             "$(BASE_DIR)/ethmac_eth_with_cop/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/freecores/ethmac"
+        "tags": [
+            "hand-curated",
+            "GNU Lesser General Public License (LGPL)"
+        ],
+        "github_link": "https://github.com/freecores/ethmac",
+        "license": "(BASE_DIR)/ethmac_eth_with_cop/LICENSE.txt"
     },
     "trng_top": {
         "verif": [
@@ -412,8 +468,12 @@
         "makefile": [
             "$(BASE_DIR)/trng_top/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/secworks/trng"
+        "tags": [
+            "hand-curated",
+            "3-Clause BSD License"
+        ],
+        "github_link": "https://github.com/secworks/trng",
+        "license": "(BASE_DIR)/trng_top/LICENSE"
     },
     "SD-card-controller_data_xfer_trig": {
         "verif": [
@@ -432,8 +492,12 @@
         "makefile": [
             "$(BASE_DIR)/SD-card-controller_data_xfer_trig/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/mczerski/SD-card-controller"
+        "tags": [
+            "hand-curated",
+            "GNU Lesser General Public License (LGPL)"
+        ],
+        "github_link": "https://github.com/mczerski/SD-card-controller",
+        "license": "(BASE_DIR)/SD-card-controller_data_xfer_trig/License"
     },
     "sha1_w_mem": {
         "verif": [
@@ -450,8 +514,12 @@
         "makefile": [
             "$(BASE_DIR)/sha1_w_mem/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/secworks/sha1/tree/master/src"
+        "tags": [
+            "hand-curated",
+            "3-Clause BSD License"
+        ],
+        "github_link": "https://github.com/secworks/sha1/tree/master/src",
+        "license": "(BASE_DIR)/sha1_w_mem/LICENSE.txt"
     },
     "agalimberti_NoCRouter_top_router": {
         "verif": [
@@ -486,8 +554,12 @@
         "makefile": [
             "$(BASE_DIR)/agalimberti_NoCRouter_6/questa/Makefile"
         ],
-        "tags": ["scripted"],
-        "github_link": "https://github.com/agalimberti/NoCRouter"
+        "tags": [
+            "scripted",
+            "MIT License"
+        ],
+        "github_link": "https://github.com/agalimberti/NoCRouter",
+        "license": "(BASE_DIR)/agalimberti_NoCRouter_top_router/LICENSE"
     },
     "chacha_core": {
         "verif": [
@@ -507,8 +579,12 @@
         "makefile": [
             "$(BASE_DIR)/chacha_core/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/secworks/chacha"
+        "tags": [
+            "hand-curated",
+            "3-Clause BSD License"
+        ],
+        "github_link": "https://github.com/secworks/chacha",
+        "license": "(BASE_DIR)/chacha_core/LICENSE.txt"
     },
     "chacha_qr": {
         "verif": [
@@ -525,8 +601,12 @@
         "makefile": [
             "$(BASE_DIR)/chacha_qr/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/secworks/chacha"
+        "tags": [
+            "hand-curated",
+            "3-Clause BSD License"
+        ],
+        "github_link": "https://github.com/secworks/chacha",
+        "license": "(BASE_DIR)/chacha_qr/LICENSE.txt"
     },
     "vndecorrelator": {
         "verif": [
@@ -543,8 +623,12 @@
         "makefile": [
             "$(BASE_DIR)/vndecorrelator/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/secworks/vndecorrelator"
+        "tags": [
+            "hand-curated",
+            "3-Clause BSD License"
+        ],
+        "github_link": "https://github.com/secworks/vndecorrelator",
+        "license": "(BASE_DIR)/vndecorrelator/LICENSE.txt"
     },
     "tlfsm2": {
         "verif": [
@@ -562,8 +646,11 @@
         "makefile": [
             "$(BASE_DIR)/tlfsm2/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/neilzheng/counter"
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/neilzheng/counter",
+        "license": ""
     },
     "fsm-verilog1": {
         "verif": [
@@ -578,8 +665,11 @@
         "makefile": [
             "$(BASE_DIR)/fsm-verilog1/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/smelvinsky/fsm-verilog"
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/smelvinsky/fsm-verilog",
+        "license": ""
     },
     "SD-card-controller_data_master": {
         "verif": [
@@ -598,8 +688,12 @@
         "makefile": [
             "$(BASE_DIR)/SD-card-controller_data_master/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/mczerski/SD-card-controller"
+        "tags": [
+            "hand-curated",
+            "GNU Lesser General Public License (LGPL)"
+        ],
+        "github_link": "https://github.com/mczerski/SD-card-controller",
+        "license": "(BASE_DIR)/SD-card-controller_data_master/License"
     },
     "SD-card-controller_monostable_domain_cross": {
         "verif": [
@@ -616,8 +710,12 @@
         "makefile": [
             "$(BASE_DIR)/SD-card-controller_monostable_domain_cross/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/mczerski/SD-card-controller"
+        "tags": [
+            "hand-curated",
+            "GNU Lesser General Public License (LGPL)"
+        ],
+        "github_link": "https://github.com/mczerski/SD-card-controller",
+        "license": "(BASE_DIR)/SD-card-controller_monostable_domain_cross/License"
     },
     "agalimberti_NoCRouter_circular_buffer": {
         "verif": [
@@ -636,8 +734,12 @@
         "makefile": [
             "$(BASE_DIR)/agalimberti_NoCRouter_circular_buffer/questa/Makefile"
         ],
-        "tags": ["scripted"],
-        "github_link": "https://github.com/agalimberti/NoCRouter"
+        "tags": [
+            "scripted",
+            "MIT License"
+        ],
+        "github_link": "https://github.com/agalimberti/NoCRouter",
+        "license": "(BASE_DIR)/agalimberti_NoCRouter_circular_buffer/LICENSE"
     },
     "agalimberti_NoCRouter_crossbar": {
         "verif": [
@@ -667,8 +769,12 @@
         "makefile": [
             "$(BASE_DIR)/agalimberti_NoCRouter_crossbar/questa/Makefile"
         ],
-        "tags": ["scripted"],
-        "github_link": "https://github.com/agalimberti/NoCRouter"
+        "tags": [
+            "scripted",
+            "MIT License"
+        ],
+        "github_link": "https://github.com/agalimberti/NoCRouter",
+        "license": "(BASE_DIR)/agalimberti_NoCRouter_crossbar/LICENSE"
     },
     "TrafficLightController_Main": {
         "verif": [
@@ -692,8 +798,11 @@
         "makefile": [
             "$(BASE_DIR)/TrafficLightController_Main/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/Archfx/TrafficLightController"
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/Archfx/TrafficLightController",
+        "license": ""
     },
     "agalimberti_NoCRouter_vc_alloc": {
         "verif": [
@@ -701,7 +810,6 @@
         ],
         "verif_context": [
             "$(BASE_DIR)/agalimberti_NoCRouter_vc_alloc/src/if/input_block2vc_allocator.sv"
-
         ],
         "design": [
             "$(BASE_DIR)/agalimberti_NoCRouter_vc_alloc/src/rtl/allocators/vc_allocator.sv"
@@ -717,8 +825,12 @@
         "makefile": [
             "$(BASE_DIR)/agalimberti_NoCRouter_vc_alloc/questa/Makefile"
         ],
-        "tags": ["scripted"],
-        "github_link": "https://github.com/agalimberti/NoCRouter"
+        "tags": [
+            "scripted",
+            "MIT License"
+        ],
+        "github_link": "https://github.com/agalimberti/NoCRouter",
+        "license": "(BASE_DIR)/agalimberti_NoCRouter_vc_alloc/LICENSE"
     },
     "agalimberti_NoCRouter_input_port": {
         "verif": [
@@ -740,8 +852,12 @@
         "makefile": [
             "$(BASE_DIR)/agalimberti_NoCRouter_input_port/questa/Makefile"
         ],
-        "tags": ["scripted"],
-        "github_link": "https://github.com/agalimberti/NoCRouter"
+        "tags": [
+            "scripted",
+            "MIT License"
+        ],
+        "github_link": "https://github.com/agalimberti/NoCRouter",
+        "license": "(BASE_DIR)/agalimberti_NoCRouter_input_port/LICENSE"
     },
     "SD-card-controller_wb_sel_ctrl": {
         "verif": [
@@ -758,8 +874,12 @@
         "makefile": [
             "$(BASE_DIR)/SD-card-controller_wb_sel_ctrl/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/mczerski/SD-card-controller"
+        "tags": [
+            "hand-curated",
+            "GNU Lesser General Public License (LGPL)"
+        ],
+        "github_link": "https://github.com/mczerski/SD-card-controller",
+        "license": "(BASE_DIR)/SD-card-controller_wb_sel_ctrl/License"
     },
     "agalimberti_NoCRouter_two_routers": {
         "verif": [
@@ -794,8 +914,12 @@
         "makefile": [
             "$(BASE_DIR)/agalimberti_NoCRouter_two_routers/questa/Makefile"
         ],
-        "tags": ["scripted"],
-        "github_link": "https://github.com/agalimberti/NoCRouter"
+        "tags": [
+            "scripted",
+            "MIT License"
+        ],
+        "github_link": "https://github.com/agalimberti/NoCRouter",
+        "license": "(BASE_DIR)/agalimberti_NoCRouter_two_routers/LICENSE"
     },
     "chacha_top": {
         "verif": [
@@ -815,8 +939,12 @@
         "makefile": [
             "$(BASE_DIR)/chacha_top/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/secworks/chacha"
+        "tags": [
+            "hand-curated",
+            "3-Clause BSD License"
+        ],
+        "github_link": "https://github.com/secworks/chacha",
+        "license": "(BASE_DIR)/chacha_top/LICENSE.txt"
     },
     "TrafficLightController_Synchronizer": {
         "verif": [
@@ -833,8 +961,11 @@
         "makefile": [
             "$(BASE_DIR)/TrafficLightController_Synchronizer/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/Archfx/TrafficLightController"
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/Archfx/TrafficLightController",
+        "license": ""
     },
     "fifo": {
         "verif": [
@@ -851,8 +982,11 @@
         "makefile": [
             "$(BASE_DIR)/fifo/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/avashist003/FIFO_SystemVerilog_Assertion"
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/avashist003/FIFO_SystemVerilog_Assertion",
+        "license": ""
     },
     "cntclk": {
         "verif": [
@@ -869,8 +1003,11 @@
         "makefile": [
             "$(BASE_DIR)/cntclk/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/neilzheng/counter"
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/neilzheng/counter",
+        "license": ""
     },
     "counter1": {
         "verif": [
@@ -885,8 +1022,11 @@
         "makefile": [
             "$(BASE_DIR)/counter1/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/neilzheng/counter"
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/neilzheng/counter",
+        "license": ""
     },
     "fsm-verilog0": {
         "verif": [
@@ -901,8 +1041,11 @@
         "makefile": [
             "$(BASE_DIR)/fsm-verilog0/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/smelvinsky/fsm-verilog"
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/smelvinsky/fsm-verilog",
+        "license": ""
     },
     "SD-card-controller_data_serial_host": {
         "verif": [
@@ -922,8 +1065,12 @@
         "makefile": [
             "$(BASE_DIR)/SD-card-controller_data_serial_host/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/mczerski/SD-card-controller"
+        "tags": [
+            "hand-curated",
+            "GNU Lesser General Public License (LGPL)"
+        ],
+        "github_link": "https://github.com/mczerski/SD-card-controller",
+        "license": "(BASE_DIR)/SD-card-controller_data_serial_host/License"
     },
     "SD-card-controller_wb": {
         "verif": [
@@ -943,8 +1090,12 @@
         "makefile": [
             "$(BASE_DIR)/SD-card-controller_wb/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/mczerski/SD-card-controller"
+        "tags": [
+            "hand-curated",
+            "GNU Lesser General Public License (LGPL)"
+        ],
+        "github_link": "https://github.com/mczerski/SD-card-controller",
+        "license": "(BASE_DIR)/SD-card-controller_wb/License"
     },
     "mkmif_top": {
         "verif": [
@@ -964,8 +1115,12 @@
         "makefile": [
             "$(BASE_DIR)/mkmif_top/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/secworks/mkmif"
+        "tags": [
+            "hand-curated",
+            "3-Clause BSD License"
+        ],
+        "github_link": "https://github.com/secworks/mkmif",
+        "license": "(BASE_DIR)/mkmif_top/LICENSE.txt"
     },
     "gsoc-museum-edsac_memory": {
         "verif": [
@@ -987,8 +1142,12 @@
         "makefile": [
             "$(BASE_DIR)/gsoc-museum-edsac_memory/questa/Makefile"
         ],
-        "tags": ["scripted"],
-        "github_link": "https://github.com/librecores/gsoc-museum-edsac"
+        "tags": [
+            "scripted",
+            "Other license type"
+        ],
+        "github_link": "https://github.com/librecores/gsoc-museum-edsac",
+        "license": "(BASE_DIR)/gsoc-museum-edsac_memory/LICENSE"
     },
     "gsoc-museum-edsac_flipflop": {
         "verif": [
@@ -1008,8 +1167,12 @@
         "makefile": [
             "$(BASE_DIR)/gsoc-museum-edsac_flipflop/questa/Makefile"
         ],
-        "tags": ["scripted"],
-        "github_link": "https://github.com/librecores/gsoc-museum-edsac"
+        "tags": [
+            "scripted",
+            "Other license type"
+        ],
+        "github_link": "https://github.com/librecores/gsoc-museum-edsac",
+        "license": "(BASE_DIR)/gsoc-museum-edsac_flipflop/LICENSE"
     },
     "onehzclk": {
         "verif": [
@@ -1027,8 +1190,11 @@
         "makefile": [
             "$(BASE_DIR)/onehzclk/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/neilzheng/counter"
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/neilzheng/counter",
+        "license": ""
     },
     "sha1_top": {
         "verif": [
@@ -1048,8 +1214,12 @@
         "makefile": [
             "$(BASE_DIR)/sha1_top/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/secworks/sha1/tree/master/src"
+        "tags": [
+            "hand-curated",
+            "3-Clause BSD License"
+        ],
+        "github_link": "https://github.com/secworks/sha1/tree/master/src",
+        "license": "(BASE_DIR)/sha1_top/LICENSE.txt"
     },
     "agalimberti_NoCRouter_rc_unit": {
         "verif": [
@@ -1068,8 +1238,12 @@
         "makefile": [
             "$(BASE_DIR)/agalimberti_NoCRouter_rc_unit/questa/Makefile"
         ],
-        "tags": ["scripted"],
-        "github_link": "https://github.com/agalimberti/NoCRouter"
+        "tags": [
+            "scripted",
+            "MIT License"
+        ],
+        "github_link": "https://github.com/agalimberti/NoCRouter",
+        "license": "(BASE_DIR)/agalimberti_NoCRouter_rc_unit/LICENSE"
     },
     "TrafficLightController_FSM": {
         "verif": [
@@ -1086,8 +1260,11 @@
         "makefile": [
             "$(BASE_DIR)/TrafficLightController_FSM/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/Archfx/TrafficLightController"
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/Archfx/TrafficLightController",
+        "license": ""
     },
     "counter2": {
         "verif": [
@@ -1102,8 +1279,11 @@
         "makefile": [
             "$(BASE_DIR)/counter2/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/neilzheng/counter"
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/neilzheng/counter",
+        "license": ""
     },
     "SD-card-controller_bistable_domain_cross": {
         "verif": [
@@ -1121,8 +1301,12 @@
         "makefile": [
             "$(BASE_DIR)/SD-card-controller_bistable_domain_cross/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/mczerski/SD-card-controller"
+        "tags": [
+            "hand-curated",
+            "GNU Lesser General Public License (LGPL)"
+        ],
+        "github_link": "https://github.com/mczerski/SD-card-controller",
+        "license": "(BASE_DIR)/SD-card-controller_bistable_domain_cross/License"
     },
     "sha1_core": {
         "verif": [
@@ -1141,8 +1325,12 @@
         "makefile": [
             "$(BASE_DIR)/sha1_core/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/secworks/sha1/tree/master/src"
+        "tags": [
+            "hand-curated",
+            "3-Clause BSD License"
+        ],
+        "github_link": "https://github.com/secworks/sha1/tree/master/src",
+        "license": "(BASE_DIR)/sha1_core/LICENSE.txt"
     },
     "agalimberti_NoCRouter_mesh": {
         "verif": [
@@ -1180,8 +1368,12 @@
         "makefile": [
             "$(BASE_DIR)/agalimberti_NoCRouter_mesh/questa/Makefile"
         ],
-        "tags": ["scripted"],
-        "github_link": "https://github.com/agalimberti/NoCRouter"
+        "tags": [
+            "scripted",
+            "MIT License"
+        ],
+        "github_link": "https://github.com/agalimberti/NoCRouter",
+        "license": "(BASE_DIR)/agalimberti_NoCRouter_mesh/LICENSE"
     },
     "mkmif2": {
         "verif": [
@@ -1198,8 +1390,11 @@
         "makefile": [
             "$(BASE_DIR)/mkmif2/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/secworks/mkmif"
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/secworks/mkmif",
+        "license": ""
     },
     "agalimberti_NoCRouter_input_first_alloc": {
         "verif": [
@@ -1219,8 +1414,12 @@
         "makefile": [
             "$(BASE_DIR)/agalimberti_NoCRouter_input_first_alloc/questa/Makefile"
         ],
-        "tags": ["scripted"],
-        "github_link": "https://github.com/agalimberti/NoCRouter"
+        "tags": [
+            "scripted",
+            "MIT License"
+        ],
+        "github_link": "https://github.com/agalimberti/NoCRouter",
+        "license": "(BASE_DIR)/agalimberti_NoCRouter_input_first_alloc/LICENSE"
     },
     "TrafficLightController_Divider": {
         "verif": [
@@ -1237,8 +1436,11 @@
         "makefile": [
             "$(BASE_DIR)/TrafficLightController_Divider/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/Archfx/TrafficLightController"
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/Archfx/TrafficLightController",
+        "license": ""
     },
     "SD-card-controller_cmd_serial_host": {
         "verif": [
@@ -1259,8 +1461,12 @@
         "makefile": [
             "$(BASE_DIR)/SD-card-controller_cmd_serial_host/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/mczerski/SD-card-controller"
+        "tags": [
+            "hand-curated",
+            "GNU Lesser General Public License (LGPL)"
+        ],
+        "github_link": "https://github.com/mczerski/SD-card-controller",
+        "license": "(BASE_DIR)/SD-card-controller_cmd_serial_host/License"
     },
     "SD-card-controller_edge_detect": {
         "verif": [
@@ -1277,8 +1483,12 @@
         "makefile": [
             "$(BASE_DIR)/SD-card-controller_edge_detect/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/mczerski/SD-card-controller"
+        "tags": [
+            "hand-curated",
+            "GNU Lesser General Public License (LGPL)"
+        ],
+        "github_link": "https://github.com/mczerski/SD-card-controller",
+        "license": "(BASE_DIR)/SD-card-controller_edge_detect/License"
     },
     "cryptech_uart": {
         "verif": [
@@ -1295,8 +1505,12 @@
         "makefile": [
             "$(BASE_DIR)/cryptech_uart/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/secworks/uart"
+        "tags": [
+            "hand-curated",
+            "3-Clause BSD License"
+        ],
+        "github_link": "https://github.com/secworks/uart",
+        "license": "(BASE_DIR)/cryptech_uart/LICENSE"
     },
     "SD-card-controller_top": {
         "verif": [
@@ -1339,8 +1553,12 @@
         "makefile": [
             "$(BASE_DIR)/SD-card-controller_top/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/mczerski/SD-card-controller"
+        "tags": [
+            "hand-curated",
+            "GNU Lesser General Public License (LGPL)"
+        ],
+        "github_link": "https://github.com/mczerski/SD-card-controller",
+        "license": "(BASE_DIR)/SD-card-controller_top/License"
     },
     "TrafficLightController_WalkRegister": {
         "verif": [
@@ -1357,8 +1575,11 @@
         "makefile": [
             "$(BASE_DIR)/TrafficLightController_WalkRegister/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/Archfx/TrafficLightController"
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/Archfx/TrafficLightController",
+        "license": ""
     },
     "trng2": {
         "verif": [
@@ -1380,8 +1601,11 @@
         "makefile": [
             "$(BASE_DIR)/trng2/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/secworks/trng"
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/secworks/trng",
+        "license": ""
     },
     "SD-card-controller_cmd_master": {
         "verif": [
@@ -1398,8 +1622,12 @@
         "makefile": [
             "$(BASE_DIR)/SD-card-controller_cmd_master/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/mczerski/SD-card-controller"
+        "tags": [
+            "hand-curated",
+            "GNU Lesser General Public License (LGPL)"
+        ],
+        "github_link": "https://github.com/mczerski/SD-card-controller",
+        "license": "(BASE_DIR)/SD-card-controller_cmd_master/License"
     },
     "agalimberti_NoCRouter_round_robin_arbiter": {
         "verif": [
@@ -1416,8 +1644,12 @@
         "makefile": [
             "$(BASE_DIR)/agalimberti_NoCRouter_round_robin_arbiter/questa/Makefile"
         ],
-        "tags": ["scripted"],
-        "github_link": "https://github.com/agalimberti/NoCRouter"
+        "tags": [
+            "scripted",
+            "MIT License"
+        ],
+        "github_link": "https://github.com/agalimberti/NoCRouter",
+        "license": "(BASE_DIR)/agalimberti_NoCRouter_round_robin_arbiter/LICENSE"
     },
     "microprocessor": {
         "verif": [
@@ -1464,7 +1696,10 @@
         "makefile": [
             "$(BASE_DIR)/microprocessor/questa/Makefile"
         ],
-        "tags": ["hand-curated"],
-        "github_link": "https://github.com/yuxuanZh/SystemVerilog"
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/yuxuanZh/SystemVerilog",
+        "license": ""
     }
 }
