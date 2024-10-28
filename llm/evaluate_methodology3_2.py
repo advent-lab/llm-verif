@@ -16,8 +16,9 @@ if __name__=="__main__":
 
     record = Record(environment.design_name)
 
-    prompt = m1_prompt(design_specification, module_header)
-    print(prompt)
+    prompt1, prompt2 = m2_prompts(design_specification, module_header)
+    print(prompt1)
+    print(prompt2)
 
     temperature = 0.6
     top_p=0.9
@@ -31,7 +32,13 @@ if __name__=="__main__":
         conversation = [
             {"role": "system", "content": "You are a verification engineering assistant tasked with generating test benches that meet a coverage requirement of 100% statement coverage."}
         ]
-        conversation.append({"role":"user", "content":prompt})
+        conversation.append({"role":"user", "content":prompt1})
+
+        response = chat.generate_response(conversation_history=conversation)
+        print(response)
+
+        conversation.append({'role':"assistant", "content":response})
+        conversation.append({"role":"user", "content":prompt2})
 
         response = chat.generate_response(conversation_history=conversation)
         response = chat.convert_json_response_to_dict(response)

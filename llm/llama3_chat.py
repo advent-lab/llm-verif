@@ -48,6 +48,8 @@ def load_model():
     with open("./device_map.json", 'w+') as j:
         json.dump(device_map, j)
 
+    return tokenizer
+
 # Function to generate a response from the LLM
 def generate_response(conversation_history, max_new_tokens=10000, temperature=0.6, top_p=0.9) -> str:
     # Encode the conversation history
@@ -160,7 +162,7 @@ def convert_json_response_to_dict(generated_response: str) -> tuple:
 # TODO: Create call to QuestaSim to get coverage
 def get_coverage(questa_dir: str, generated_response: str, tb_path: str, data_point: dict, storage: FileStore = None) -> qs.CoverageResponse:
     if not generated_response:
-        return qs.CoverageResponse(False, 5, "Empty test bench (JSON Decode Error)")
+        return qs.CoverageResponse(False, 4, "Empty test bench (JSON Decode Error)")
 
     # Write the generated testbench to a file
     with open(tb_path, "w+") as testbench_file:

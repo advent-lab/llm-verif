@@ -23,6 +23,16 @@ Provide the generated testbench in a JSON format as shown below. You should put 
 }
 '''
 
+def m2_prompt1(design_specification: str, module_header: str) -> str:
+	p1 = f'''We are going to use a 2 stage process to generate a Verilog test bench for a Verilog design. 
+Right now we are in the first stage. 
+Generate a verification plan with test scenarios that will achieve full statement coverage of design described by the following design specification and module header.
+Module header:\n{module_header}\n
+Design specification:\n{design_specification}
+'''
+
+	return p1
+
 # This function returns two prompts
 # The first prompt should be used to generate the verification plan
 # The second prompt should be used to generate the test bench after the verification plan is generated
@@ -50,6 +60,16 @@ Example output:
     return (p1, p2)
 
 def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
+
+	# Handle error responses from QuestaSim
+	if coverage.error_code == 1:
+		return f"The generated test bench failed to compile. Use the following error message to fix the errors. Use the same JSON format for the new testbench. Error Message:\n{coverage.error_message}"
+	elif coverage.error_code == 2:
+		return f"The generated test bench failed to simulate. Use the following error message to fix the errors Use the same JSON format for the new testbench. Error Message:\n{coverage.error_message}"
+	elif coverage.error_code == 3:
+		return f"The generated test bench took to long to simulate and timed out. Try to shorten the testbench. Use the same JSON format for the new testbench."
+	elif coverage.error_code == 4:
+		return f"You failed to generate the test bench within the provided length. Try generating a shorter test bench with higher quality tests. Use the same JSON format for the new testbench."
 
 	design_filename = os.path.split(design_file)[1]
 
