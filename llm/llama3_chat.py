@@ -36,9 +36,9 @@ def load_model():
         bnb_4bit_use_double_quant=False,
     )
     '''
-    tokenizer = AutoTokenizer.from_pretrained(model_dir)
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
     model = AutoModelForCausalLM.from_pretrained(
-        model_dir,
+        model_id,
         # quantization_config=bnb_config,
         torch_dtype=torch.bfloat16,
         device_map="auto",
@@ -47,6 +47,8 @@ def load_model():
     device_map = infer_auto_device_map(model)
     with open("./device_map.json", 'w+') as j:
         json.dump(device_map, j)
+
+    return tokenizer
 
 # Function to generate a response from the LLM
 def generate_response(conversation_history, max_new_tokens=10000, temperature=0.6, top_p=0.9) -> str:
@@ -160,7 +162,7 @@ def convert_json_response_to_dict(generated_response: str) -> tuple:
 # TODO: Create call to QuestaSim to get coverage
 def get_coverage(questa_dir: str, generated_response: str, tb_path: str, data_point: dict, storage: FileStore = None) -> qs.CoverageResponse:
     if not generated_response:
-        return qs.CoverageResponse(False, 5, "Empty test bench (JSON Decode Error)")
+        return qs.CoverageResponse(False, 4, "Empty test bench (JSON Decode Error)")
 
     # Write the generated testbench to a file
     with open(tb_path, "w+") as testbench_file:

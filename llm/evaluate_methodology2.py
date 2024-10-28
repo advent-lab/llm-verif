@@ -139,8 +139,6 @@ if __name__=="__main__":
                 num_sim_fail = num_sim_fail + 1
             elif cov.error_code == 3:
                 num_timeout_fail = num_timeout_fail + 1
-            elif cov.error_code == 4:
-                num_report_fail = num_report_fail + 1
             else:
                 num_decode_fail = num_decode_fail + 1
 

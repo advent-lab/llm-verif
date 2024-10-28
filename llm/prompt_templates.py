@@ -51,6 +51,16 @@ Example output:
 
 def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
 
+	# Handle error responses from QuestaSim
+	if coverage.error_code == 1:
+		return f"The generated test bench failed to compile. Use the following error message to fix the errors. Use the same JSON format for the new testbench. Error Message:\n{coverage.error_message}"
+	elif coverage.error_code == 2:
+		return f"The generated test bench failed to simulate. Use the following error message to fix the errors Use the same JSON format for the new testbench. Error Message:\n{coverage.error_message}"
+	elif coverage.error_code == 3:
+		return f"The generated test bench took to long to simulate and timed out. Try to shorten the testbench. Use the same JSON format for the new testbench."
+	elif coverage.error_code == 4:
+		return f"You failed to generate the test bench within the provided length. Try generating a shorter test bench with higher quality tests. Use the same JSON format for the new testbench."
+
 	design_filename = os.path.split(design_file)[1]
 
 	formatted_coverage_report = ""

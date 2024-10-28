@@ -84,7 +84,7 @@ if __name__=="__main__":
 
     # Create a directory to store generations
     store = FileStore('./generations')
-    chat.load_model()
+    tokenizer = chat.load_model()
 
     temperature = 0.6
     top_p=0.9
@@ -133,8 +133,6 @@ if __name__=="__main__":
                 num_sim_fail = num_sim_fail + 1
             elif cov.error_code == 3:
                 num_timeout_fail = num_timeout_fail + 1
-            elif cov.error_code == 4:
-                num_report_fail = num_report_fail + 1
             else:
                 num_decode_fail = num_decode_fail + 1
 
@@ -164,7 +162,8 @@ if __name__=="__main__":
         num_iter = 0
         while max_cov < 95.0 and num_iter < 10:
 
-            prompt = m3_prompt(dataset.get_design(design_name)[0], cov)
+            prompt = m3_prompt(top_design_file_path, cov)
+            print(prompt)
 
             conversation.append({"role":"user", "content":prompt})
 
@@ -188,8 +187,6 @@ if __name__=="__main__":
                     num_sim_fail = num_sim_fail + 1
                 elif cov.error_code == 3:
                     num_timeout_fail = num_timeout_fail + 1
-                elif cov.error_code == 4:
-                    num_report_fail = num_report_fail + 1
                 else:
                     num_decode_fail = num_decode_fail + 1
 
@@ -223,6 +220,8 @@ if __name__=="__main__":
                 # Remove the oldest messages to maintain memory size
                 conversation_history.pop(1)  # Assuming the first message is the system prompt, so we pop the second one
                 current_token_count = sum(len(tokenizer.encode(msg["content"])) for msg in conversation_history)
+
+            num_iter += 1
 
 
 

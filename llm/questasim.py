@@ -11,6 +11,12 @@ from dashboard import Dataset
 class CoverageResponse:
     def __init__(self, success: bool, error_code: int, error_message: str = "", coverage_list: List[Dict[str, str]] = [], total_coverage: int = 0):
         self.success = success
+        # Error codes
+        # 0: success -> ignore error message
+        # 1: compile error
+        # 2: simulation error
+        # 3: simulation timeout
+        # 4: JSON Decode error -> incomplete testbench
         self.error_code = error_code
         self.error_message = error_message
         self.coverage_list = coverage_list
