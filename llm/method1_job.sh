@@ -4,8 +4,9 @@
 #SBATCH -c 32            # number of cores 
 #SBATCH --mem=128G
 #SBATCH -t 0-01:00:00
-#SBATCH -G h100:2
-#SBATCH -p htc      # partition 
+#SBATCH -G a100:2
+#SBATCH -C a100_80
+#SBATCH -p general      # partition 
 #SBATCH -q public       # QOS
 #SBATCH -o slurm.%j.out # file to save job's STDOUT (%j = JobId)
 #SBATCH -e slurm.%j.err # file to save job's STDERR (%j = JobId)
