@@ -36,9 +36,9 @@ def load_model():
         bnb_4bit_use_double_quant=False,
     )
     '''
-    tokenizer = AutoTokenizer.from_pretrained(model_dir)
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
     model = AutoModelForCausalLM.from_pretrained(
-        model_dir,
+        model_id,
         # quantization_config=bnb_config,
         torch_dtype=torch.bfloat16,
         device_map="auto",
