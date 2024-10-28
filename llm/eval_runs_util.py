@@ -64,7 +64,7 @@ class Record:
             else:
                 self.num_decode_fail = self.num_decode_fail + 1
         
-        self.df = pd.concat([df, pd.DataFrame([{
+        self.df = pd.concat([self.df, pd.DataFrame([{
             "design": self.design_name,
             "temperature": temperature, 
             "top_p": top_p, 
