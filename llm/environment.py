@@ -2,6 +2,7 @@ from pathlib import Path
 from dashboard import Dataset
 from storage import FileStore
 import os
+import llama3_chat as chat
 
 class Environment:
 
@@ -17,7 +18,7 @@ class Environment:
         # Create the prompt
         # Read the specification file
         # TODO: Add support for PDF specification files/documentation
-        self.design_specification_path = self.dataset.get_design_spec(design_name)
+        self.design_specification_path = self.dataset.get_design_spec(self.design_name)
         self.design_specification = ''
         if not self.design_specification_path:
             print("Error: No design specification avaliable for this design")
@@ -31,7 +32,7 @@ class Environment:
             with open(self.design_specification_path, 'r') as spec:
                 self.design_specification = spec.read()
 
-        self.top_design_file_path = dataset.get_design(design_name)
+        self.top_design_file_path = self.dataset.get_design(self.design_name)
         self.module_header = ''
         if not self.top_design_file_path:
             print("Error: No design file(s) avaliable for this design")
