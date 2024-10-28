@@ -54,7 +54,7 @@ class Record:
                 self.max_cov = int(coverage.total_coverage)
         else:
             print(f"Failed!\n{coverage.error_message}")
-            self.total_fail = total_fail + 1
+            self.total_fail = self.total_fail + 1
             if coverage.error_code == 1:
                 self.num_compile_fail = self.num_compile_fail + 1
             elif coverage.error_code == 2:
