@@ -80,4 +80,4 @@ if __name__=="__main__":
     # No need to recreate the DataFrame here, as it has been filled during the loop
     record.update_average_total_coverage()
     
-    record.write_to_csv('./methodology3_1.csv')
+    record.write_to_csv('./methodology3_2.csv')
