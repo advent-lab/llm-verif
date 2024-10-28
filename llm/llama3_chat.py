@@ -10,17 +10,20 @@ import re
 from environment import Environment
 
 # Set the cache location for the model
-os.environ['HUGGINGFACE_HUB_CACHE'] = "/scratch/slowe8/.cache/"
+if not os.path.isdir(f"/scratch/{os.environ['USER']}/.cache/"):
+    os.mkdir(f"/scratch/{os.environ['USER']}/.cache/")
+os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache/"
 
 def load_model():
     # Set the cache location for the model
-    os.environ['HUGGINGFACE_HUB_CACHE'] = "/scratch/slowe8/.cache/"
+    os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache/"
 
     # Define the model ID and load the tokenizer and model
     global model_id
     global tokenizer
     global model
     model_id = "meta-llama/Meta-Llama-3.1-70B-Instruct"
+    model_dir = "/scratch/slowe8/.cache/huggingface/hub/models--meta-llama--Meta-Llama-3.1-70B-Instruct"
 
     # Define quantization
     '''
@@ -33,9 +36,9 @@ def load_model():
         bnb_4bit_use_double_quant=False,
     )
     '''
-    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    tokenizer = AutoTokenizer.from_pretrained(model_dir)
     model = AutoModelForCausalLM.from_pretrained(
-        model_id,
+        model_dir,
         # quantization_config=bnb_config,
         torch_dtype=torch.bfloat16,
         device_map="auto",
