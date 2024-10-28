@@ -23,6 +23,16 @@ Provide the generated testbench in a JSON format as shown below. You should put 
 }
 '''
 
+def m2_prompt1(design_specification: str, module_header: str) -> str:
+	p1 = f'''We are going to use a 2 stage process to generate a Verilog test bench for a Verilog design. 
+Right now we are in the first stage. 
+Generate a verification plan with test scenarios that will achieve full statement coverage of design described by the following design specification and module header.
+Module header:\n{module_header}\n
+Design specification:\n{design_specification}
+'''
+
+	return p1
+
 # This function returns two prompts
 # The first prompt should be used to generate the verification plan
 # The second prompt should be used to generate the test bench after the verification plan is generated
