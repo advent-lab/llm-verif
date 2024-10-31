@@ -1,6 +1,6 @@
 import llama3_chat as chat
 import argparse
-from prompt_templates import m1_prompt, m3_prompt
+from prompt_templates import m2_prompts, m3_prompt
 from environment import Environment
 from eval_runs_util import Record
 

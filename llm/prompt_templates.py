@@ -59,6 +59,9 @@ Example output:
 '''
     return (p1, p2)
 
+def m3_prompt_wo_coverage() -> str:
+	return "The generated testbench did not meet coverage goals. Adjust the test bench to increase the coverage by adding more stimulus or exploring more possible edge cases. Make sure you are exercising the full range of inputs for each port. Make sure you are explicitly exploring error cases. You are able to reset the design under test if needed."
+
 def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
 
 	# Handle error responses from QuestaSim

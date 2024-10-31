@@ -4,7 +4,7 @@
 #SBATCH -c 32            # number of cores 
 #SBATCH --mem=128G
 #SBATCH -t 5-00:00:00
-#SBATCH -G a100:2
+#SBATCH -G a100:3
 #SBATCH -C a100_80
 #SBATCH -p general      # partition 
 #SBATCH -q public       # QOS

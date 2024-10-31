@@ -1,32 +1,20 @@
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from accelerate import infer_auto_device_map
 import torch
 import os
-from datetime import datetime
 import json
-import questasim as qs
 from storage import FileStore
-import re
-from environment import Environment
 
-# Set the cache location for the model
+# Set cache location for model
 if not os.path.isdir(f"/scratch/{os.environ['USER']}/.cache/"):
     os.mkdir(f"/scratch/{os.environ['USER']}/.cache/")
 os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache/"
 
 def load_model():
-    # Set the cache location for the model
     os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache/"
 
-    # Define the model ID and load the tokenizer and model
-    global model_id
-    global tokenizer
-    global model
+    # Model and tokenizer setup with quantization
     model_id = "meta-llama/Meta-Llama-3.1-70B-Instruct"
-    model_dir = "/scratch/slowe8/.cache/huggingface/hub/models--meta-llama--Meta-Llama-3.1-70B-Instruct"
-
-    # Define quantization
-    '''
     compute_dtype = getattr(torch, "float16")
 
     bnb_config = BitsAndBytesConfig(
@@ -35,49 +23,47 @@ def load_model():
         bnb_4bit_compute_dtype=compute_dtype,
         bnb_4bit_use_double_quant=False,
     )
-    '''
+
     tokenizer = AutoTokenizer.from_pretrained(model_id)
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
-        # quantization_config=bnb_config,
+        quantization_config=bnb_config,
         torch_dtype=torch.bfloat16,
         device_map="auto",
     )
 
+    # Optional manual device map
     device_map = infer_auto_device_map(model)
     with open("./device_map.json", 'w+') as j:
         json.dump(device_map, j)
-
+    
     return tokenizer
 
-# Function to generate a response from the LLM
-def generate_response(conversation_history, max_new_tokens=10000, temperature=0.6, top_p=0.9) -> str:
-    # Encode the conversation history
+# Generate a response from LLM with memory management
+def generate_response(conversation_history, max_new_tokens=2048, temperature=0.6, top_p=0.9) -> str:
     input_ids = tokenizer.apply_chat_template(
         conversation_history,
         add_generation_prompt=True,
         return_tensors="pt"
     ).to(model.device)
 
-    # Define terminators for the generated output
-    terminators = [
-        tokenizer.eos_token_id,
-        tokenizer.convert_tokens_to_ids("<|eot_id|>")
-    ]
+    terminators = [tokenizer.eos_token_id, tokenizer.convert_tokens_to_ids("<|eot_id|>")]
 
-    # Generate the response
+    # Generate response with memory management
     outputs = model.generate(
         input_ids,
         max_new_tokens=max_new_tokens,
         eos_token_id=terminators,
         do_sample=True,
-        temperature=0.5,
-        top_p=0.9,
+        temperature=temperature,
+        top_p=top_p,
     )
 
-    # Decode and return the response
+    torch.cuda.empty_cache()  # Clear cache post-generation
+
     response = outputs[0][input_ids.shape[-1]:]
     return tokenizer.decode(response, skip_special_tokens=True)
+
 
 # Function to generate a response from the LLM in batch
 # TODO: Test
