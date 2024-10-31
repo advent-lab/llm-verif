@@ -6,6 +6,7 @@ import json
 from storage import FileStore
 import questasim as qs
 import re
+from environment import Environment
 
 # Set cache location for model
 if not os.path.isdir(f"/scratch/{os.environ['USER']}/.cache/"):
@@ -150,7 +151,7 @@ def convert_json_response_to_dict(generated_response: str) -> tuple:
     return parsed_response
 
 # TODO: Create call to QuestaSim to get coverage
-def get_coverage(questa_dir: str, generated_response: str, tb_path: str, data_point: dict, storage: FileStore = None) -> qs.CoverageResponse:
+def get_coverage(environment: Environment, generated_response: str, tb_path: str, data_point: dict, storage: FileStore = None) -> qs.CoverageResponse:
     if not generated_response:
         return qs.CoverageResponse(False, 4, "Empty test bench (JSON Decode Error)")
 
@@ -160,7 +161,7 @@ def get_coverage(questa_dir: str, generated_response: str, tb_path: str, data_po
 
     # Run QuestaSim to get coverage
     # env = Environment(questa_dir)
-    coverage_response = qs.run_questasim(env=questa_dir, tb_path=tb_path, data_point=data_point, log_file="questasim.log")
+    coverage_response = qs.run_questasim(environment, tb_path=tb_path, data_point=data_point, log_file="questasim.log")
 
     # Move test bench file to storage
     storage.move(tb_path)

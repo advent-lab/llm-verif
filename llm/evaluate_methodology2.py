@@ -43,7 +43,7 @@ if __name__=="__main__":
         response = chat.convert_json_response_to_dict(response)
         print(response)
 
-        cov = chat.get_coverage(args.compiler, response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}.v', data_point=environment.dataset.get_data_point(environment.design_name), storage=environment.store)
+        cov = chat.get_coverage(environment, response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}.v', data_point=environment.dataset.get_data_point(environment.design_name), storage=environment.store)
         
         record.update_dataframe(cov, temperature, top_p)
 

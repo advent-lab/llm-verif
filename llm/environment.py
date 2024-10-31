@@ -26,8 +26,9 @@ class Environment:
         elif isinstance(self.design_specification_path, list):
             # Here we assume the top item in the spec tag is the correct specification
             # This should not really happen because there should only be one specification file in the spec tag
-            with open(self.design_specification_path[0], 'r') as spec:
-                self.design_specification = spec.read()
+            for spec in self.design_specification_path:
+                with open(spec, 'r') as f:
+                    self.design_specification += f.read()
         else:
             with open(self.design_specification_path, 'r') as spec:
                 self.design_specification = spec.read()

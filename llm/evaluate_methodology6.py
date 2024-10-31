@@ -14,7 +14,7 @@ if __name__=="__main__":
 
     environment = Environment(args.compiler, args.design)
 
-    record = Record(environment.design_name)
+    record = Record(environment.design_name, "RUN")
 
     prompt1, prompt2 = m2_prompts(design_specification, module_header)
     print(prompt1)
@@ -61,7 +61,7 @@ if __name__=="__main__":
             response = chat.convert_json_response_to_dict(response)
             print(response)
 
-            cov = chat.get_coverage(args.compiler, response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}.v', data_point=data_point, storage=environment.store)
+            cov = chat.get_coverage(environment, response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}.v', data_point=data_point, storage=environment.store)
             record.update_dataframe(cov, temperature, top_p)
 
             # Limit conversation memory to about 4000 tokens (estimate based on token count)
@@ -80,4 +80,4 @@ if __name__=="__main__":
     # No need to recreate the DataFrame here, as it has been filled during the loop
     record.update_average_total_coverage()
     
-    record.write_to_csv('./methodology3_2.csv')
+    record.write_to_csv('./methodology6.csv')

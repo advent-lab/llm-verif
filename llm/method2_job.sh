@@ -3,8 +3,8 @@
 #SBATCH -N 1            # number of nodes
 #SBATCH -c 32            # number of cores 
 #SBATCH --mem=128G
-#SBATCH -t 1-00:00:00
-#SBATCH -G a100:3
+#SBATCH -t 02:00:00
+#SBATCH -G a100:2
 #SBATCH -C a100_80
 #SBATCH -p general      # partition 
 #SBATCH -q public       # QOS

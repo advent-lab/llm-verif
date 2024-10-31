@@ -17,12 +17,13 @@ if __name__ == "__main__":
     d1_environment = Environment(args.compiler, args.design1)
     d2_environment = Environment(args.compiler, args.design2)
 
-    d1_record = Record(d1_environment.design_name)
-    d2_record = Record(d2_environment.design_name)
+    d1_record = Record(d1_environment.design_name, "EVAL")
+    d2_record = Record(d2_environment.design_name, "EVAL")
 
     d1_prompt = m1_prompt(d1_environment.design_specification, d1_environment.module_header)
     d2_prompt = m1_prompt(d2_environment.design_specification, d2_environment.module_header)
 
+    num_iter = 0
     for temperature in np.arange(0.1, 1.1, 0.1):
         for top_p in np.arange(0.1, 1.1, 0.1):
             for i in range(5):  # Loop over response generation count per design
@@ -37,7 +38,7 @@ if __name__ == "__main__":
                 response = chat.generate_response(conversation_history=conversation, max_new_tokens=4096, temperature=temperature, top_p=top_p)
                 response = chat.convert_json_response_to_dict(response)
                 
-                cov = chat.get_coverage(args.compiler, response[0]['test bench'], f'{args.design1}/tb_llm_{d1_environment.design_name}_{i}.v', data_point=d1_environment.dataset.get_data_point(d1_environment.design_name), storage=d1_environment.store)
+                cov = chat.get_coverage(d1_environment, response[0]['test bench'], f'{args.design1}/tb_llm_{d1_environment.design_name}_{num_iter}{i}.v', data_point=d1_environment.dataset.get_data_point(d1_environment.design_name), storage=d1_environment.store)
                 
                 d1_record.update_dataframe(cov, temperature, top_p)
 
@@ -53,11 +54,13 @@ if __name__ == "__main__":
                 response = chat.generate_response(conversation_history=conversation, max_new_tokens=4096, temperature=temperature, top_p=top_p)
                 response = chat.convert_json_response_to_dict(response)
                 
-                cov = chat.get_coverage(args.compiler, response[0]['test bench'], f'{args.design2}/tb_llm_{d2_environment.design_name}_{i}.v', data_point=d2_environment.dataset.get_data_point(d2_environment.design_name), storage=d2_environment.store)
+                cov = chat.get_coverage(d2_environment, response[0]['test bench'], f'{args.design2}/tb_llm_{d2_environment.design_name}_{num_iter}{i}.v', data_point=d2_environment.dataset.get_data_point(d2_environment.design_name), storage=d2_environment.store)
                 
                 d2_record.update_dataframe(cov, temperature, top_p)
 
                 torch.cuda.empty_cache()  # Free memory after each response generation
+
+                num_iter += 1
 
             # Intermediate checkpoint: Save results and clear GPU memory after every set of temperature and top_p
             d1_record.write_to_csv(f'./{d1_environment.design_module_name}_hyperparams_eval_results.csv')
@@ -65,10 +68,8 @@ if __name__ == "__main__":
             torch.cuda.empty_cache()
 
     # Final save
-    d1_record.update_average_total_coverage()
     d1_record.write_to_csv(f'./{d1_environment.design_module_name}_final_hyperparams_eval_results.csv')
 
-    d2_record.update_average_total_coverage()
     d2_record.write_to_csv(f'./{d2_environment.design_module_name}_final_hyperparams_eval_results.csv')
 
 
