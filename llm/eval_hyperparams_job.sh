@@ -27,6 +27,7 @@ cp -rf $REPO_DIR/llm /scratch/$USER/hyperparams_runs
 cd /scratch/$USER/hyperparams_runs
 
 #Run the software/python script
+./build_llm_venv.sh
 source /home/$USER/llm_venv/bin/activate
 
 module load bittware/questa-23.4

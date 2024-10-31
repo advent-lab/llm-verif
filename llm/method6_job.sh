@@ -24,7 +24,8 @@ cp -rf $REPO_DIR/llm /scratch/$USER/${DATA_POINT}_method6_runs
 cd /scratch/$USER/${DATA_POINT}_method6_runs
 
 #Run the software/python script
-source /home/slowe8/llm_venv/bin/activate
+./build_llm_venv.sh
+source /home/$USER/llm_venv/bin/activate
 
 module load bittware/questa-23.4
 export LM_LICENSE_FILE=27006@en4228283l.cidse.dhcp.asu.edu

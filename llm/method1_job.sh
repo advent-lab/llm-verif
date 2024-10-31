@@ -26,6 +26,7 @@ cp -rf $REPO_DIR/llm /scratch/$USER/${DATA_POINT}_method1_runs
 cd /scratch/$USER/${DATA_POINT}_method1_runs
 
 #Run the software/python script
+./build_llm_venv.sh
 source /home/$USER/llm_venv/bin/activate
 
 module load bittware/questa-23.4
