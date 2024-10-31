@@ -4,6 +4,8 @@ import torch
 import os
 import json
 from storage import FileStore
+import questasim as qs
+import re
 
 # Set cache location for model
 if not os.path.isdir(f"/scratch/{os.environ['USER']}/.cache/"):
@@ -24,6 +26,8 @@ def load_model():
         bnb_4bit_use_double_quant=False,
     )
 
+    global tokenizer
+    global model
     tokenizer = AutoTokenizer.from_pretrained(model_id)
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
