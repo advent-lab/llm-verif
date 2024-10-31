@@ -16,7 +16,7 @@ if __name__=="__main__":
 
     record = Record(environment.design_name, "RUN")
 
-    prompt1, prompt2 = m2_prompts(design_specification, module_header)
+    prompt1, prompt2 = m2_prompts(environment.design_specification, environment.module_header)
     print(prompt1)
     print(prompt2)
 
@@ -45,7 +45,7 @@ if __name__=="__main__":
         print(response)
 
         data_point = environment.dataset.get_data_point(environment.design_name)
-        cov = chat.get_coverage(args.compiler, response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}.v', data_point=data_point, storage=environment.store)
+        cov = chat.get_coverage(environment, response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}.v', data_point=data_point, storage=environment.store)
         
         record.update_dataframe(cov, temperature, top_p)
 
