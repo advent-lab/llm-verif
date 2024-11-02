@@ -46,7 +46,7 @@ if __name__=="__main__":
         record.update_dataframe(cov, temperature, top_p)
 
         num_iter = 0
-        while record.max_cov < 95.0 and num_iter < 2:
+        while record.max_cov < 95.0 and num_iter < 10:
 
             prompt = m3_prompt(environment.top_design_file_path, cov)
             print(prompt)
