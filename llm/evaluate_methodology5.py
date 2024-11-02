@@ -38,12 +38,15 @@ if __name__=="__main__":
         print(response)
 
         data_point = environment.dataset.get_data_point(environment.design_name)
-        cov = chat.get_coverage(environment, response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}.v', data_point=data_point, storage=environment.store)
-        
+        try:
+            cov = chat.get_coverage(environment, response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}.v', data_point=data_point, storage=environment.store)
+        except KeyError:
+            continue
+
         record.update_dataframe(cov, temperature, top_p)
 
         num_iter = 0
-        while record.max_cov < 95.0 and num_iter < 10:
+        while record.max_cov < 95.0 and num_iter < 2:
 
             prompt = m3_prompt(environment.top_design_file_path, cov)
             print(prompt)
