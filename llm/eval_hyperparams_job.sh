@@ -19,6 +19,7 @@ echo $LM_LICENSE_FILE
 REPO_DIR=$1
 DATA_POINT1=$2
 DATA_POINT2=$3
+DATA_POINT3=$4
 
 #Load required software
 #Change to the directory of our script
@@ -34,6 +35,6 @@ module load bittware/questa-23.4
 export LM_LICENSE_FILE=27006@en4228283l.cidse.dhcp.asu.edu
 echo $LM_LICENSE_FILE
 
-python evaluate_hyperparams.py -d1 $REPO_DIR/data_points/$DATA_POINT1 -d2 $REPO_DIR/data_points/$DATA_POINT2 -c /packages/apps/fpga/Questa/questa_fe/bin #> method1_job.log
+python evaluate_hyperparams.py -d1 $REPO_DIR/data_points/$DATA_POINT1 -d2 $REPO_DIR/data_points/$DATA_POINT2 -d3 $REPO_DIR/data_points/$DATA_POINT3 -c /packages/apps/fpga/Questa/questa_fe/bin #> method1_job.log
 deactivate
 rm -rf venv

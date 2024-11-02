@@ -105,7 +105,7 @@ class Record:
                 "max total coverage": self.max_cov
             }])], ignore_index=True)  # Appending to df
             print(self.df)
-        elif run_type == "EVAL":
+        elif self.run_type == "EVAL":
             self.df = pd.concat([self.df, pd.DataFrame([{
                 "design": self.design_name,
                 "temperature": temperature,
