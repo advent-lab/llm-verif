@@ -19,8 +19,8 @@ if __name__=="__main__":
     prompt1, prompt2 = m2_prompts(environment.design_specification, environment.module_header)
     print(f'{prompt1}\n\n{prompt2}')
 
-    temperature = 0.6
-    top_p=0.9
+    temperature = 0.3
+    top_p=0.7
 
     runs = args.generations
 

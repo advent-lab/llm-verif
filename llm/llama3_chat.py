@@ -45,7 +45,7 @@ def load_model():
     return tokenizer
 
 # Generate a response from LLM with memory management
-def generate_response(conversation_history, max_new_tokens=2048, temperature=0.6, top_p=0.9) -> str:
+def generate_response(conversation_history, max_new_tokens=2048, temperature=0.3, top_p=0.7) -> str:
     input_ids = tokenizer.apply_chat_template(
         conversation_history,
         add_generation_prompt=True,
@@ -72,7 +72,7 @@ def generate_response(conversation_history, max_new_tokens=2048, temperature=0.6
 
 # Function to generate a response from the LLM in batch
 # TODO: Test
-def batch_generate(conversations, batch_size=10, max_new_tokens=10000, temperature=0.6, top_p=0.9) -> list:
+def batch_generate(conversations, batch_size=10, max_new_tokens=10000, temperature=0.3, top_p=0.7) -> list:
     generated_testbenches = []
     
     for i in range(0, len(conversations), batch_size):

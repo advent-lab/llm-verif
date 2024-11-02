@@ -19,8 +19,8 @@ if __name__=="__main__":
     prompt = m1_prompt(environment.design_specification, environment.module_header)
     print(prompt)
 
-    temperature = 0.6
-    top_p = 0.9
+    temperature = 0.3
+    top_p = 0.7
 
     runs = args.generations
 
