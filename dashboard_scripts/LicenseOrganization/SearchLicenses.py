@@ -49,7 +49,7 @@ def read_dashboard(file):
 
 def read_license(relative_path, new_root, data_point):
     try:
-        actual_path = relative_path.replace("(BASE_DIR)", new_root)
+        actual_path = relative_path.replace("$(BASE_DIR)", new_root)
         if not actual_path:
             print(f"no license exists for {data_point}")
             return None

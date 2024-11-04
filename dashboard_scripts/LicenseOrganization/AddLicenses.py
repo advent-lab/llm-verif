@@ -42,7 +42,3 @@ for name in os.listdir(root):
    path = os.path.join(root, name)
    license = helper(path)
    write_json(dashboard, license, name)
-
-        
-
-

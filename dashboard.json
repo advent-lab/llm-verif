@@ -37,7 +37,7 @@
             "MIT License"
         ],
         "github_link": "https://github.com/agalimberti/NoCRouter",
-        "license": "(BASE_DIR)/agalimberti_NoCRouter_router/LICENSE"
+        "license": "$(BASE_DIR)/agalimberti_NoCRouter_router/LICENSE"
     },
     "verilog-divider": {
         "verif": [
@@ -59,7 +59,7 @@
             "Apache License"
         ],
         "github_link": "https://github.com/risclite/verilog-divider",
-        "license": "(BASE_DIR)/verilog-divider/LICENSE.txt"
+        "license": "$(BASE_DIR)/verilog-divider/LICENSE.txt"
     },
     "SD-card-controller_byte_en_reg": {
         "verif": [
@@ -81,7 +81,7 @@
             "GNU Lesser General Public License (LGPL)"
         ],
         "github_link": "https://github.com/mczerski/SD-card-controller",
-        "license": "(BASE_DIR)/SD-card-controller_byte_en_reg/License"
+        "license": "$(BASE_DIR)/SD-card-controller_byte_en_reg/License"
     },
     "agalimberti_NoCRouter_input_buffer": {
         "verif": [
@@ -106,7 +106,7 @@
             "MIT License"
         ],
         "github_link": "https://github.com/agalimberti/NoCRouter",
-        "license": "(BASE_DIR)/agalimberti_NoCRouter_input_buffer/LICENSE"
+        "license": "$(BASE_DIR)/agalimberti_NoCRouter_input_buffer/LICENSE"
     },
     "stop-watch": {
         "verif": [
@@ -196,7 +196,7 @@
             "3-Clause BSD License"
         ],
         "github_link": "https://github.com/secworks/mkmif",
-        "license": "(BASE_DIR)/mkmif_core/LICENSE.txt"
+        "license": "$(BASE_DIR)/mkmif_core/LICENSE.txt"
     },
     "TrafficLightController_TimeParameter": {
         "verif": [
@@ -265,7 +265,7 @@
             "3-Clause BSD License"
         ],
         "github_link": "https://github.com/secworks/trng",
-        "license": "(BASE_DIR)/trng_csprng/LICENSE"
+        "license": "$(BASE_DIR)/trng_csprng/LICENSE"
     },
     "TrafficLightController_Timer": {
         "verif": [
@@ -316,7 +316,7 @@
             "GNU Lesser General Public License (LGPL)"
         ],
         "github_link": "https://github.com/freecores/ethmac",
-        "license": "(BASE_DIR)/ethmac_cop/License"
+        "license": "$(BASE_DIR)/ethmac_cop/License"
     },
     "ethmac_eth": {
         "verif": [
@@ -376,7 +376,7 @@
             "GNU Lesser General Public License (LGPL)"
         ],
         "github_link": "https://github.com/freecores/ethmac",
-        "license": "(BASE_DIR)/ethmac_eth/LICENSE.txt"
+        "license": "$(BASE_DIR)/ethmac_eth/LICENSE.txt"
     },
     "ethmac_eth_with_cop": {
         "verif": [
@@ -439,7 +439,7 @@
             "GNU Lesser General Public License (LGPL)"
         ],
         "github_link": "https://github.com/freecores/ethmac",
-        "license": "(BASE_DIR)/ethmac_eth_with_cop/LICENSE.txt"
+        "license": "$(BASE_DIR)/ethmac_eth_with_cop/LICENSE.txt"
     },
     "trng_top": {
         "verif": [
@@ -473,7 +473,7 @@
             "3-Clause BSD License"
         ],
         "github_link": "https://github.com/secworks/trng",
-        "license": "(BASE_DIR)/trng_top/LICENSE"
+        "license": "$(BASE_DIR)/trng_top/LICENSE"
     },
     "SD-card-controller_data_xfer_trig": {
         "verif": [
@@ -497,7 +497,7 @@
             "GNU Lesser General Public License (LGPL)"
         ],
         "github_link": "https://github.com/mczerski/SD-card-controller",
-        "license": "(BASE_DIR)/SD-card-controller_data_xfer_trig/License"
+        "license": "$(BASE_DIR)/SD-card-controller_data_xfer_trig/License"
     },
     "sha1_w_mem": {
         "verif": [
@@ -519,7 +519,7 @@
             "3-Clause BSD License"
         ],
         "github_link": "https://github.com/secworks/sha1/tree/master/src",
-        "license": "(BASE_DIR)/sha1_w_mem/LICENSE.txt"
+        "license": "$(BASE_DIR)/sha1_w_mem/LICENSE.txt"
     },
     "agalimberti_NoCRouter_top_router": {
         "verif": [
@@ -559,7 +559,7 @@
             "MIT License"
         ],
         "github_link": "https://github.com/agalimberti/NoCRouter",
-        "license": "(BASE_DIR)/agalimberti_NoCRouter_top_router/LICENSE"
+        "license": "$(BASE_DIR)/agalimberti_NoCRouter_top_router/LICENSE"
     },
     "chacha_core": {
         "verif": [
@@ -584,7 +584,7 @@
             "3-Clause BSD License"
         ],
         "github_link": "https://github.com/secworks/chacha",
-        "license": "(BASE_DIR)/chacha_core/LICENSE.txt"
+        "license": "$(BASE_DIR)/chacha_core/LICENSE.txt"
     },
     "chacha_qr": {
         "verif": [
@@ -606,7 +606,7 @@
             "3-Clause BSD License"
         ],
         "github_link": "https://github.com/secworks/chacha",
-        "license": "(BASE_DIR)/chacha_qr/LICENSE.txt"
+        "license": "$(BASE_DIR)/chacha_qr/LICENSE.txt"
     },
     "vndecorrelator": {
         "verif": [
@@ -628,7 +628,7 @@
             "3-Clause BSD License"
         ],
         "github_link": "https://github.com/secworks/vndecorrelator",
-        "license": "(BASE_DIR)/vndecorrelator/LICENSE.txt"
+        "license": "$(BASE_DIR)/vndecorrelator/LICENSE.txt"
     },
     "tlfsm2": {
         "verif": [
@@ -693,7 +693,7 @@
             "GNU Lesser General Public License (LGPL)"
         ],
         "github_link": "https://github.com/mczerski/SD-card-controller",
-        "license": "(BASE_DIR)/SD-card-controller_data_master/License"
+        "license": "$(BASE_DIR)/SD-card-controller_data_master/License"
     },
     "SD-card-controller_monostable_domain_cross": {
         "verif": [
@@ -715,7 +715,7 @@
             "GNU Lesser General Public License (LGPL)"
         ],
         "github_link": "https://github.com/mczerski/SD-card-controller",
-        "license": "(BASE_DIR)/SD-card-controller_monostable_domain_cross/License"
+        "license": "$(BASE_DIR)/SD-card-controller_monostable_domain_cross/License"
     },
     "agalimberti_NoCRouter_circular_buffer": {
         "verif": [
@@ -739,7 +739,7 @@
             "MIT License"
         ],
         "github_link": "https://github.com/agalimberti/NoCRouter",
-        "license": "(BASE_DIR)/agalimberti_NoCRouter_circular_buffer/LICENSE"
+        "license": "$(BASE_DIR)/agalimberti_NoCRouter_circular_buffer/LICENSE"
     },
     "agalimberti_NoCRouter_crossbar": {
         "verif": [
@@ -774,7 +774,7 @@
             "MIT License"
         ],
         "github_link": "https://github.com/agalimberti/NoCRouter",
-        "license": "(BASE_DIR)/agalimberti_NoCRouter_crossbar/LICENSE"
+        "license": "$(BASE_DIR)/agalimberti_NoCRouter_crossbar/LICENSE"
     },
     "TrafficLightController_Main": {
         "verif": [
@@ -830,7 +830,7 @@
             "MIT License"
         ],
         "github_link": "https://github.com/agalimberti/NoCRouter",
-        "license": "(BASE_DIR)/agalimberti_NoCRouter_vc_alloc/LICENSE"
+        "license": "$(BASE_DIR)/agalimberti_NoCRouter_vc_alloc/LICENSE"
     },
     "agalimberti_NoCRouter_input_port": {
         "verif": [
@@ -857,7 +857,7 @@
             "MIT License"
         ],
         "github_link": "https://github.com/agalimberti/NoCRouter",
-        "license": "(BASE_DIR)/agalimberti_NoCRouter_input_port/LICENSE"
+        "license": "$(BASE_DIR)/agalimberti_NoCRouter_input_port/LICENSE"
     },
     "SD-card-controller_wb_sel_ctrl": {
         "verif": [
@@ -879,7 +879,7 @@
             "GNU Lesser General Public License (LGPL)"
         ],
         "github_link": "https://github.com/mczerski/SD-card-controller",
-        "license": "(BASE_DIR)/SD-card-controller_wb_sel_ctrl/License"
+        "license": "$(BASE_DIR)/SD-card-controller_wb_sel_ctrl/License"
     },
     "agalimberti_NoCRouter_two_routers": {
         "verif": [
@@ -919,7 +919,7 @@
             "MIT License"
         ],
         "github_link": "https://github.com/agalimberti/NoCRouter",
-        "license": "(BASE_DIR)/agalimberti_NoCRouter_two_routers/LICENSE"
+        "license": "$(BASE_DIR)/agalimberti_NoCRouter_two_routers/LICENSE"
     },
     "chacha_top": {
         "verif": [
@@ -944,7 +944,7 @@
             "3-Clause BSD License"
         ],
         "github_link": "https://github.com/secworks/chacha",
-        "license": "(BASE_DIR)/chacha_top/LICENSE.txt"
+        "license": "$(BASE_DIR)/chacha_top/LICENSE.txt"
     },
     "TrafficLightController_Synchronizer": {
         "verif": [
@@ -1070,7 +1070,7 @@
             "GNU Lesser General Public License (LGPL)"
         ],
         "github_link": "https://github.com/mczerski/SD-card-controller",
-        "license": "(BASE_DIR)/SD-card-controller_data_serial_host/License"
+        "license": "$(BASE_DIR)/SD-card-controller_data_serial_host/License"
     },
     "SD-card-controller_wb": {
         "verif": [
@@ -1095,7 +1095,7 @@
             "GNU Lesser General Public License (LGPL)"
         ],
         "github_link": "https://github.com/mczerski/SD-card-controller",
-        "license": "(BASE_DIR)/SD-card-controller_wb/License"
+        "license": "$(BASE_DIR)/SD-card-controller_wb/License"
     },
     "mkmif_top": {
         "verif": [
@@ -1120,7 +1120,7 @@
             "3-Clause BSD License"
         ],
         "github_link": "https://github.com/secworks/mkmif",
-        "license": "(BASE_DIR)/mkmif_top/LICENSE.txt"
+        "license": "$(BASE_DIR)/mkmif_top/LICENSE.txt"
     },
     "gsoc-museum-edsac_memory": {
         "verif": [
@@ -1134,6 +1134,7 @@
         ],
         "design_context": [],
         "spec": [
+            "$(BASE_DIR)/gsoc-museum-edsac_flipflop/doc/doc.txt",
             "$(BASE_DIR)/gsoc-museum-edsac_memory/doc/gating_emfs.md",
             "$(BASE_DIR)/gsoc-museum-edsac_memory/doc/instruction_set.md",
             "$(BASE_DIR)/gsoc-museum-edsac_memory/doc/main_control_unit.md",
@@ -1147,7 +1148,7 @@
             "Other license type"
         ],
         "github_link": "https://github.com/librecores/gsoc-museum-edsac",
-        "license": "(BASE_DIR)/gsoc-museum-edsac_memory/LICENSE"
+        "license": "$(BASE_DIR)/gsoc-museum-edsac_memory/LICENSE"
     },
     "gsoc-museum-edsac_flipflop": {
         "verif": [
@@ -1172,7 +1173,7 @@
             "Other license type"
         ],
         "github_link": "https://github.com/librecores/gsoc-museum-edsac",
-        "license": "(BASE_DIR)/gsoc-museum-edsac_flipflop/LICENSE"
+        "license": "$(BASE_DIR)/gsoc-museum-edsac_flipflop/LICENSE"
     },
     "onehzclk": {
         "verif": [
@@ -1219,7 +1220,7 @@
             "3-Clause BSD License"
         ],
         "github_link": "https://github.com/secworks/sha1/tree/master/src",
-        "license": "(BASE_DIR)/sha1_top/LICENSE.txt"
+        "license": "$(BASE_DIR)/sha1_top/LICENSE.txt"
     },
     "agalimberti_NoCRouter_rc_unit": {
         "verif": [
@@ -1243,7 +1244,7 @@
             "MIT License"
         ],
         "github_link": "https://github.com/agalimberti/NoCRouter",
-        "license": "(BASE_DIR)/agalimberti_NoCRouter_rc_unit/LICENSE"
+        "license": "$(BASE_DIR)/agalimberti_NoCRouter_rc_unit/LICENSE"
     },
     "TrafficLightController_FSM": {
         "verif": [
@@ -1306,7 +1307,7 @@
             "GNU Lesser General Public License (LGPL)"
         ],
         "github_link": "https://github.com/mczerski/SD-card-controller",
-        "license": "(BASE_DIR)/SD-card-controller_bistable_domain_cross/License"
+        "license": "$(BASE_DIR)/SD-card-controller_bistable_domain_cross/License"
     },
     "sha1_core": {
         "verif": [
@@ -1330,7 +1331,7 @@
             "3-Clause BSD License"
         ],
         "github_link": "https://github.com/secworks/sha1/tree/master/src",
-        "license": "(BASE_DIR)/sha1_core/LICENSE.txt"
+        "license": "$(BASE_DIR)/sha1_core/LICENSE.txt"
     },
     "agalimberti_NoCRouter_mesh": {
         "verif": [
@@ -1373,7 +1374,7 @@
             "MIT License"
         ],
         "github_link": "https://github.com/agalimberti/NoCRouter",
-        "license": "(BASE_DIR)/agalimberti_NoCRouter_mesh/LICENSE"
+        "license": "$(BASE_DIR)/agalimberti_NoCRouter_mesh/LICENSE"
     },
     "mkmif2": {
         "verif": [
@@ -1419,7 +1420,7 @@
             "MIT License"
         ],
         "github_link": "https://github.com/agalimberti/NoCRouter",
-        "license": "(BASE_DIR)/agalimberti_NoCRouter_input_first_alloc/LICENSE"
+        "license": "$(BASE_DIR)/agalimberti_NoCRouter_input_first_alloc/LICENSE"
     },
     "TrafficLightController_Divider": {
         "verif": [
@@ -1466,7 +1467,7 @@
             "GNU Lesser General Public License (LGPL)"
         ],
         "github_link": "https://github.com/mczerski/SD-card-controller",
-        "license": "(BASE_DIR)/SD-card-controller_cmd_serial_host/License"
+        "license": "$(BASE_DIR)/SD-card-controller_cmd_serial_host/License"
     },
     "SD-card-controller_edge_detect": {
         "verif": [
@@ -1488,7 +1489,7 @@
             "GNU Lesser General Public License (LGPL)"
         ],
         "github_link": "https://github.com/mczerski/SD-card-controller",
-        "license": "(BASE_DIR)/SD-card-controller_edge_detect/License"
+        "license": "$(BASE_DIR)/SD-card-controller_edge_detect/License"
     },
     "cryptech_uart": {
         "verif": [
@@ -1510,7 +1511,7 @@
             "3-Clause BSD License"
         ],
         "github_link": "https://github.com/secworks/uart",
-        "license": "(BASE_DIR)/cryptech_uart/LICENSE"
+        "license": "$(BASE_DIR)/cryptech_uart/LICENSE"
     },
     "SD-card-controller_top": {
         "verif": [
@@ -1558,7 +1559,7 @@
             "GNU Lesser General Public License (LGPL)"
         ],
         "github_link": "https://github.com/mczerski/SD-card-controller",
-        "license": "(BASE_DIR)/SD-card-controller_top/License"
+        "license": "$(BASE_DIR)/SD-card-controller_top/License"
     },
     "TrafficLightController_WalkRegister": {
         "verif": [
@@ -1627,7 +1628,7 @@
             "GNU Lesser General Public License (LGPL)"
         ],
         "github_link": "https://github.com/mczerski/SD-card-controller",
-        "license": "(BASE_DIR)/SD-card-controller_cmd_master/License"
+        "license": "$(BASE_DIR)/SD-card-controller_cmd_master/License"
     },
     "agalimberti_NoCRouter_round_robin_arbiter": {
         "verif": [
@@ -1649,7 +1650,7 @@
             "MIT License"
         ],
         "github_link": "https://github.com/agalimberti/NoCRouter",
-        "license": "(BASE_DIR)/agalimberti_NoCRouter_round_robin_arbiter/LICENSE"
+        "license": "$(BASE_DIR)/agalimberti_NoCRouter_round_robin_arbiter/LICENSE"
     },
     "microprocessor": {
         "verif": [
