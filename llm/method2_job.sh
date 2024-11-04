@@ -3,8 +3,8 @@
 #SBATCH -N 1            # number of nodes
 #SBATCH -c 32            # number of cores 
 #SBATCH --mem=128G
-#SBATCH -t 1-00:00:00
-#SBATCH -G a100:3
+#SBATCH -t 02:00:00
+#SBATCH -G a100:2
 #SBATCH -C a100_80
 #SBATCH -p general      # partition 
 #SBATCH -q public       # QOS
@@ -24,7 +24,8 @@ cp -rf $REPO_DIR/llm /scratch/$USER/${DATA_POINT}_method2_runs
 cd /scratch/$USER/${DATA_POINT}_method2_runs
 
 #Run the software/python script
-source /home/slowe8/llm_venv/bin/activate
+./build_llm_venv.sh
+source /home/$USER/llm_venv/bin/activate
 
 module load bittware/questa-23.4
 export LM_LICENSE_FILE=27006@en4228283l.cidse.dhcp.asu.edu

@@ -11,6 +11,12 @@ from dashboard import Dataset
 class CoverageResponse:
     def __init__(self, success: bool, error_code: int, error_message: str = "", coverage_list: List[Dict[str, str]] = [], total_coverage: int = 0):
         self.success = success
+        # Error codes
+        # 0: success -> ignore error message
+        # 1: compile error
+        # 2: simulation error
+        # 3: simulation timeout
+        # 4: JSON Decode error -> incomplete testbench
         self.error_code = error_code
         self.error_message = error_message
         self.coverage_list = coverage_list
@@ -19,14 +25,6 @@ class CoverageResponse:
 def run_questasim(env: Union[Environment, str], tb_path: str, data_point: dict, log_file: str) -> (bool, int, str):
     # Get the name of the test bench module
     # We need to do this because the LLM could name the module anything
-
-    questa_dir = ''
-    if isinstance(env, Environment):
-        questa_dir = questa_dir
-    elif isinstance(env, str):
-        questa_dir = env
-    else:
-        return ''
 
     design_dir = os.path.split(os.path.split(tb_path)[0])[0]
 
@@ -48,12 +46,12 @@ def run_questasim(env: Union[Environment, str], tb_path: str, data_point: dict, 
     if not check_errors(compile_output.stdout.decode()):
         return CoverageResponse(False, 1, compile_output.stdout.decode())
 
-    compile_output = run([f'{questa_dir}/vlog', '-cover', 's', tb_path], stdout=PIPE, stderr=PIPE)
+    compile_output = run([f'{env.questa_dir}/vlog', '-cover', 's', tb_path], stdout=PIPE, stderr=PIPE)
     if not check_errors(compile_output.stdout.decode()):
         return CoverageResponse(False, 1, compile_output.stdout.decode())
 
     try:
-        sim_output = run([f'{questa_dir}/vsim', f'work.{tb_name}', '-coverage', '-c', '-do', f'coverage exclude -du {tb_name};coverage save -onexit coverage.ucdb;run -all;exit;'], stdout=PIPE, stderr=PIPE, timeout=60*5)
+        sim_output = run([f'{env.questa_dir}/vsim', f'work.{tb_name}', '-coverage', '-c', '-do', f'coverage exclude -du {tb_name};coverage save -onexit coverage.ucdb;run -all;exit;'], stdout=PIPE, stderr=PIPE, timeout=60*5)
         if not check_errors(sim_output.stdout.decode()):
             return CoverageResponse(False, 2, sim_output.stdout.decode())
     except TimeoutExpired:
@@ -65,7 +63,7 @@ def run_questasim(env: Union[Environment, str], tb_path: str, data_point: dict, 
         return CoverageResponse(False, 4, report_output.stdout.decode())
     """
 
-    report_output = run([f'{questa_dir}/vsim', '-viewcov', 'coverage.ucdb', '-c', '-do', f'coverage report -output report.txt -srcfile=* -detail -all -dump -annotate -option -assert -directive -cvg -codeAll -xml;exit;'], stdout=PIPE, stderr=PIPE)
+    report_output = run([f'{env.questa_dir}/vsim', '-viewcov', 'coverage.ucdb', '-c', '-do', f'coverage report -output report.txt -srcfile=* -detail -all -dump -annotate -option -assert -directive -cvg -codeAll -xml;exit;'], stdout=PIPE, stderr=PIPE)
 
     xml_tree = ET.parse('report.txt')
     coverage_list = []
