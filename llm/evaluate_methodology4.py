@@ -1,6 +1,6 @@
 import llama3_chat as chat
 import argparse
-from prompt_templates import m1_prompt, m3_prompt_wo_coverage
+from prompt_templates import m2_prompts, m3_prompt_wo_coverage
 from environment import Environment
 from eval_runs_util import Record
 
@@ -16,7 +16,7 @@ if __name__=="__main__":
 
     record = Record(environment.design_name)
 
-    prompt = m1_prompt(environment.design_specification, environment.module_header)
+    prompt1, prompt2 = m2_prompts(environment.design_specification, environment.module_header)
     print(prompt)
 
     temperature = 0.3
@@ -27,23 +27,29 @@ if __name__=="__main__":
     for i in range(0,runs):
         # Run generations
         # Initialize conversation history with system message
-        print(f"\n\nRun {i}")
         conversation = [
             {"role": "system", "content": "You are a verification engineering assistant tasked with generating test benches that meet a coverage requirement of 100% statement coverage."}
         ]
-        conversation.append({"role":"user", "content":prompt})
+        conversation.append({"role":"user", "content":prompt1})
 
         response = chat.generate_response(conversation_history=conversation)
+        print(response)
+
+        conversation.append({'role':"assistant", "content":response})
+        conversation.append({"role":"user", "content":prompt2})
+
+        response = chat.generate_response(conversation_history=conversation)
+        conversation.append({"role": "assistant", "content": response})
         response = chat.convert_json_response_to_dict(response)
         print(response)
 
         data_point = environment.dataset.get_data_point(environment.design_name)
         cov = chat.get_coverage(environment, response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}.v', data_point=data_point, storage=environment.store)
         
-        record.update_dataframe(cov, temperature, top_p)
+        record.update_dataframe(cov, temperature, top_p, i, 0)
 
-        num_iter = 0
-        while record.max_cov < 95.0 and num_iter < 10:
+        num_iter = 1
+        while record.max_cov < 95.0 and num_iter < 11:
 
             prompt = m3_prompt_wo_coverage()
             print(prompt)
@@ -51,15 +57,19 @@ if __name__=="__main__":
             conversation.append({"role":"user", "content":prompt})
 
             response = chat.generate_response(conversation_history=conversation)
+            conversation.append({"role": "assistant", "content": response})
             response = chat.convert_json_response_to_dict(response)
             print(response)
 
-            cov = chat.get_coverage(environment, response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}{num_iter}.v', data_point=data_point, storage=environment.store)
-            record.update_dataframe(cov, temperature, top_p)
+            try:
+                cov = chat.get_coverage(environment, response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}{num_iter}.v', data_point=data_point, storage=environment.store)
+            except KeyError:
+                continue
+            record.update_dataframe(cov, temperature, top_p, i, num_iter)
 
             # Limit conversation memory to about 4000 tokens (estimate based on token count)
             current_token_count = sum(len(environment.tokenizer.encode(msg["content"])) for msg in conversation)
-            max_token_count = 120000
+            max_token_count = 128000 - 8196
             while current_token_count > max_token_count:
                 # Remove the oldest messages to maintain memory size
                 conversation.pop(1)  # Assuming the first message is the system prompt, so we pop the second one
@@ -73,4 +83,4 @@ if __name__=="__main__":
     # No need to recreate the DataFrame here, as it has been filled during the loop
     record.update_average_total_coverage()
     
-    record.write_to_csv('./methodology4.csv')
+    record.write_to_csv(f'./{environment.design_name}_methodology4.csv')
