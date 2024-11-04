@@ -1134,7 +1134,7 @@
         ],
         "design_context": [],
         "spec": [
-            "$(BASE_DIR)/gsoc-museum-edsac_flipflop/doc/doc.txt",
+            "$(BASE_DIR)/gsoc-museum-edsac_memory/doc/doc.txt",
             "$(BASE_DIR)/gsoc-museum-edsac_memory/doc/gating_emfs.md",
             "$(BASE_DIR)/gsoc-museum-edsac_memory/doc/instruction_set.md",
             "$(BASE_DIR)/gsoc-museum-edsac_memory/doc/main_control_unit.md",
