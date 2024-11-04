@@ -15,6 +15,8 @@ class Record:
         if run_type == "RUN":
             self.df = pd.DataFrame(columns=[
                 "design",
+                "run #",
+                "iteration #"
                 "temperature", 
                 "top_p", 
                 "pass rate",
@@ -39,6 +41,8 @@ class Record:
         elif run_type == "EVAL":
             self.df = pd.DataFrame(columns=[
                 "design",
+                "run #",
+                "iteration #",
                 "temperature", 
                 "top_p", 
                 "pass",
@@ -62,7 +66,7 @@ class Record:
         self.sum_cov_of_success = 0
         self.avg_total_coverage = 0
 
-    def update_dataframe(self, coverage: CoverageResponse, temperature: int, top_p: int):
+    def update_dataframe(self, coverage: CoverageResponse, temperature: int, top_p: int, run: int, iteration: int):
         if self.run_type == "RUN":
             if coverage.success:
                 print(f"Passed!\n{coverage.error_message}")
@@ -84,6 +88,8 @@ class Record:
             
             self.df = pd.concat([self.df, pd.DataFrame([{
                 "design": self.design_name,
+                "run #": run,
+                "iteration #": iteration,
                 "temperature": temperature, 
                 "top_p": top_p, 
                 "pass rate": self.total_pass / (self.total_pass + self.total_fail) if (self.total_pass + self.total_fail) != 0 else 0,

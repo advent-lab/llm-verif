@@ -40,14 +40,15 @@ if __name__=="__main__":
         conversation.append({"role":"user", "content":prompt2})
 
         response = chat.generate_response(conversation_history=conversation)
+        conversation.append({"role": "assistant", "content": response})
         response = chat.convert_json_response_to_dict(response)
         print(response)
 
         cov = chat.get_coverage(environment, response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}.v', data_point=environment.dataset.get_data_point(environment.design_name), storage=environment.store)
         
-        record.update_dataframe(cov, temperature, top_p)
+        record.update_dataframe(cov, temperature, top_p, i, 0)
 
     # No need to recreate the DataFrame here, as it has been filled during the loop
     record.update_average_total_coverage()
     
-    record.write_to_csv('./methodology2.csv')
+    record.write_to_csv(f'./{environment.design_name}_methodology2.csv')
