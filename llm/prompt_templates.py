@@ -1,6 +1,7 @@
 from questasim import CoverageResponse
 import os
 import pathlib
+from random import randint
 
 # This function returns the initial prompt used for generating a test bench
 def m1_prompt(design_specification: str, module_header: str) -> str:
@@ -140,15 +141,17 @@ def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
 	with open(design_file, 'r') as f:
 		lines = f.readlines()
 
-	lines[missed_lines[0] - 1] = lines[missed_lines[0] - 1].replace('\n', " // This is the line that was not covered")
+	randline = randint(0, len(missed_lines) - 1)
 
-	missed_line = lines[missed_lines[0] - 1]
-	design_chunk = ''.join(lines[missed_lines[0] - 10:missed_lines[0] + 11])
+	lines[missed_lines[randline] - 1] = lines[missed_lines[randline] - 1].replace('\n', " // This is the line that was not covered")
+
+	missed_line = lines[missed_lines[randline] - 1]
+	design_chunk = ''.join(lines[missed_lines[randline] - 10:missed_lines[randline] + 11])
 
 	return '''The test bench that you generated did not meet coverage goals. Use this coverage data and context to generate a test bench that achieves better coverage.
 Coverage report:
 ''' + formatted_coverage_report + f'''
-I will give you some extra context to help. Try to target this coverage hole at line {missed_lines[0]} in the file {design_filename}: {missed_line.strip()}
+I will give you some extra context to help. Try to target this coverage hole at line {missed_lines[randline]} in the file {design_filename}: {missed_line.strip()}
 {design_chunk}
 
 Generate a Verilog testbench named tb_llm for the following design specification.

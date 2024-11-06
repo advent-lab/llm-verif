@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH -N 1            # number of nodes
-#SBATCH -c 16            # number of cores 
-#SBATCH -t 0-01:00:00
+#SBATCH -c 32            # number of cores 
+#SBATCH -t 0-02:00:00
 #SBATCH -G a100:2
 #SBATCH -C a100_80
 #SBATCH -p htc      # partition 
