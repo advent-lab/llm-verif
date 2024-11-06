@@ -82,6 +82,8 @@ if __name__=="__main__":
 
             num_iter += 1
 
+            record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
+
 
     # No need to recreate the DataFrame here, as it has been filled during the loop
     record.update_average_total_coverage()

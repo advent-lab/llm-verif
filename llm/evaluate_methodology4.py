@@ -77,6 +77,8 @@ if __name__=="__main__":
 
             num_iter += 1
 
+            record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
+
 
 
 

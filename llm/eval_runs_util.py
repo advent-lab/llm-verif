@@ -16,7 +16,7 @@ class Record:
             self.df = pd.DataFrame(columns=[
                 "design",
                 "run #",
-                "iteration #"
+                "iteration #",
                 "temperature", 
                 "top_p", 
                 "pass rate",
