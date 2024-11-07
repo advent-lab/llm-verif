@@ -7,6 +7,7 @@ from storage import FileStore
 import questasim as qs
 import re
 from environment import Environment
+import time
 
 # Set cache location for model
 if not os.path.isdir(f"/scratch/{os.environ['USER']}/.cache/"):
