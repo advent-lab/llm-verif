@@ -26,6 +26,8 @@ if __name__=="__main__":
 
     for i in range(0,runs):
 
+        record.max_cov = 0
+
         # Run generations
         # Initialize conversation history with system message
         print(f"\n\nRun {i}")
