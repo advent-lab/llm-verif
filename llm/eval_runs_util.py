@@ -37,6 +37,8 @@ class Record:
                 "statement coverage",
                 "max total coverage",
                 "average total coverage",
+                "tokens generated",
+                "generation time"
             ])
         elif run_type == "EVAL":
             self.df = pd.DataFrame(columns=[
@@ -51,7 +53,9 @@ class Record:
                 "timeout fail",
                 "report fail",
                 "decode fail",
-                "statement coverage"
+                "statement coverage",
+                "tokens generated",
+                "generation time"
             ])
 
         self.total_pass = 0
@@ -66,7 +70,13 @@ class Record:
         self.sum_cov_of_success = 0
         self.avg_total_coverage = 0
 
-    def update_dataframe(self, coverage: CoverageResponse, temperature: int, top_p: int, run: int, iteration: int):
+        self.tokens_generated = 0
+        self.generation_time = 0.0
+
+    def update_dataframe(self, coverage: CoverageResponse, temperature: int, top_p: int, run: int, iteration: int, tokens: int, time: float):
+        self.tokens_generated = tokens
+        self.generation_time = time
+        
         if self.run_type == "RUN":
             if coverage.success:
                 print(f"Passed!\n{coverage.error_message}")
@@ -108,7 +118,9 @@ class Record:
                 "report fail rate": self.num_report_fail / (self.total_pass + self.total_fail) if (self.total_pass + self.total_fail) != 0 else 0,
                 "decode fail rate": self.num_decode_fail / (self.total_fail + self.total_pass) if (self.total_pass + self.total_fail) != 0 else 0,
                 "statement coverage": int(coverage.total_coverage),
-                "max total coverage": self.max_cov
+                "max total coverage": self.max_cov,
+                "tokens generated": self.tokens_generated,
+                "generation time": self.generation_time
             }])], ignore_index=True)  # Appending to df
             print(self.df)
         elif self.run_type == "EVAL":
@@ -122,13 +134,30 @@ class Record:
                 "timeout fail": 1 if coverage.error_code == 3 else 0,
                 "report fail": 1 if coverage.error_code == 4 else 0,
                 "decode fail": 1 if coverage.error_code == 5 else 0,
-                "statement coverage": coverage.total_coverage
+                "statement coverage": coverage.total_coverage,
+                "tokens generated": self.tokens_generated,
+                "generation time": self.generation_time
             }])])
 
-    def update_average_total_coverage(self):
+    def update_run_average_total_coverage(self, run_id: int):
         if self.run_type == "RUN":
-            self.df["average total coverage"] = self.sum_cov_of_success / self.total_pass if self.total_pass != 0 else 0
-            print(self.df)
+            # Select rows where "run #" matches the given run_id
+            run = self.df[self.df["run #"] == run_id]
+            
+            # Calculate the average statement coverage for this run
+            run_coverages = run["statement coverage"].values
+            average_coverage = np.average(run_coverages)
+            
+            # Update the "statement coverage" column for all matching rows
+            self.df.loc[self.df["run #"] == run_id, "statement coverage"] = average_coverage
+
+    def update_all_average_total_coverage(self):
+        if self.run_type == "RUN":
+            all_coverages = self.df["statement coverage"].values
+            average_coverage = np.average(all_coverages)
+            
+            # Update the "statement coverage" column for all matching rows
+            self.df["statement coverage"] = average_coverage
 
     def write_to_csv(self, filename: str):
         self.df.to_csv(filename, index=False)        

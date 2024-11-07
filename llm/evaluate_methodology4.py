@@ -17,7 +17,8 @@ if __name__=="__main__":
     record = Record(environment.design_name)
 
     prompt1, prompt2 = m2_prompts(environment.design_specification, environment.module_header)
-    print(prompt)
+    print(prompt1)
+    print(prompt2)
 
     temperature = 0.3
     top_p=0.7
@@ -38,7 +39,7 @@ if __name__=="__main__":
         conversation.append({'role':"assistant", "content":response})
         conversation.append({"role":"user", "content":prompt2})
 
-        response = chat.generate_response(conversation_history=conversation)
+        response, tokens_generated, generation_time = chat.generate_response(conversation_history=conversation)
         conversation.append({"role": "assistant", "content": response})
         response = chat.convert_json_response_to_dict(response)
         print(response)
@@ -46,17 +47,17 @@ if __name__=="__main__":
         data_point = environment.dataset.get_data_point(environment.design_name)
         cov = chat.get_coverage(environment, response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}.v', data_point=data_point, storage=environment.store)
         
-        record.update_dataframe(cov, temperature, top_p, i, 0)
+        record.update_dataframe(cov, temperature, top_p, i, 0, tokens_generated, generation_time)
 
         num_iter = 1
         while record.max_cov < 95.0 and num_iter < 11:
 
-            prompt = m3_prompt_wo_coverage()
-            print(prompt)
+            prompt3 = m3_prompt_wo_coverage()
+            print(prompt3)
 
-            conversation.append({"role":"user", "content":prompt})
+            conversation.append({"role":"user", "content":prompt3})
 
-            response = chat.generate_response(conversation_history=conversation)
+            response, tokens_generated, generation_time = chat.generate_response(conversation_history=conversation)
             conversation.append({"role": "assistant", "content": response})
             response = chat.convert_json_response_to_dict(response)
             print(response)
@@ -65,7 +66,7 @@ if __name__=="__main__":
                 cov = chat.get_coverage(environment, response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}{num_iter}.v', data_point=data_point, storage=environment.store)
             except KeyError:
                 continue
-            record.update_dataframe(cov, temperature, top_p, i, num_iter)
+            record.update_dataframe(cov, temperature, top_p, i, num_iter, tokens_generated, generation_time)
 
             # Limit conversation memory to about 4000 tokens (estimate based on token count)
             current_token_count = sum(len(environment.tokenizer.encode(msg["content"])) for msg in conversation)
@@ -77,12 +78,8 @@ if __name__=="__main__":
 
             num_iter += 1
 
-            record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
+            record.write_to_csv(f'./{environment.design_name}_methodology4.csv')
 
-
-
-
-    # No need to recreate the DataFrame here, as it has been filled during the loop
-    record.update_average_total_coverage()
+        record.update_run_average_total_coverage(run_id=i)
     
     record.write_to_csv(f'./{environment.design_name}_methodology4.csv')
