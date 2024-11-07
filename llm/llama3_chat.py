@@ -13,7 +13,7 @@ if not os.path.isdir(f"/scratch/{os.environ['USER']}/.cache/"):
     os.mkdir(f"/scratch/{os.environ['USER']}/.cache/")
 os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache/"
 
-def load_model():
+def load_model() -> AutoTokenizer:
     os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache/"
 
     # Model and tokenizer setup with quantization
@@ -45,7 +45,7 @@ def load_model():
     return tokenizer
 
 # Generate a response from LLM with memory management
-def generate_response(conversation_history, max_new_tokens=8192, temperature=0.3, top_p=0.7) -> str:
+def generate_response(conversation_history, max_new_tokens=8192, temperature=0.3, top_p=0.7, timeout_seconds=600) -> (str, int, float):
     input_ids = tokenizer.apply_chat_template(
         conversation_history,
         add_generation_prompt=True,
@@ -54,20 +54,38 @@ def generate_response(conversation_history, max_new_tokens=8192, temperature=0.3
 
     terminators = [tokenizer.eos_token_id, tokenizer.convert_tokens_to_ids("<|eot_id|>")]
 
-    # Generate response with memory management
-    outputs = model.generate(
-        input_ids,
-        max_new_tokens=max_new_tokens,
-        eos_token_id=terminators,
-        do_sample=True,
-        temperature=temperature,
-        top_p=top_p,
-    )
+    # Start tracking time
+    start_time = time.time()
+    response = None
 
-    torch.cuda.empty_cache()  # Clear cache post-generation
+    try:
+        with torch.no_grad():
+            outputs = model.generate(
+                input_ids,
+                max_new_tokens=max_new_tokens,
+                eos_token_id=terminators,
+                do_sample=True,
+                temperature=temperature,
+                top_p=top_p,
+                stopping_criteria=[lambda ids, scores: time.time() - start_time > timeout_seconds]
+            )
+        
+        elapsed_time = time.time() - start_time
 
-    response = outputs[0][input_ids.shape[-1]:]
-    return tokenizer.decode(response, skip_special_tokens=True)
+        # Decode the response and calculate token count
+        response_ids = outputs[0][input_ids.shape[-1]:]
+        response = tokenizer.decode(response_ids, skip_special_tokens=True)
+        token_count = len(response_ids)
+
+    except Exception as e:
+        print("Generation timed out or encountered an error:", e)
+        elapsed_time = timeout_seconds  # Set to max if timeout occurs
+        token_count = 0
+
+    # Free up memory post-generation
+    torch.cuda.empty_cache()
+
+    return response, token_count, elapsed_time
 
 
 # Function to generate a response from the LLM in batch
@@ -130,6 +148,11 @@ def get_multiline_input(prompt="Enter your message (end with 'END' on a new line
 
 # Parse JSON Response from LLM to dict
 def convert_json_response_to_dict(generated_response: str) -> tuple:
+
+    # If the response is empty or None, return an error
+    if not generated_response:
+        print(f"GPU timeout")
+        return ({"test bench": ""}, 0)
     
     # Find the first and last JSON curly braces
     first_pos = generated_response.find('{')
