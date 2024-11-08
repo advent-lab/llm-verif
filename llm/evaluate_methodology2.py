@@ -26,8 +26,6 @@ if __name__=="__main__":
 
     for i in range(0,runs):
 
-        record.max_cov = 0
-
         # Run generations
         # Initialize conversation history with system message
         print(f"\n\nRun {i}")
@@ -36,13 +34,13 @@ if __name__=="__main__":
         ]
         conversation.append({"role":"user", "content":prompt1})
 
-        response = chat.generate_response(conversation_history=conversation)
+        response, tokens_generated, generation_time = chat.generate_response(conversation_history=conversation)
         print(response)
 
         conversation.append({'role':"assistant", "content":response})
         conversation.append({"role":"user", "content":prompt2})
 
-        response = chat.generate_response(conversation_history=conversation)
+        response, tokens_generated, generation_time = chat.generate_response(conversation_history=conversation)
         conversation.append({"role": "assistant", "content": response})
         response = chat.convert_json_response_to_dict(response)
         print(response)

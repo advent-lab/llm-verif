@@ -26,8 +26,6 @@ if __name__=="__main__":
 
     for i in range(0,runs):
 
-        record.max_cov = 0
-
         # Run generations
         # Initialize conversation history with system message
         print(f"\n\nRun {i}")
@@ -36,16 +34,16 @@ if __name__=="__main__":
         ]
         conversation.append({"role":"user", "content":prompt})
 
-        response = chat.generate_response(conversation_history=conversation)
+        response, tokens_generated, generation_time = chat.generate_response(conversation_history=conversation)
         conversation.append({"role": "assistant", "content": response})
         response = chat.convert_json_response_to_dict(response)
         print(response)
 
         cov = chat.get_coverage(environment, response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}.v', data_point=environment.dataset.get_data_point(environment.design_name), storage=environment.store)
         
-        record.update_dataframe(cov, temperature, top_p, i, 0)
+        record.update_dataframe(cov, temperature, top_p, i, 0, tokens_generated, generation_time)
 
-        record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
+        record.write_to_csv(f'./{environment.design_name}_methodology1.csv')
 
     # No need to recreate the DataFrame here, as it has been filled during the loop
     record.update_all_average_total_coverage()

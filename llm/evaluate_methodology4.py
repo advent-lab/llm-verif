@@ -36,7 +36,7 @@ if __name__=="__main__":
         ]
         conversation.append({"role":"user", "content":prompt1})
 
-        response = chat.generate_response(conversation_history=conversation)
+        response, tokens_generated, generation_time = chat.generate_response(conversation_history=conversation)
         print(response)
 
         conversation.append({'role':"assistant", "content":response})
