@@ -78,5 +78,7 @@ if __name__=="__main__":
             record.write_to_csv(f'./{environment.design_name}_methodology3.csv')
 
         record.update_run_average_total_coverage(run_id=i)
+
+        record.write_to_csv(f'./{environment.design_name}_methodology3.csv')
     
     record.write_to_csv(f'./{environment.design_name}_methodology3.csv')
