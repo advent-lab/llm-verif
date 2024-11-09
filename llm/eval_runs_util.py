@@ -117,7 +117,7 @@ class Record:
                 "timeout fail rate": self.num_timeout_fail / (self.total_pass + self.total_fail) if (self.total_pass + self.total_fail) != 0 else 0,
                 "report fail rate": self.num_report_fail / (self.total_pass + self.total_fail) if (self.total_pass + self.total_fail) != 0 else 0,
                 "decode fail rate": self.num_decode_fail / (self.total_fail + self.total_pass) if (self.total_pass + self.total_fail) != 0 else 0,
-                "statement coverage": int(coverage.total_coverage),
+                "statement coverage": float(coverage.total_coverage),
                 "max total coverage": self.max_cov,
                 "tokens generated": self.tokens_generated,
                 "generation time": self.generation_time
@@ -134,7 +134,7 @@ class Record:
                 "timeout fail": 1 if coverage.error_code == 3 else 0,
                 "report fail": 1 if coverage.error_code == 4 else 0,
                 "decode fail": 1 if coverage.error_code == 5 else 0,
-                "statement coverage": coverage.total_coverage,
+                "statement coverage": float(coverage.total_coverage),
                 "tokens generated": self.tokens_generated,
                 "generation time": self.generation_time
             }])])
@@ -148,16 +148,16 @@ class Record:
             run_coverages = run["statement coverage"].values
             average_coverage = np.average(run_coverages)
             
-            # Update the "statement coverage" column for all matching rows
-            self.df.loc[self.df["run #"] == run_id, "statement coverage"] = average_coverage
+            # Update the "average total coverage" column for all matching rows
+            self.df.loc[self.df["run #"] == run_id, "average total coverage"] = average_coverage
 
     def update_all_average_total_coverage(self):
         if self.run_type == "RUN":
             all_coverages = self.df["statement coverage"].values
             average_coverage = np.average(all_coverages)
             
-            # Update the "statement coverage" column for all matching rows
-            self.df["statement coverage"] = average_coverage
+            # Update the "average total coverage" column for all matching rows
+            self.df["average total coverage"] = average_coverage
 
     def write_to_csv(self, filename: str):
         self.df.to_csv(filename, index=False)        
