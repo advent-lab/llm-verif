@@ -11,7 +11,7 @@ Generate only the Verilog testbench and no additional words.
 Make sure you are ONLY using Verilog syntax and features, and not SystemVerilog such as for loops.\n
 Module header:\n{module_header}\n
 Design Specification:\n{design_specification}\n
-Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag.\n
+Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag. Keep the test bench less than 500 lines.\n
 ''' + '''Example output:
 {
 	"test bench": "
@@ -27,7 +27,7 @@ Provide the generated testbench in a JSON format as shown below. You should put 
 def m2_prompt1(design_specification: str, module_header: str) -> str:
 	p1 = f'''We are going to use a 2 stage process to generate a Verilog test bench for a Verilog design. 
 Right now we are in the first stage. 
-Generate a verification plan with test scenarios that will achieve full statement coverage of design described by the following design specification and module header.
+Generate a verification plan with test scenarios that will achieve full statement coverage of design described by the following design specification and module header. 
 Module header:\n{module_header}\n
 Design specification:\n{design_specification}
 '''
@@ -46,7 +46,7 @@ Module header:\n{module_header}\n
 Design specification:\n{design_specification}
 '''
     p2 = '''Now we are in the second stage of the verification process. Generate a Verilog testbench for the module using the module header, specification, and verification plan.
-Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag.
+Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag. Keep the test bench less than 500 lines.
 Example output:
 {
 	"test bench": "
@@ -61,7 +61,7 @@ Example output:
     return (p1, p2)
 
 def m3_prompt_wo_coverage() -> str:
-	return '''The generated testbench did not meet coverage goals. Adjust the test bench to increase the coverage by adding more stimulus or exploring more possible edge cases. Make sure you are exercising the full range of inputs for each port. Make sure you are explicitly exploring error cases. You are able to reset the design under test if needed. Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag.\n
+	return '''The generated testbench did not meet coverage goals. Adjust the test bench to increase the coverage by adding more stimulus or exploring more possible edge cases. Make sure you are exercising the full range of inputs for each port. Make sure you are explicitly exploring error cases. You are able to reset the design under test if needed. Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n
 Example output:
 {
 	"test bench": "
@@ -78,7 +78,7 @@ def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
 
 	# Handle error responses from QuestaSim
 	if coverage.error_code == 1:
-		return f"The generated test bench failed to compile. Use the following error message to fix the errors. Use the same JSON format for the new testbench. Error Message:\n{coverage.error_message}\nProvide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag.\n" + '''Example output:
+		return f"The generated test bench failed to compile. Use the following error message to fix the errors. Use the same JSON format for the new testbench. Error Message:\n{coverage.error_message}\nProvide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
 {
 	"test bench": "
 		module tb_llm;
@@ -90,7 +90,7 @@ def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
 }
 '''
 	elif coverage.error_code == 2:
-		return f"The generated test bench failed to simulate. Use the following error message to fix the errors Use the same JSON format for the new testbench. Error Message:\n{coverage.error_message}\nProvide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag.\n" + '''Example output:
+		return f"The generated test bench failed to simulate. Use the following error message to fix the errors Use the same JSON format for the new testbench. Error Message:\n{coverage.error_message}\nProvide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
 {
 	"test bench": "
 		module tb_llm;
@@ -102,7 +102,7 @@ def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
 }
 '''
 	elif coverage.error_code == 3:
-		return f"The generated test bench took to long to simulate and timed out. Try to shorten the testbench. Use the same JSON format for the new testbench.Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag.\n" + '''Example output:
+		return f"The generated test bench took to long to simulate and timed out. Try to shorten the testbench. Use the same JSON format for the new testbench.Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
 {
 	"test bench": "
 		module tb_llm;
@@ -114,7 +114,7 @@ def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
 }
 '''
 	elif coverage.error_code == 4:
-		return f"You failed to generate the test bench within the provided length. Try generating a shorter test bench with higher quality tests. Use the same JSON format for the new testbench. Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag.\n" + '''Example output:
+		return f"You failed to generate the test bench within the provided length. Try generating a shorter test bench with higher quality tests. Use the same JSON format for the new testbench. Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
 {
 	"test bench": "
 		module tb_llm;
@@ -158,7 +158,7 @@ Generate a Verilog testbench named tb_llm for the following design specification
 The test bench should meet the statement coverage goal of 100%.
 Generate only the Verilog testbench and no additional words.
 Make sure you are ONLY using Verilog syntax and features, and not SystemVerilog such as for loops.\n
-Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag.\n
+Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag. Keep the test bench less than 500 lines.\n
 ''' + '''Example output:
 {
 	"test bench": "
