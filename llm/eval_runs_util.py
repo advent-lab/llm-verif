@@ -146,7 +146,7 @@ class Record:
             
             # Calculate the average statement coverage for this run
             run_coverages = run["statement coverage"].values
-            average_coverage = np.average(run_coverages)
+            average_coverage = np.average([x for x in run_coverages if x != 0])
             
             # Update the "average total coverage" column for all matching rows
             self.df.loc[self.df["run #"] == run_id, "average total coverage"] = average_coverage
@@ -154,7 +154,7 @@ class Record:
     def update_all_average_total_coverage(self):
         if self.run_type == "RUN":
             all_coverages = self.df["statement coverage"].values
-            average_coverage = np.average(all_coverages)
+            average_coverage = np.average([x for x in all_coverages if x != 0])
             
             # Update the "average total coverage" column for all matching rows
             self.df["average total coverage"] = average_coverage
