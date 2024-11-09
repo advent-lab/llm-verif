@@ -81,9 +81,9 @@ class Record:
             if coverage.success:
                 print(f"Passed!\n{coverage.error_message}")
                 self.total_pass = self.total_pass + 1
-                self.sum_cov_of_success = self.sum_cov_of_success + int(coverage.total_coverage)
-                if int(coverage.total_coverage) > self.max_cov:
-                    self.max_cov = int(coverage.total_coverage)
+                self.sum_cov_of_success = self.sum_cov_of_success + float(coverage.total_coverage)
+                if float(coverage.total_coverage) > self.max_cov:
+                    self.max_cov = float(coverage.total_coverage)
             else:
                 print(f"Failed!\n{coverage.error_message}")
                 self.total_fail = self.total_fail + 1
