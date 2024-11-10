@@ -32,6 +32,6 @@ module load bittware/questa-23.4
 export LM_LICENSE_FILE=27006@en4228283l.cidse.dhcp.asu.edu
 echo $LM_LICENSE_FILE
 
-accelerate launch --config_file evaluate_methodology1.py -d $REPO_DIR/data_points/$DATA_POINT -g 10 -c /packages/apps/fpga/Questa/questa_fe/bin #> method1_job.log
+python evaluate_methodology1.py -d $REPO_DIR/data_points/$DATA_POINT -g 10 -c /packages/apps/fpga/Questa/questa_fe/bin #> method1_job.log
 deactivate
 rm -rf venv
