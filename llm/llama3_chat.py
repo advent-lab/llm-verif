@@ -38,6 +38,12 @@ def load_model() -> AutoTokenizer:
         device_map="auto",
     )
 
+    # Enable gradient checkpointing
+    model.gradient_checkpointing_enable()
+
+    # Enable Torch Dynamo with tensorrt backend for A100 GPUs
+    model = torch.compile(model, backend="tensorrt")
+
     # Optional manual device map
     device_map = infer_auto_device_map(model)
     with open("./device_map.json", 'w+') as j:
@@ -47,13 +53,19 @@ def load_model() -> AutoTokenizer:
 
 # Generate a response from LLM with memory management
 def generate_response(conversation_history, max_new_tokens=8192, temperature=0.3, top_p=0.7, timeout_seconds=600) -> (str, int, float):
-    input_ids = tokenizer.apply_chat_template(
+    # Tokenize the conversation history and obtain input IDs and attention mask
+    inputs = tokenizer.apply_chat_template(
         conversation_history,
         add_generation_prompt=True,
-        return_tensors="pt"
+        return_tensors="pt",
+        padding=True,               # Ensure padding is added where necessary
+        return_attention_mask=True   # Return the attention mask
     ).to(model.device)
 
-    terminators = [tokenizer.eos_token_id, tokenizer.convert_tokens_to_ids("<|eot_id|>")]
+    input_ids = inputs["input_ids"]
+    attention_mask = inputs["attention_mask"]
+
+    terminators = [tokenizer.convert_tokens_to_ids("<|eot_id|>")]
 
     # Start tracking time
     start_time = time.time()
@@ -65,6 +77,7 @@ def generate_response(conversation_history, max_new_tokens=8192, temperature=0.3
                 input_ids,
                 max_new_tokens=max_new_tokens,
                 eos_token_id=terminators,
+                attention_mask=attention_mask,  # Pass the attention mask here
                 do_sample=True,
                 temperature=temperature,
                 top_p=top_p,
@@ -79,15 +92,14 @@ def generate_response(conversation_history, max_new_tokens=8192, temperature=0.3
         token_count = len(response_ids)
 
     except Exception as e:
-        print("Generation timed out or encountered an error:", e)
-        elapsed_time = timeout_seconds  # Set to max if timeout occurs
+        # Handle timeout or other exceptions
+        print(f"Error during generation: {e}")
+        elapsed_time = timeout_seconds  # Assume max time if an error occurs
         token_count = 0
 
-    # Free up memory post-generation
-    torch.cuda.empty_cache()
+    torch.cuda.empty()
 
     return response, token_count, elapsed_time
-
 
 # Function to generate a response from the LLM in batch
 # TODO: Test

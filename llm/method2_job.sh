@@ -26,11 +26,9 @@ cd /scratch/$USER/${DATA_POINT}_method2_runs
 ./build_llm_venv.sh
 source /home/$USER/llm_venv/bin/activate
 
-accelerate config default
-
 module load bittware/questa-23.4
 export LM_LICENSE_FILE=27006@en4228283l.cidse.dhcp.asu.edu
 
-python evaluate_methodology2.py -d $REPO_DIR/data_points/$DATA_POINT -g 10 -c /packages/apps/fpga/Questa/questa_fe/bin #> method2_job.log
+accelerate launch --config_file evaluate_methodology2.py -d $REPO_DIR/data_points/$DATA_POINT -g 10 -c /packages/apps/fpga/Questa/questa_fe/bin #> method2_job.log
 deactivate
 rm -rf venv
