@@ -3,7 +3,7 @@ debug: false
 distributed_type: FSDP
 downcast_bf16: 'no'  # Ensures bf16 is retained without being cast to a lower precision.
 dynamo_config:
-  dynamo_backend: TENSORRT  # Leverages TensorRT for high performance on NVIDIA GPUs; ensure model compatibility.
+  dynamo_backend: INDUCTOR  # Leverages Inductor for high performance on NVIDIA GPUs; ensure model compatibility.
 enable_cpu_affinity: true  # Sets CPU affinity to reduce cross-core latency.
 fsdp_config:
   fsdp_activation_checkpointing: true  # Saves memory by checkpointing activations, at a small computational cost.

@@ -41,8 +41,8 @@ def load_model() -> AutoTokenizer:
     # Enable gradient checkpointing
     model.gradient_checkpointing_enable()
 
-    # Enable Torch Dynamo with tensorrt backend for A100 GPUs
-    model = torch.compile(model, backend="tensorrt")
+    # Enable Torch Dynamo with inductor backend for A100 GPUs
+    model = torch.compile(model, backend="inductor")
 
     # Optional manual device map
     device_map = infer_auto_device_map(model)
