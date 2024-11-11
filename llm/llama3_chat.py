@@ -46,7 +46,7 @@ def load_model() -> AutoTokenizer:
     return tokenizer
 
 # Generate a response from LLM with memory management
-def generate_response(conversation_history, max_new_tokens=8192, temperature=0.3, top_p=0.7, timeout_seconds=600) -> (str, int, float):
+def generate_response(conversation_history, max_new_tokens=8192, temperature=0.3, top_p=0.7, timeout_seconds=1200) -> (str, int, float):
     input_ids = tokenizer.apply_chat_template(
         conversation_history,
         add_generation_prompt=True,
