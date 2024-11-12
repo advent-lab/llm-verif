@@ -16,8 +16,14 @@ Provide the generated testbench in a JSON format as shown below. You should put 
 {
 	"test bench": "
 		module tb_llm;
-			// Generated test bench code
+
+			// Clock logic
+
+			initial
+			begin
+				// Generted test cases
 			$finish
+			end
 		endmodule
 	",
 	"comments": " // Any additonal comments here "
@@ -51,8 +57,14 @@ Example output:
 {
 	"test bench": "
 		module tb_llm;
-			// Generated test bench code
+
+			// Clock logic
+
+			initial
+			begin
+				// Generted test cases
 			$finish
+			end
 		endmodule
 	",
 	"comments": " // Any additonal comments here "
@@ -66,8 +78,14 @@ Example output:
 {
 	"test bench": "
 		module tb_llm;
-			// Generated test bench code
+
+			// Clock logic
+
+			initial
+			begin
+				// Generted test cases
 			$finish
+			end
 		endmodule
 	",
 	"comments": " // Any additonal comments here "
@@ -82,8 +100,14 @@ def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
 {
 	"test bench": "
 		module tb_llm;
-			// Generated test bench code
+
+			// Clock logic
+
+			initial
+			begin
+				// Generted test cases
 			$finish
+			end
 		endmodule
 	",
 	"comments": " // Any additonal comments here "
@@ -94,8 +118,14 @@ def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
 {
 	"test bench": "
 		module tb_llm;
-			// Generated test bench code
+
+			// Clock logic
+
+			initial
+			begin
+				// Generted test cases
 			$finish
+			end
 		endmodule
 	",
 	"comments": " // Any additonal comments here "
@@ -106,8 +136,14 @@ def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
 {
 	"test bench": "
 		module tb_llm;
-			// Generated test bench code
+
+			// Clock logic
+
+			initial
+			begin
+				// Generted test cases
 			$finish
+			end
 		endmodule
 	",
 	"comments": " // Any additonal comments here "
@@ -118,8 +154,14 @@ def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
 {
 	"test bench": "
 		module tb_llm;
-			// Generated test bench code
+
+			// Clock logic
+
+			initial
+			begin
+				// Generted test cases
 			$finish
+			end
 		endmodule
 	",
 	"comments": " // Any additonal comments here "
@@ -163,8 +205,14 @@ Provide the generated testbench in a JSON format as shown below. You should put 
 {
 	"test bench": "
 		module tb_llm;
-			// Generated test bench code
+
+			// Clock logic
+
+			initial
+			begin
+				// Generted test cases
 			$finish
+			end
 		endmodule
 	",
 	"comments": " // Any additonal comments here "
