@@ -22,9 +22,17 @@ class CoverageResponse:
         self.coverage_list = coverage_list
         self.total_coverage = total_coverage
 
-def run_questasim(env: Union[Environment, str], tb_path: str, data_point: dict, log_file: str) -> (bool, int, str):
+def run_questasim(env: Union[Environment, str], tb_path: str, data_point: dict, log_name: str) -> (bool, int, str):
     # Get the name of the test bench module
     # We need to do this because the LLM could name the module anything
+
+    questa_dir = ""
+    if isinstance(env, str):
+        questa_dir = env
+    elif isinstance(env, Environment):
+        questa_dir = env.questa_dir
+    else:
+        return None
 
     design_dir = os.path.split(os.path.split(tb_path)[0])[0]
 
@@ -39,22 +47,38 @@ def run_questasim(env: Union[Environment, str], tb_path: str, data_point: dict, 
     #        # run(['make', 'clean', 'all'], stdout=f, stderr=f)
     run(['rm', '-rf', f'{design_dir}/work', 'work', 'transcript'])
     
+    
     # TODO: adapt for other designs
     # compile_output = run([f'{questa_dir}/vlog', '-cover', 's'] + [os.path.join(design_dir, path) for path in os.listdir(design_dir)], stdout=PIPE, stderr=PIPE)
     print(compile_command.split())
-    compile_output = run(compile_command.split(), stdout=PIPE, stderr=PIPE)
-    if not check_errors(compile_output.stdout.decode()):
-        return CoverageResponse(False, 1, compile_output.stdout.decode())
+    compile_output0 = run(compile_command.split(), stdout=PIPE, stderr=PIPE)
+    if not check_errors(compile_output0.stdout.decode()):
+        return CoverageResponse(False, 1, compile_output0.stdout.decode())
 
-    compile_output = run([f'{env.questa_dir}/vlog', '-cover', 's', tb_path], stdout=PIPE, stderr=PIPE)
-    if not check_errors(compile_output.stdout.decode()):
-        return CoverageResponse(False, 1, compile_output.stdout.decode())
+    compile_output1 = run([f'{questa_dir}/vlog', '-cover', 's', tb_path], stdout=PIPE, stderr=PIPE)
+
+    compile_output = compile_output0.stdout.decode() + compile_output1.stdout.decode()
+
+    with open(f'{log_name}_compile.log', 'w+') as f:
+        f.write(compile_output) 
+    
+
+    if not check_errors(compile_output1.stdout.decode()):
+        return CoverageResponse(False, 1, compile_output1.stdout.decode())
 
     try:
-        sim_output = run([f'{env.questa_dir}/vsim', f'work.{tb_name}', '-coverage', '-c', '-do', f'coverage exclude -du {tb_name};coverage save -onexit coverage.ucdb;run -all;exit;'], stdout=PIPE, stderr=PIPE, timeout=60*5)
+        sim_output = run([f'{questa_dir}/vsim', f'work.{tb_name}', '-coverage', '-c', '-do', f'coverage exclude -du {tb_name};coverage save -onexit {log_name}.ucdb;run -all;exit;'], stdout=PIPE, stderr=PIPE, timeout=60*5)
+        
+        with open(f'{log_name}_sim.log', 'w+') as f:
+            f.write(sim_output.stdout.decode()) 
+        
         if not check_errors(sim_output.stdout.decode()):
             return CoverageResponse(False, 2, sim_output.stdout.decode())
     except TimeoutExpired:
+
+        with open(f'{log_name}_sim.log', 'w+') as f:
+            f.write(sim_output.stdout.decode()) 
+
         return CoverageResponse(False, 3, "Simulation timeout")
 
     """
@@ -63,9 +87,9 @@ def run_questasim(env: Union[Environment, str], tb_path: str, data_point: dict, 
         return CoverageResponse(False, 4, report_output.stdout.decode())
     """
 
-    report_output = run([f'{env.questa_dir}/vsim', '-viewcov', 'coverage.ucdb', '-c', '-do', f'coverage report -output report.txt -srcfile=* -detail -all -dump -annotate -option -assert -directive -cvg -codeAll -xml;exit;'], stdout=PIPE, stderr=PIPE)
+    report_output = run([f'{questa_dir}/vsim', '-viewcov', f'{log_name}.ucdb', '-c', '-do', f'coverage report -output {log_name}_report.txt -srcfile=* -detail -all -dump -annotate -option -assert -directive -cvg -codeAll -xml;exit;'], stdout=PIPE, stderr=PIPE)
 
-    xml_tree = ET.parse('report.txt')
+    xml_tree = ET.parse(f'{log_name}_report.txt')
     coverage_list = []
     root = xml_tree.getroot()
 
@@ -87,10 +111,6 @@ def run_questasim(env: Union[Environment, str], tb_path: str, data_point: dict, 
         coverage_list.append(coverage_dict)
 
     total_coverage = (total_hits / total_active) * 100.0
-
-    # Clean up
-    os.remove("coverage.ucdb")
-    os.remove("report.txt")
 
     return CoverageResponse(True, 0, report_output.stdout.decode(), coverage_list, total_coverage)
     
@@ -147,3 +167,6 @@ def parse_makefile(makefile: str):
 
 def vlog_builder(tb_path: str, data_point: dict) -> str:
     return f"vlog -cover s {tb_path} {' '.join(data_point['design'])} {' '.join(data_point['design_context'])}"
+
+def merge_coverage(run_id: int):
+    pass
