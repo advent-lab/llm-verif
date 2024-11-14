@@ -62,29 +62,40 @@ class Environment:
         return split_filename[0]
 
     def extract_verilog_module_header(self, design_path: str) -> str:
-
-        # Open file and read design
+        # Read the file line by line to identify the header
         with open(design_path, 'r') as f:
-            verilog_code = f.read()
+            lines = f.readlines()
 
-        # Regular expression to capture the module name and header
-        module_pattern = re.compile(
-            r"module\s+(\w+)\s*\((.*?)\);\s*", 
-            re.DOTALL
-        )
-        
-        # Extracting module declaration
-        match = module_pattern.search(verilog_code)
-        if match:
-            module_name = match.group(1)  # Module name
-            port_list = match.group(2)    # Port list (inputs and outputs)
+        start_line = None
+        end_line = None
+        inside_module = False
+        capturing_ports = False
 
-            # Cleaning up whitespace and formatting the result
-            port_list = re.sub(r"\s+", " ", port_list.strip())  # Remove excessive whitespace
-            formatted_ports = "\n    ".join(port_list.split(","))  # Format each port on a new line
+        # Loop through lines to find the module declaration and subsequent I/O declarations
+        for i, line in enumerate(lines):
+            # Look for the start of the module declaration
+            if re.match(r"\s*module\s+\w+", line) and start_line is None:
+                start_line = i
+                inside_module = True
 
-            # Return formatted header
-            return f"module {module_name}(\n    {formatted_ports},\n);"
+            # If we're inside the module header, check for the end of the main header
+            if inside_module:
+                # Detect the end of the main module header (closing parenthesis with semicolon)
+                if re.search(r"\);\s*$", line):
+                    end_line = i
+                    inside_module = False
+                    capturing_ports = True  # Start capturing additional ports after the header ends
+                    continue
+
+            # Capture subsequent input/output/inout declarations
+            if capturing_ports:
+                if re.match(r"\s*(input|output|inout|parameter)\s+", line):
+                    end_line = i  # Update end line for each I/O declaration line
+
+        # Slice the lines to get only the module header and subsequent I/O declarations
+        if start_line is not None and end_line is not None:
+            module_header = "".join(lines[start_line:end_line + 1])
+            return module_header.strip()
         else:
-            return "No module found."
+            return "No module header found."
 
