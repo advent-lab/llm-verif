@@ -19,21 +19,16 @@ class Record:
                 "iteration #",
                 "temperature", 
                 "top_p", 
-                "pass rate",
+                "pass",
                 "pass@1",
                 "pass@5",
                 "pass@8",
                 "pass@10",
-                "compile fails",
-                "sim fails",
-                "timeout fails",
-                "report fails",
-                "decode fails",
-                "compile fail rate",
-                "sim fail rate",
-                "timeout fail rate",
-                "report fail rate",
-                "decode fail rate",
+                "compile fail",
+                "sim fail",
+                "timeout fail",
+                "report fail",
+                "decode fail",
                 "statement coverage",
                 "max total coverage",
                 "average total coverage",
@@ -102,21 +97,16 @@ class Record:
                 "iteration #": iteration,
                 "temperature": temperature, 
                 "top_p": top_p, 
-                "pass rate": self.total_pass / (self.total_pass + self.total_fail) if (self.total_pass + self.total_fail) != 0 else 0,
+                "pass": 1 if coverage.success == True else 0,
                 "pass@1": pass_at_k((self.total_pass + self.total_fail), self.total_pass, 1),
                 "pass@5": pass_at_k((self.total_pass + self.total_fail), self.total_pass, 5),
                 "pass@8": pass_at_k((self.total_pass + self.total_fail), self.total_pass, 10),
                 "pass@10": pass_at_k((self.total_pass + self.total_fail), self.total_pass, 25),
-                "compile fails": self.num_compile_fail,
-                "sim fails": self.num_sim_fail,
-                "timeout fails": self.num_timeout_fail,
-                "report fails": self.num_report_fail,
-                "decode fails": self.num_decode_fail,
-                "compile fail rate": self.num_compile_fail / (self.total_pass + self.total_fail) if (self.total_pass + self.total_fail) != 0 else 0,
-                "sim fail rate": self.num_sim_fail / (self.total_pass + self.total_fail) if (self.total_pass + self.total_fail) != 0 else 0,
-                "timeout fail rate": self.num_timeout_fail / (self.total_pass + self.total_fail) if (self.total_pass + self.total_fail) != 0 else 0,
-                "report fail rate": self.num_report_fail / (self.total_pass + self.total_fail) if (self.total_pass + self.total_fail) != 0 else 0,
-                "decode fail rate": self.num_decode_fail / (self.total_fail + self.total_pass) if (self.total_pass + self.total_fail) != 0 else 0,
+                "compile fail": 1 if coverage.error_code == 1 else 0,
+                "sim fail": 1 if coverage.error_code == 2 else 0,
+                "timeout fail": 1 if coverage.error_code == 3 else 0,
+                "report fail": 1 if coverage.error_code == 4 else 0,
+                "decode fail": 1 if coverage.error_code == 5 else 0,
                 "statement coverage": float(coverage.total_coverage),
                 "max total coverage": self.max_cov,
                 "tokens generated": self.tokens_generated,
@@ -138,6 +128,16 @@ class Record:
                 "tokens generated": self.tokens_generated,
                 "generation time": self.generation_time
             }])])
+
+    def reset_run(self):
+        self.total_fail = 0
+        self.total_pass = 0
+        self.max_cov = 0
+        self.num_compile_fail = 0
+        self.num_decode_fail = 0
+        self.num_report_fail = 0
+        self.num_sim_fail = 0
+        self.num_timeout_fail = 0
 
     def update_run_average_total_coverage(self, run_id: int):
         if self.run_type == "RUN":
