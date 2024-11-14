@@ -1,6 +1,6 @@
 import llama3_chat as chat
 import argparse
-from prompt_templates import m2_prompts, m3_prompt
+from prompt_templates import m2_prompts, m3_prompt, design_prompt
 from environment import Environment
 from eval_runs_util import Record
 
@@ -31,7 +31,7 @@ if __name__=="__main__":
 
         # Run generations
         # Initialize conversation history with system message
-        print(f"\n\nRun {i}")
+        print(f"\n\nRun: {i}, Iteration: 0")
         conversation = [
             {"role": "system", "content": "You are a verification engineering assistant tasked with generating test benches that meet a coverage requirement of 100% statement coverage."}
         ]
@@ -56,8 +56,23 @@ if __name__=="__main__":
 
         record.update_dataframe(cov, temperature, top_p, i, 0, tokens_generated, generation_time)
 
-        num_iter = 1
-        while num_iter < 11:
+        print(f"\n\nRun: {i}, Iteration: 1")
+
+        whole_design_prompt = design_prompt(environment.top_design_file_path)
+        conversation.append({"role":"user", "content":whole_design_prompt})
+
+        response, tokens_generated, generation_time = chat.generate_response(conversation_history=conversation)
+        conversation.append({"role":"assistant", "content":response})
+        response = chat.convert_json_response_to_dict(response)
+        try:
+            cov = chat.get_coverage(environment, response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}_from_design.v', data_point=data_point, storage=environment.store)
+        except KeyError:
+            continue
+
+        record.update_dataframe(cov, temperature, top_p, i, 1, tokens_generated, generation_time)
+
+        num_iter = 2
+        while num_iter < 12:
 
             print(f"\n\nRun: {i}, Iteration: {num_iter}")
 
