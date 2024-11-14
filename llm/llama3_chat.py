@@ -185,53 +185,23 @@ def get_coverage(environment: Environment, generated_response: str, tb_path: str
 
     # Run QuestaSim to get coverage
     # env = Environment(questa_dir)
-    coverage_response = qs.run_questasim(environment, tb_path=tb_path, data_point=data_point, log_file="questasim.log")
+    log_name = tb_path.split('.')[0]
+    coverage_response = qs.run_questasim(environment, tb_path=tb_path, data_point=data_point, log_name=log_name)
 
     # Move test bench file to storage
-    storage.move(tb_path)
+    if storage:
+        storage.move(tb_path)
+        storage.move(f'{log_name}_compile.log')
+        storage.move(f'{log_name}_sim.log')
+        storage.move(f'{log_name}.ucdb')
+        storage.move(f'{log_name}_report.txt')
+    
 
     return coverage_response
 
 # TODO: Implement parallel coverage runs
 def parallel_get_coverage():
     pass
-
-def get_design_name(design_path: str) -> str:
-    split_filename = os.path.split(design_path)[1].split('.')
-    if len(split_filename) != 2:
-        return ''
-
-    if split_filename[1] != 'v':
-        return ''
-
-    return split_filename[0]
-
-def extract_verilog_module_header(design_path: str) -> str:
-
-    # Open file and read design
-    with open(design_path, 'r') as f:
-        verilog_code = f.read()
-
-    # Regular expression to capture the module name and header
-    module_pattern = re.compile(
-        r"module\s+(\w+)\s*\((.*?)\);\s*", 
-        re.DOTALL
-    )
-    
-    # Extracting module declaration
-    match = module_pattern.search(verilog_code)
-    if match:
-        module_name = match.group(1)  # Module name
-        port_list = match.group(2)    # Port list (inputs and outputs)
-
-        # Cleaning up whitespace and formatting the result
-        port_list = re.sub(r"\s+", " ", port_list.strip())  # Remove excessive whitespace
-        formatted_ports = "\n    ".join(port_list.split(","))  # Format each port on a new line
-
-        # Return formatted header
-        return f"module {module_name}(\n    {formatted_ports},\n);"
-    else:
-        return "No module found."
 
 if __name__=="__main__":
     # Initialize model
