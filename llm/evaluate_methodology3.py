@@ -48,6 +48,7 @@ if __name__=="__main__":
 
         num_iter = 1
         while num_iter < 11:
+            print(f"\n\nRun: {i}, Iteration: {num_iter}")
 
             prompt3 = m3_prompt_wo_coverage()
             print(prompt3)
