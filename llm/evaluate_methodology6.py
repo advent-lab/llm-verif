@@ -58,7 +58,7 @@ if __name__=="__main__":
 
         print(f"\n\nRun: {i}, Iteration: 1")
 
-        whole_design_prompt = design_prompt(environment.top_design_file_path)
+        whole_design_prompt = design_prompt(environment.top_design_file_path, coverage=cov)
         conversation.append({"role":"user", "content":whole_design_prompt})
 
         response, tokens_generated, generation_time = chat.generate_response(conversation_history=conversation)
