@@ -1,8 +1,14 @@
-import llama3_chat as chat
+import sys
+from pathlib import Path
+
+# Add the project root to the PYTHONPATH
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
+import src.llama3_chat as chat
 import argparse
-from prompt_templates import m1_prompt, m3_prompt
-from environment import Environment
-from eval_runs_util import Record
+from src.prompt_templates import m1_prompt, m3_prompt
+from src.environment import Environment
+from src.eval_runs_util import Record
 
 if __name__=="__main__":
 

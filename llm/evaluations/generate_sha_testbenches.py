@@ -1,7 +1,13 @@
-import llama3_chat as chat
-from storage import FileStore
+import src.llama3_chat as chat
+from src.storage import FileStore
 import os
 import argparse
+
+import sys
+from pathlib import Path
+
+# Add the project root to the PYTHONPATH
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 if __name__=="__main__":
 

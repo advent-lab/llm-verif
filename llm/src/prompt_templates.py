@@ -1,4 +1,4 @@
-from questasim import CoverageResponse
+from src.questasim import CoverageResponse
 import os
 import pathlib
 from random import randint
@@ -180,6 +180,9 @@ def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
 		
 		formatted_coverage_report += f"File: {os.path.split(inst['path'])[1]}\tActive: {inst['coverage']['active']}\tHits: {inst['coverage']['hits']}\tPercent: {inst['coverage']['percent']}\n"
 
+	if not missed_lines:
+		return None
+
 	with open(design_file, 'r') as f:
 		lines = f.readlines()
 
@@ -219,105 +222,14 @@ Provide the generated testbench in a JSON format as shown below. You should put 
 }
 '''
 
-def design_prompt(design_file: str, coverage: CoverageResponse) -> str:
-
-	# Handle error responses from QuestaSim
-	if coverage.error_code == 1:
-		return f"The generated test bench failed to compile. Use the following error message to fix the errors. Use the same JSON format for the new testbench. Error Message:\n{coverage.error_message}\nProvide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
-{
-	"test bench": "
-		module tb_llm;
-
-			// Clock logic
-
-			initial
-			begin
-				// Generted test cases
-			$finish
-			end
-		endmodule
-	",
-	"comments": " // Any additonal comments here "
-}
-'''
-	elif coverage.error_code == 2:
-		return f"The generated test bench failed to simulate. Use the following error message to fix the errors Use the same JSON format for the new testbench. Error Message:\n{coverage.error_message}\nProvide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
-{
-	"test bench": "
-		module tb_llm;
-
-			// Clock logic
-
-			initial
-			begin
-				// Generted test cases
-			$finish
-			end
-		endmodule
-	",
-	"comments": " // Any additonal comments here "
-}
-'''
-	elif coverage.error_code == 3:
-		return f"The generated test bench took to long to simulate and timed out. Try to shorten the testbench. Use the same JSON format for the new testbench.Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
-{
-	"test bench": "
-		module tb_llm;
-
-			// Clock logic
-
-			initial
-			begin
-				// Generted test cases
-			$finish
-			end
-		endmodule
-	",
-	"comments": " // Any additonal comments here "
-}
-'''
-	elif coverage.error_code == 4:
-		return f"You failed to generate a test bench. You either generated a terminating token too early, ran past the token limit, or took too long to generate. Try generating a shorter test bench with higher quality tests. Use the same JSON format for the new testbench. Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
-{
-	"test bench": "
-		module tb_llm;
-
-			// Clock logic
-
-			initial
-			begin
-				// Generted test cases
-			$finish
-			end
-		endmodule
-	",
-	"comments": " // Any additonal comments here "
-}
-'''
-
-	design_filename = os.path.split(design_file)[1]
-
-	formatted_coverage_report = ""
-	missed_lines = []
-	for inst in coverage.coverage_list:
-		if os.path.split(inst['path'])[1] == design_filename:
-			for stmt in inst['coverage_detail']:
-				if stmt['hits'] == '0':
-					missed_lines.append(int(stmt['ln']))
-		
-		formatted_coverage_report += f"File: {os.path.split(inst['path'])[1]}\tActive: {inst['coverage']['active']}\tHits: {inst['coverage']['hits']}\tPercent: {inst['coverage']['percent']}\n"
+def design_prompt(design_file: str) -> str:
 
 	with open(design_file, 'r') as f:
 		lines = f.readlines()
 
-	for line in missed_lines:
-		lines[line - 1] = lines[line - 1].replace('\n', " // This is a line that was not covered by the test bench\n")
-
 	design_chunk = ''.join(lines)
 
-	return '''The test bench that you generated did not meet coverage goals. Use this coverage data and context to generate a test bench that achieves better coverage.
-Coverage report:
-''' + formatted_coverage_report + f'''
+	return f'''The test bench that you generated did not meet coverage goals. 
 I will give you some extra context to help. Here is the design for the main design module:
 {design_chunk}
 

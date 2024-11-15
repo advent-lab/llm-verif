@@ -2,8 +2,8 @@
 
 import numpy as np
 import pandas as pd
-from evaluation import pass_at_k
-from questasim import CoverageResponse
+from src.evaluation import pass_at_k
+from src.questasim import CoverageResponse
 
 class Record:
     def __init__(self, design_name: str, run_type: str = "RUN"):

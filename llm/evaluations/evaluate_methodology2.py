@@ -1,8 +1,14 @@
-import llama3_chat as chat
+import sys
+from pathlib import Path
+
+# Add the project root to the PYTHONPATH
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
+import src.llama3_chat as chat
 import argparse
-from prompt_templates import m1_prompt
-from environment import Environment
-from eval_runs_util import Record
+from src.prompt_templates import m2_prompts
+from src.environment import Environment
+from src.eval_runs_util import Record
 
 if __name__=="__main__":
 
@@ -16,11 +22,11 @@ if __name__=="__main__":
 
     record = Record(environment.design_name)
 
-    prompt = m1_prompt(environment.design_specification, environment.module_header)
-    print(prompt)
+    prompt1, prompt2 = m2_prompts(environment.design_specification, environment.module_header)
+    print(f'{prompt1}\n\n{prompt2}')
 
     temperature = 0.3
-    top_p = 0.7
+    top_p=0.7
 
     runs = args.generations
 
@@ -34,7 +40,13 @@ if __name__=="__main__":
         conversation = [
             {"role": "system", "content": "You are a verification engineering assistant tasked with generating test benches that meet a coverage requirement of 100% statement coverage."}
         ]
-        conversation.append({"role":"user", "content":prompt})
+        conversation.append({"role":"user", "content":prompt1})
+
+        response, tokens_generated, generation_time = chat.generate_response(conversation_history=conversation)
+        print(response)
+
+        conversation.append({'role':"assistant", "content":response})
+        conversation.append({"role":"user", "content":prompt2})
 
         response, tokens_generated, generation_time = chat.generate_response(conversation_history=conversation)
         conversation.append({"role": "assistant", "content": response})
@@ -45,9 +57,9 @@ if __name__=="__main__":
         
         record.update_dataframe(cov, temperature, top_p, i, 0, tokens_generated, generation_time)
 
-        record.write_to_csv(f'./{environment.design_name}_methodology1.csv')
+        record.write_to_csv(f'./{environment.design_name}_methodology2.csv')
 
     # No need to recreate the DataFrame here, as it has been filled during the loop
     record.update_all_average_total_coverage()
     
-    record.write_to_csv(f'./{environment.design_name}_methodology1.csv')
+    record.write_to_csv(f'./{environment.design_name}_methodology2.csv')

@@ -1,14 +1,12 @@
 from pathlib import Path
-from dashboard import Dataset
-from storage import FileStore
+from src.dashboard import Dataset
+from src.storage import FileStore
 import os
-import llama3_chat as chat
 import re
 
 class Environment:
 
-    def __init__(self, questa_dir: str, design_dir: str):
-        self.questa_dir = questa_dir
+    def __init__(self, design_dir: str):
         self.design_dir = design_dir
         self.design_name = os.path.split(self.design_dir)[1]
         self.design_dir_path = Path(self.design_dir)
@@ -50,7 +48,6 @@ class Environment:
         self.design_module_name = self.get_design_name(self.top_design_file_path)
 
         self.store = FileStore('./generations')
-        self.tokenizer = chat.load_model()
 
     def get_design_name(self, design_path: str) -> str:
         split_filename = os.path.split(design_path)[1].split('.')
