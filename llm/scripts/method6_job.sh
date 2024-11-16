@@ -19,7 +19,8 @@ RUN=$3
 #Load required software
 #Change to the directory of our script
 rm -rf $REPO_DIR/llm/venv /scratch/$USER/${DATA_POINT}_method6_run_$RUN
-cp -rf $REPO_DIR/llm/evaluations/evaluate_methodology6.py $REPO_DIR/llm/src $REPO_DIR/llm/build_llm_venv.sh $REPO_DIR/llm/requirements.txt $REPO_DIR/llm/accelerate_config.yaml /scratch/$USER/${DATA_POINT}_method6_run_$RUN
+mkdir /scratch/$USER/${DATA_POINT}_method6_run_$RUN
+cp -rf $REPO_DIR/llm/evaluations $REPO_DIR/llm/src $REPO_DIR/llm/build_llm_venv.sh $REPO_DIR/llm/requirements.txt $REPO_DIR/llm/accelerate_config.yaml /scratch/$USER/${DATA_POINT}_method6_run_$RUN
 cd /scratch/$USER/${DATA_POINT}_method6_run_$RUN
 
 #Run the software/python script

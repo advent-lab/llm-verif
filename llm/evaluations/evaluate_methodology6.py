@@ -21,7 +21,7 @@ if __name__=="__main__":
 
     environment = Environment(args.design)
     
-    llama = LlamaChat(QuestaSim(args.compiler))
+    llama = LlamaChat(QuestaSim(args.compiler), temperature=0.3, top_p=0.7, max_new_tokens=8196, timeout_seconds=1200)
 
     record = Record(environment.design_name, "RUN")
 
