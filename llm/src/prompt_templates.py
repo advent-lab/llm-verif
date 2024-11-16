@@ -172,7 +172,7 @@ def error_prompt(error_code: int, error_message: str) -> str:
 def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
 
 	if coverage.error_code != 0:
-		return error_prompt(coverage.error_code)
+		return error_prompt(coverage.error_code, coverage.error_code)
 	
 	design_filename = os.path.split(design_file)[1]
 
