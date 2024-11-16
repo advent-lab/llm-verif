@@ -84,7 +84,7 @@ if __name__=="__main__":
 
             print(f"\n\nRun: {i}, Iteration: {num_iter}")
 
-            error = error_prompt(cov.error_code)
+            error = error_prompt(cov.error_code, cov.error_message)
             print(error)
 
             conversation.append({"role":"user", "content":error})
