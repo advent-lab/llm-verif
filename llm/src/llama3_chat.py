@@ -17,12 +17,16 @@ os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache/"
 
 class LlamaChat():
 
-    def __init__(self, simulator: Simulator):
+    def __init__(self, simulator: Simulator, temperature: float, top_p: float, max_new_tokens: int, timeout_seconds: int):
 
         self.simulator = simulator
 
         self.model, self.tokenizer = self.load_model()
 
+        self.temperature = temperature
+        self.top_p = top_p
+        self.max_new_tokens = max_new_tokens
+        self.timeout_seconds= timeout_seconds
 
     def load_model(self) -> AutoTokenizer:
         os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache/"
@@ -54,7 +58,7 @@ class LlamaChat():
         return model, tokenizer
 
     # Generate a response from LLM with memory management
-    def generate_response(self, conversation_history, max_new_tokens=8192, temperature=0.3, top_p=0.7, timeout_seconds=1200) -> (str, int, float):
+    def generate_response(self, conversation_history) -> (str, int, float):
         input_ids = self.tokenizer.apply_chat_template(
             conversation_history,
             add_generation_prompt=True,
@@ -71,12 +75,12 @@ class LlamaChat():
             with torch.no_grad():
                 outputs = self.model.generate(
                     input_ids,
-                    max_new_tokens=max_new_tokens,
+                    max_new_tokens=self.max_new_tokens,
                     eos_token_id=terminators,
                     do_sample=True,
-                    temperature=temperature,
-                    top_p=top_p,
-                    stopping_criteria=[lambda ids, scores: time.time() - start_time > timeout_seconds]
+                    temperature=self.temperature,
+                    top_p=self.top_p,
+                    stopping_criteria=[lambda ids, scores: time.time() - start_time > self.timeout_seconds]
                 )
             
             elapsed_time = time.time() - start_time
@@ -207,6 +211,17 @@ class LlamaChat():
         
 
         return coverage_response
+
+    def limit_conversation(self, conversation) -> dict[str, str]:
+        # Limit conversation memory to about 8196 tokens (estimate based on token count)
+        current_token_count = sum(len(self.tokenizer.encode(msg["content"])) for msg in conversation)
+        max_token_count = 128000 - self.max_new_tokens
+        while current_token_count > max_token_count:
+            # Remove the oldest messages to maintain memory size
+            conversation.pop(1)  # Assuming the first message is the system prompt, so we pop the second one
+            current_token_count = sum(len(self.tokenizer.encode(msg["content"])) for msg in conversation)
+
+        return conversation
 
     # TODO: Implement parallel coverage runs
     def parallel_get_coverage():

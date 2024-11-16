@@ -92,10 +92,11 @@ Example output:
 }
 '''
 
-def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
+
+def error_prompt(error_code: int) -> str:
 
 	# Handle error responses from QuestaSim
-	if coverage.error_code == 1:
+	if error_code == 1:
 		return f"The generated test bench failed to compile. Use the following error message to fix the errors. Use the same JSON format for the new testbench. Error Message:\n{coverage.error_message}\nProvide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
 {
 	"test bench": "
@@ -113,7 +114,7 @@ def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
 	"comments": " // Any additonal comments here "
 }
 '''
-	elif coverage.error_code == 2:
+	elif error_code == 2:
 		return f"The generated test bench failed to simulate. Use the following error message to fix the errors Use the same JSON format for the new testbench. Error Message:\n{coverage.error_message}\nProvide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
 {
 	"test bench": "
@@ -131,7 +132,7 @@ def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
 	"comments": " // Any additonal comments here "
 }
 '''
-	elif coverage.error_code == 3:
+	elif error_code == 3:
 		return f"The generated test bench took to long to simulate and timed out. Try to shorten the testbench. Use the same JSON format for the new testbench.Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
 {
 	"test bench": "
@@ -149,7 +150,7 @@ def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
 	"comments": " // Any additonal comments here "
 }
 '''
-	elif coverage.error_code == 4:
+	elif error_code == 4:
 		return f"You failed to generate a test bench. You either generated a terminating token too early, ran past the token limit, or took too long to generate. Try generating a shorter test bench with higher quality tests. Use the same JSON format for the new testbench. Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
 {
 	"test bench": "
@@ -168,6 +169,11 @@ def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
 }
 '''
 
+def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
+
+	if coverage.error_code != 0:
+		return error_prompt(coverage.error_code)
+	
 	design_filename = os.path.split(design_file)[1]
 
 	formatted_coverage_report = ""
