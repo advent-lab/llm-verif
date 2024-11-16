@@ -14,7 +14,8 @@
 
 REPO_DIR=$1
 DATA_POINT=$2
-RUN=$3
+NUM_RUNS=$3
+RUN=$4
 
 #Load required software
 #Change to the directory of our script
@@ -30,6 +31,6 @@ source /home/$USER/llm_venv/bin/activate
 module load bittware/questa-23.4
 export LM_LICENSE_FILE=27006@en4228283l.cidse.dhcp.asu.edu
 
-python evaluations/evaluate_methodology6.py -d $REPO_DIR/data_points/$DATA_POINT -g 1 -c /packages/apps/fpga/Questa/questa_fe/bin #&> $DATA_POINT_method6_run_$RUN.log
+python evaluations/evaluate_methodology6.py -d $REPO_DIR/data_points/$DATA_POINT -g $NUM_RUNS -c /packages/apps/fpga/Questa/questa_fe/bin #&> $DATA_POINT_method6_run_$RUN.log
 deactivate
 rm -rf venv
