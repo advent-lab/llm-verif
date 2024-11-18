@@ -1,0 +1,165 @@
+## Computer
+
+- Carries out all arithmetic operations, plays role befitting a modern ALU.
+- Comprises separate units for addition, complementing, collating, shifting and multiplying.
+- Operations supervised by CCU (CCU is what MCU is to Control Section).
+
+-----
+
+### Accumulator
+- Consists of two tanks providing total 2 M/C - 4 p.i. delay,
+    - Accumulator I of 1 M/C delay, and
+    - Accumulator II of (1 M/C - 4 p.i.) delay.
+
+-----
+
+### Accumulator Shifting Unit
+When number is just circulating, provides 2 p.i. delay (no shifting - `g5` is low, irrespective of `c6`, `c7`, `c8`).
+
+#### ASU I
+- Used for extraction of numbers from the Accumulator.
+    - Output from both Accumulator Tanks provided as input.
+- Serves to provide gating EMFs to ASU II (X1, X2, X3 and X4).
+
+#### ASU II
+- Actual shifting operation
+    - Right shift, only 1 p.i. delay, so total Computer delay is 2 M/C - 1 p.i.
+    - Left shift, 3 p.i. delay in ASU II (1 p.i. in addition to normal), so total Computer delay is 2 M/C + 1 p.i.
+
+-----
+
+#### Adder
+- Provides 2 p.i. delay
+- Comprises two Half Adders
+    - 1 p.i. delay in respective sum output
+    - 2 p.i. delay in respective carry output
+
+## Gating EMFs emitted by Order Coder
+
+|    | EMF    | Orders |
+|---:|:-------|:-------|
+|  1 | `c1`   | A, S, C, V, N
+|  2 | `c2`   | A
+|  3 | `c3`   | S
+|  4 | `c4`   | C
+|  5 | `c5`   | V, N
+|  6 | `c6`   | R, L
+|  7 | `c7`   | R
+|  8 | `c8`   | L
+|  9 | `c9`   | X, Y
+| 10 | `c10`  | G
+| 11 | `c11`  | N
+| 12 | `c12`  | X
+| 13 | `c13`  | Y
+| 14 | `c14`  | V
+| 15 | `c16`  | I
+| 16 | `c17`  | T, U, I, F
+| 17 | `c17a` | *not used*
+| 18 | `c18`  | H
+| 19 | `c19`  | T, U
+| 20 | `c20`  | T
+| 21 | `c21`  | O
+| 22 | `c22`  | Z, Illegal Orders
+| 23 | `c24`  | C, H
+| 24 | `c25`  | E
+| 25 | `c26`  | A, S, C, V, N, H
+| 26 | `c27`  | I, O
+
+- `c15` and `c23` are mentioned in the original report by Wilkes that weren't used at the time.
+- To compute the gating EMFs, the Order Coder takes as input other opcodes also in addition to the ones listed above.
+
+-----
+
+## Gating EMFs emitted in MCU/CCUs
+
+|    |  EMF     | Produced in  | Purpose |
+|---:|:---------|:------------:|:--------|
+|  1 | g1 (+/-) | CCU 1        | Odd (+) or even (-) cycles gate.
+|  2 | g2 (+/-) | TCTSU        | Multiplicand and shifting gate
+|  3 | g3 (+)   | CCU 7        | Multiplicand output
+|  4 | g4 (+/-) | CCU 8        | Complementer gate
+|  5 | g5       | CCU 3        | Accumulator shifting gate
+|  6 | g6 (+)   | CCU 4        | Multiplicand shift for A, S, C orders
+|  7 | g7       | Accumulator Warning Unit | Warning gate
+|  8 | g8       | CCU 2        | TCT clear gate (Inhibit add/subtract logic in CCU4 ?)
+|  9 | g9 (-)   | CCU 9 and 11 | Accumulator clear gate
+| 10 | g10 (-)  | CCU 9 and 11 | Multiplier clear gate
+| 11 | g11 (-)  | CCU 9 and 11 | Multiplicand clear gate
+| 12 | g12      | MCU          | Stage 1 of main control
+| 13 | g13      | MCU          | Stage 2 of main control
+
+-----
+
+## Pulse emitted in CCU/TCT
+
+|    | Pulse  | Produced in  | Repsonse pulse | Purpose |
+|---:|:-------|:------------:|:---------------|:--------|
+|  1 | `dv`     | CCU 10       | `dv_d`          | Sign test pulse for E-order
+|  2 | `dv_d`  | Accumulator  |                | Jump condition satisfied
+|  3 | `da`     | TCT          |                | Sign test pulse for Multiplicand (via CCU 2)
+|  4 | `da_m`  | CCU 2        |                | Sign test pulse for Multiplicand
+|  5 | `da_n`  | Multiplicand |                | Result of test Multiplicand sign
+|  6 | `ds`     | CCU 2        | `ds_r`          | Sign test for right shifts
+|  7 | `ds_r`  | Accumulator  |                | Sign bit propagation for right shifts
+|  8 | `dr`     |              |                | *TODO*
+|  9 | `dw`     |              |                | *TODO*
+| 10 | `dx`     | TCT          | `dx_m`          | Digit test pulse for multiplier
+| 11 | `dx_m`  | Multiplier   |                | Response to digit test pulse for multiplier
+| 12 | `dy`     | TCT          |                | Resetting pulse after addition of partial product
+| 13 | `dz`     |              |                | Suppression pulse, occuring at even D0 (*TODO*)
+| 14 | `s1`     |              |                | Stimulating pulse to CU
+| 15 | `s2`     |              |                | Stimulating pulse to Computer
+| 16 | `r_pulse`     |              |                | Coincidence detected pulse
+| 17 | `r2`     |              |                | Coincidence detected to Computer
+
+## Instruction Set
+
+|    |  Order   | Binary Code   | Short Description |
+|---:|:---------|:-------------:|:------------------|
+|  1 | A n      |     11100     | Add number in memory position `n` into Accumulator
+|  2 | S n      |     01100     | Subtract number in memory position `n` from Accumulator
+|  3 | H n (M)  |     10101     | Transfer from memory position `n` into Multiplier
+|  4 | C n      |     11110     | Collate number in memory position `m` with Multiplier and add result into Accumulator
+|  5 | V n (N)  |     11111     | Multiply number in memory position `m` with Multiplier and add result into Accumulator
+|  6 | N n (N') |     10110     | Multiply number in memory position `m` with Multiplier and subtract result from Accumulator
+|  7 | T n      |     00101     | Transfer from Accumulator to memory position `n` and clear Accumulator
+|  8 | U n (T') |     00111     | Transfer from Accumulator to memory position `n` without clearing Accumulator
+|  9 | I n      |     01000     | Read next row of holes on Input Tape and put in least significant 5 bits ofmemory position `n`
+| 10 | O n      |     01001     | Print character represented by most significant 5 bits of number in memory position 'n'
+| 11 | E n (D)  |     00011     | If Accumulator is positivev(>= 0), jump to memory location `n`, otherwise proceed serially
+| 12 | G n (-)  |     11011     | If Accumulator is negative, jump to memory location `n`, otherwise proceed serially
+| 13 | R n      |     00100     | Shift contents of Accumulator `n` places to the right (1 <= n <= 10)
+| 14 | L n      |     11001     | Shift contents of Accumulator `n` places to the left (1 <= n <= 10)
+| 15 | Y (Z1)   |     00110     | Round off number to 34 binary digits
+| 16 | - (Z2)*  |               | Round off number to 16 binary digits
+| 17 | Z (Z3)   |     01101     | Stop machine and rin alarm
+| 18 | X (-)*   |     11010     | No operation
+| 19 | F n (-)* |     10001     | Read the last character output for verification
+
+- Codes corresponding to Orders are not specified in the original report by Wilkes.
+- The Tutorial Guide for Prof. Martin Campbell-Kelly's EDSAC simulator says the binary representation of the order is the same as the character code of the corresponding character.
+- Prof. Martin Campbell-Kelly's Tutorial Guide and Article describe 18 orders whereas the original report by Wilkes describes only 16 (*). For some orders, the character codes are also different. Wherever different, original report's order is noted in parentheses in the Order column above.
+- There was no unconditional branch order originally, but was added in 1952.
+- Shift order is given by the *position* of the rightmost bit in the instruction word, instead of the *value* of the address field of the instruction - 2^(n-2).
+
+## Main Control Unit
+
+- Controls sequencing of instructions.
+- Provides control signals.
+- Operates in two stages, which in modern computer architecture terms is,
+    - "Instruction fetch" (Stage 1), and 
+    - "Execution" (Stage 2).
+
+### Stage 1
+- Once `ep` (or `single_ep`) is received, G12 is emitted to provide routes from,
+    - SCT to CU, Tank Number and Half-cycle Flashing Units, and
+    - Order Tank to MOB.
+- Once Stage I has started and is running, the next `d0` causes stimulating pulse `s1` to be emitted to CU. CU searches for next instruction at address determined by SCT. When instruction has been found and transferred to Order Tank, `r_pulse` is emitted by CU. This resets G12 (Stage I concludes) and sets G13 (Stage II commences).
+- Lowering `stop_neg` halts operation, and prevents triggering of another Stage I.
+
+### Stage 2
+- Once `r_pulse` is received, G13 is emitted,
+    - to provide route from Order Tank to CU and all Flashing Units, and
+    - stimulating signal `r2` is sent to Computer.
+- Emits stimulating pulse to Computer (and to CU wherever required).
+- Emits gating EMF connecting Order Tank to SCT in case of sign pulse following CTO.

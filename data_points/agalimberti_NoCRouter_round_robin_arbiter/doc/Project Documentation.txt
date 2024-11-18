@@ -1,0 +1,240 @@
+
+
+2.6 Round-Robin Arbiter
+A standard round-robin arbiter is the basic component of more complex allocators, which will be used
+in the router to solve contention of the virtual channel buffers and the crossbar switch.
+This arbiter module can be parametrized for what concerns the maximum number of requests of a
+shared resource, and the round-robin scheduling algorithm has been chosen for its simplicity, easy
+implementation and for being starvation-free.
+
+2.7 Separable Input-First Allocator
+An allocator allows managing contention of multiple shared resources among multiple agents; the module is implemented such that, first, at each input port round-robin arbitration is performed between the
+virtual channels requesting for the allocation of any output port (indeed, the allocator is input-first),
+then, at each output port, round-robin arbitration is performed between input ports requesting for its
+allocation.
+This separable input-first allocator module is used inside the two following allocator units, as it encapsulates all the allocation logic and the containing modules.
+
+2.8 Virtual Channel Allocator
+This module produces a request matrix as an input to the contained separable input-first allocator; this
+matrix is produced based on the availability of virtual channels at the destination downstream input
+port, i.e., whether at least one input buffer of the port is in idle state.
+From the internally computed grant matrix, the virtual channel allocator module produces the identifiers of virtual channels at downstream routers for the input buffers who won contention.
+
+2.9 Switch Allocator
+The switch allocator module solves the contention between input buffers for the access to the crossbar
+switch, by encapsulating a separable input-first allocator and thus sending control signals to the cross5
+
+bar module and to the input buffers.
+Access to the shared crossbar switch depends on previous grants to the resources (with a Round-Robin
+policy) and on the availability, from the flow control point of view, of the downstream virtual channel
+that has been assigned to the upstream input buffer.
+
+3.6 Round-Robin Arbiter
+The arbiter allocates resource it monitors to one of the agents that requested it, each time by upgrading
+and following the priority of each agent; in order to check the correctness of the round robin arbiter
+we need to be sure that the grants have been asserted only to the agents that requested them, and we
+also need to check that in case of conflict only one agent has received the grant, and it is the one with
+highest priority of those in conflict.
+The testbench thus checks for each clock cycle that the agent which has been granted is unique and
+that it has requested the access to the resource, also that it was the one with the highest priority with
+respect to the ones that requested the resource; a simple starvation control is included, i.e., whenever
+one agent requests a resource but it does not receive the grant a counter for that agent is incremented,
+and if this happens more than a fixed number of times the starvation signal is raised for the correspondent agent.
+The test fails whenever the granted signals are more than one or when the grant is assigned to an agent
+that didn’t request the resource or when the granted agent is not the one with highest priority among
+the requesting ones.
+
+
+
+Test Description
+Single, well-formed packet with 4 flits
+Simultaneous insertion of two well-formed packets (4 flits) with different destination addresses, that means different outports
+Simultaneous insertion of two well-formed packets (4 flits) with the same destination
+address, that means same outport
+Simultaneous insertion of two well-formed packets (4 flits) with the same destination
+address and with delay between flits arrival
+Simultaneous insertion of two well-formed short packets composed only of HEAD and
+TAIL flits, with the same destination address
+Simultaneous insertion of two well-formed packets with different sizes that exceed the
+buffer length and with the same destination address
+Simultaneous insertion of two ill-formed packets, that is with multiple HEAD flits
+Simultaneous insertion of two different single-flit packets
+Insertion of an ill-formed packet without the leading HEAD flit
+
+3.13.2 Two Routers Scenario
+This verification step, which is fundamental for the test of the complete mesh, checks in an exhaustive
+way the communication between two attached routers.
+Test No.
+1-16
+
+Test Description
+Each test inserts for every pair of input port of the first Router (more precisely Local,
+North, West and South) and output port of the second (that are Local, North, East and
+South) a well-formed packet with a proper and precomputed destination address to reach
+the output port currently under test.
+
+
+
+4 Router External Interface
+In the following section, an overview of the interface exposed by the Router is provided, detailing the
+inputs and outputs of the module and the interfaces that enable connecting one router to another, in
+order to obtain a 2D mesh structure.
+
+4.1 Inputs and Outputs
+Inputs
+
+Outputs
+
+Signal
+clk
+rst
+
+Size (bits)
+1
+1
+
+error_o
+
+# ports x # virtual channels
+
+Description
+Clock signal input to the Router module
+Asynchronous reset signal, resets the Router to
+the initial state, in which all the buffers are
+empty and the internal allocators have no previous history
+Error flags, each corresponding to an Input Port
+- Virtual Channel pair, signal errors for the flits
+stored at the related buffer
+
+4.2 Interfaces to Other Routers
+Upstream
+router2router.upstream
+router_if_[link]_up
+
+Downstream
+router2router.downstream
+router_if_[link]_down
+
+Interfaces
+router_if_local_up
+router_if_north_up
+router_if_south_up
+router_if_west_up
+router_if_east_up
+
+router_if_local_down
+router_if_north_down
+router_if_south_down
+router_if_west_down
+router_if_east_down
+
+14
+
+Description
+Router-Router interfaces (respectively at the Local, North,
+South, West and East links),
+where the Router acts as the upstream entity (i.e., it sends the
+packet flits to the downstream
+Router connected on the other
+end of the link)
+Router-Router interfaces (respectively at the Local, North,
+South, West and East links),
+where the Router acts as the
+downstream entity (i.e., it receives the packet flits from the
+upstream Router connected on
+the other end of the link)
+
+4.2.1 Router-Router Interface Signals
+Signal
+data
+
+Size (bits)
+# bits per flit
+
+is_valid
+is_on_off
+
+1
+# virtual channels
+
+is_allocatable
+
+# virtual channels
+
+Description
+Data lines transporting one flit at a time from the upstream
+Router to the downstream one (see the Flit Encoding Scheme section for more detailed information about how the flit_t type has
+been defined)
+Flag signaling the validity of the flit currently on the data line
+Flag representing the availability, from the on/off flow control
+point of view, of the virtual channels of the downstream router’s
+input port to receive more flits
+Flag representing the availability of the virtual channels of the
+downstream router’s input port to be assigned to an upstream
+virtual channel in order to receive a packet (i.e., from the head
+flit to the corresponding tail flit)
+
+4.2.2 Router-Router Interface Modports
+Modport
+Upstream
+Downstream
+
+Inputs
+is_on_off
+is_allocatable
+data
+is_valid
+
+Outputs
+data
+is_valid
+is_on_off
+is_allocatable
+
+5 Flit Encoding Scheme
+Section
+flit_label
+
+Subsection
+
+vc_id
+data,
+which is either
+
+head_data
+
+or
+
+bt_pl
+
+x_dest
+y_dest
+head_pl
+
+Description
+Label representing the type of the flit, which can be either HEAD, BODY, TAIL or HEADTAIL (see flit_label_t
+type definition)
+Identifies the virtual channel in which the flit has to be
+stored at the downstream input port
+X coordinate in the 2D mesh of the recipient Router
+Y coordinate in the 2D mesh of the recipient Router
+Payload of the flit
+Payload of the flit (larger than the HEAD flit one, as the
+recipient address is not needed in BODY and TAIL flits)
+
+15
+
+6 Conclusions and Future Works
+The Network-on-Chip has been designed, implemented and then verified on some more complex corner
+cases, manually defined as the most critical and significant ones, alongside with other simple random
+tests.
+Some improvements can be seen as a natural continuation of this project in the future.
+From the design point of view, an higher performance could be obtained by adding speculation to the
+router, i.e., speculating the outcome of the virtual channel allocation in order to carry it out at the same
+clock cycle as the switch allocation for the head flit of each packet.
+Meanwhile, from the verification perspective, a more complex testbench could be implemented in the
+future for a more complete functional coverage of the design under test, with random tests being subsequently generated from the feedback of previous ones.
+
+16
+
+

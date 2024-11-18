@@ -1,4 +1,21 @@
 {
+    "Washing-machine-verilog": {
+        "verif": [
+            "$(BASE_DIR)/Washing-machine-verilog/Washing_Machine_tb.v"
+        ],
+        "verif_context": [],
+        "design": [
+            "$(BASE_DIR)/Washing-machine-verilog/Washing_Machine.v"
+        ],
+        "design_context": [
+            "$(BASE_DIR)/Washing-machine-verilog/WMFSM.v",
+            "$(BASE_DIR)/Washing-machine-verilog/min_Wtimes_cnt.v"
+        ],
+        "include": [],
+        "spec": [
+            "$(BASE_DIR)/Washing-machine-verilog/README.md"
+        ]
+    },
     "agalimberti_NoCRouter_router": {
         "verif": [
             "$(BASE_DIR)/agalimberti_NoCRouter_router/src/tb/router/tb_router.sv"
@@ -549,10 +566,10 @@
             "$(BASE_DIR)/agalimberti_NoCRouter_top_router/src/rtl/noc/noc.sv"
         ],
         "spec": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_6/doc/Project Documentation.pdf"
+            "$(BASE_DIR)/agalimberti_NoCRouter_top_router/doc/Project Documentation.txt"
         ],
         "makefile": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_6/questa/Makefile"
+            "$(BASE_DIR)/agalimberti_NoCRouter_top_router/questa/Makefile"
         ],
         "tags": [
             "scripted",
@@ -1160,6 +1177,7 @@
         ],
         "design_context": [],
         "spec": [
+            "$(BASE_DIR)/gsoc-museum-edsac_flipflop/doc/doc.txt",
             "$(BASE_DIR)/gsoc-museum-edsac_flipflop/doc/gating_emfs.md",
             "$(BASE_DIR)/gsoc-museum-edsac_flipflop/doc/instruction_set.md",
             "$(BASE_DIR)/gsoc-museum-edsac_flipflop/doc/main_control_unit.md",
@@ -1640,7 +1658,7 @@
         ],
         "design_context": [],
         "spec": [
-            "$(BASE_DIR)/agalimberti_NoCRouter_round_robin_arbiter/doc/Project Documentation.pdf"
+            "$(BASE_DIR)/agalimberti_NoCRouter_round_robin_arbiter/doc/Project Documentation.txt"
         ],
         "makefile": [
             "$(BASE_DIR)/agalimberti_NoCRouter_round_robin_arbiter/questa/Makefile"

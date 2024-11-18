@@ -15,10 +15,8 @@ def copy_files_from_json(json_file_path, dest_base_path):
                 print(f'Processing category: {category}')
                 
                 for src_file_path in file_list:
-                    # Extract the project directory name from the source path
-                    project_dir = src_file_path.split('/')[6] 
                     # Extract the relative path of the file within the project directory
-                    relative_path = os.path.relpath(src_file_path, start=f'/mnt/vault0/asbabbit/ml_for_hdl/kept_repos/')
+                    relative_path = os.path.relpath(src_file_path, start=f'/home/asbabbit/datapoints/')
                     
                     # Define the destination directory based on the base path and relative path
                     dest_file_path = os.path.join(dest_base_path, relative_path)
@@ -33,8 +31,8 @@ def copy_files_from_json(json_file_path, dest_base_path):
                     print(f'Copied {src_file_path} to {dest_file_path}')
 
 def main():
-    json_file = "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/dashboard_scripts/DataPoint.json"
-    base_dir = "/mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points"  # Base directory to start creating folders and copying files
+    json_file = "/home/asbabbit/llm_verif_dataset/dashboard_scripts/DataPoint.json"
+    base_dir = "/home/asbabbit/llm_verif_dataset/data_points"  # Base directory to start creating folders and copying files
 
     copy_files_from_json(json_file, base_dir)
 
