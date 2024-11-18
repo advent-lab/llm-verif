@@ -1,8 +1,14 @@
-import llama3_chat as chat
+import sys
+from pathlib import Path
+
+# Add the project root to the PYTHONPATH
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
+import src.llama3_chat as chat
 import argparse
-from prompt_templates import m1_prompt, m3_prompt_wo_coverage
-from environment import Environment
-from eval_runs_util import Record
+from src.prompt_templates import m2_prompts, m3_prompt_wo_coverage
+from src.environment import Environment
+from src.eval_runs_util import Record
 
 if __name__=="__main__":
 
@@ -16,8 +22,9 @@ if __name__=="__main__":
 
     record = Record(environment.design_name)
 
-    prompt1 = m1_prompt(environment.design_specification, environment.module_header)
+    prompt1, prompt2 = m2_prompts(environment.design_specification, environment.module_header)
     print(prompt1)
+    print(prompt2)
 
     temperature = 0.3
     top_p=0.7
@@ -26,15 +33,20 @@ if __name__=="__main__":
 
     for i in range(0,runs):
 
-        record.max_cov = 0
+        record.reset_run()
 
         # Run generations
         # Initialize conversation history with system message
-        print(f"\n\nRun {i}")
         conversation = [
             {"role": "system", "content": "You are a verification engineering assistant tasked with generating test benches that meet a coverage requirement of 100% statement coverage."}
         ]
         conversation.append({"role":"user", "content":prompt1})
+
+        response, tokens_generated, generation_time = chat.generate_response(conversation_history=conversation)
+        print(response)
+
+        conversation.append({'role':"assistant", "content":response})
+        conversation.append({"role":"user", "content":prompt2})
 
         response, tokens_generated, generation_time = chat.generate_response(conversation_history=conversation)
         conversation.append({"role": "assistant", "content": response})
@@ -47,7 +59,9 @@ if __name__=="__main__":
         record.update_dataframe(cov, temperature, top_p, i, 0, tokens_generated, generation_time)
 
         num_iter = 1
-        while num_iter < 11:
+        while record.max_cov < 95.0 and num_iter < 11:
+
+            print(f"\n\nRun: {i}, Iteration: {num_iter}")
 
             prompt3 = m3_prompt_wo_coverage()
             print(prompt3)
@@ -75,10 +89,10 @@ if __name__=="__main__":
 
             num_iter += 1
 
-            record.write_to_csv(f'./{environment.design_name}_methodology3.csv')
+            record.write_to_csv(f'./{environment.design_name}_methodology4.csv')
 
         record.update_run_average_total_coverage(run_id=i)
 
-        record.write_to_csv(f'./{environment.design_name}_methodology3.csv')
+        record.write_to_csv(f'./{environment.design_name}_methodology4.csv')
     
-    record.write_to_csv(f'./{environment.design_name}_methodology3.csv')
+    record.write_to_csv(f'./{environment.design_name}_methodology4.csv')

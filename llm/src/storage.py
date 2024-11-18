@@ -23,7 +23,8 @@ class FileStore:
         
     # Move a file from src_path to the storage directory
     def move(self, src_path: str):
-        shutil.move(src_path, os.path.join(self.storage_path, os.path.split(src_path)[1]))
+        if os.path.isfile(src_path):
+            shutil.move(src_path, os.path.join(self.storage_path, os.path.split(src_path)[1]))
 
     # Delete a file
     def delete(self, file_name: str):

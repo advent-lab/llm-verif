@@ -1,4 +1,4 @@
-from questasim import CoverageResponse
+from src.questasim import CoverageResponse
 import os
 import pathlib
 from random import randint
@@ -16,8 +16,14 @@ Provide the generated testbench in a JSON format as shown below. You should put 
 {
 	"test bench": "
 		module tb_llm;
-			// Generated test bench code
+
+			// Clock logic
+
+			initial
+			begin
+				// Generted test cases
 			$finish
+			end
 		endmodule
 	",
 	"comments": " // Any additonal comments here "
@@ -51,8 +57,14 @@ Example output:
 {
 	"test bench": "
 		module tb_llm;
-			// Generated test bench code
+
+			// Clock logic
+
+			initial
+			begin
+				// Generted test cases
 			$finish
+			end
 		endmodule
 	",
 	"comments": " // Any additonal comments here "
@@ -66,8 +78,91 @@ Example output:
 {
 	"test bench": "
 		module tb_llm;
-			// Generated test bench code
+
+			// Clock logic
+
+			initial
+			begin
+				// Generted test cases
 			$finish
+			end
+		endmodule
+	",
+	"comments": " // Any additonal comments here "
+}
+'''
+
+
+def error_prompt(error_code: int, error_message: str) -> str:
+
+	# Handle error responses from QuestaSim
+	if error_code == 1:
+		return f"The generated test bench failed to compile. Use the following error message to fix the errors. Use the same JSON format for the new testbench. Error Message:\n{error_message}\nProvide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
+{
+	"test bench": "
+		module tb_llm;
+
+			// Clock logic
+
+			initial
+			begin
+				// Generted test cases
+			$finish
+			end
+		endmodule
+	",
+	"comments": " // Any additonal comments here "
+}
+'''
+	elif error_code == 2:
+		return f"The generated test bench failed to simulate. Use the following error message to fix the errors Use the same JSON format for the new testbench. Error Message:\n{error_message}\nProvide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
+{
+	"test bench": "
+		module tb_llm;
+
+			// Clock logic
+
+			initial
+			begin
+				// Generted test cases
+			$finish
+			end
+		endmodule
+	",
+	"comments": " // Any additonal comments here "
+}
+'''
+	elif error_code == 3:
+		return f"The generated test bench took to long to simulate and timed out. Try to shorten the testbench. Use the same JSON format for the new testbench.Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
+{
+	"test bench": "
+		module tb_llm;
+
+			// Clock logic
+
+			initial
+			begin
+				// Generted test cases
+			$finish
+			end
+		endmodule
+	",
+	"comments": " // Any additonal comments here "
+}
+'''
+	elif error_code == 4:
+		return f"You failed to generate a test bench. You either generated a terminating token too early, ran past the token limit, or took too long to generate. Try generating a shorter test bench with higher quality tests. Use the same JSON format for the new testbench. Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
+{
+	"test bench": "
+		module tb_llm;
+
+			// Clock logic
+
+			initial
+			begin
+				// Generted test cases
+			$finish
+			end
 		endmodule
 	",
 	"comments": " // Any additonal comments here "
@@ -76,56 +171,9 @@ Example output:
 
 def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
 
-	# Handle error responses from QuestaSim
-	if coverage.error_code == 1:
-		return f"The generated test bench failed to compile. Use the following error message to fix the errors. Use the same JSON format for the new testbench. Error Message:\n{coverage.error_message}\nProvide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
-{
-	"test bench": "
-		module tb_llm;
-			// Generated test bench code
-			$finish
-		endmodule
-	",
-	"comments": " // Any additonal comments here "
-}
-'''
-	elif coverage.error_code == 2:
-		return f"The generated test bench failed to simulate. Use the following error message to fix the errors Use the same JSON format for the new testbench. Error Message:\n{coverage.error_message}\nProvide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
-{
-	"test bench": "
-		module tb_llm;
-			// Generated test bench code
-			$finish
-		endmodule
-	",
-	"comments": " // Any additonal comments here "
-}
-'''
-	elif coverage.error_code == 3:
-		return f"The generated test bench took to long to simulate and timed out. Try to shorten the testbench. Use the same JSON format for the new testbench.Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
-{
-	"test bench": "
-		module tb_llm;
-			// Generated test bench code
-			$finish
-		endmodule
-	",
-	"comments": " // Any additonal comments here "
-}
-'''
-	elif coverage.error_code == 4:
-		return f"You failed to generate the test bench within the provided length. Try generating a shorter test bench with higher quality tests. Use the same JSON format for the new testbench. Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
-{
-	"test bench": "
-		module tb_llm;
-			// Generated test bench code
-			$finish
-		endmodule
-	",
-	"comments": " // Any additonal comments here "
-}
-'''
-
+	if coverage.error_code != 0:
+		return error_prompt(coverage.error_code, coverage.error_code)
+	
 	design_filename = os.path.split(design_file)[1]
 
 	formatted_coverage_report = ""
@@ -138,12 +186,15 @@ def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
 		
 		formatted_coverage_report += f"File: {os.path.split(inst['path'])[1]}\tActive: {inst['coverage']['active']}\tHits: {inst['coverage']['hits']}\tPercent: {inst['coverage']['percent']}\n"
 
+	if not missed_lines:
+		return None
+
 	with open(design_file, 'r') as f:
 		lines = f.readlines()
 
 	randline = randint(0, len(missed_lines) - 1)
 
-	lines[missed_lines[randline] - 1] = lines[missed_lines[randline] - 1].replace('\n', " // This is the line that was not covered")
+	lines[missed_lines[randline] - 1] = lines[missed_lines[randline] - 1].replace('\n', " // This is the line that was not covered\n")
 
 	missed_line = lines[missed_lines[randline] - 1]
 	design_chunk = ''.join(lines[missed_lines[randline] - 10:missed_lines[randline] + 11])
@@ -163,8 +214,48 @@ Provide the generated testbench in a JSON format as shown below. You should put 
 {
 	"test bench": "
 		module tb_llm;
-			// Generated test bench code
+
+			// Clock logic
+
+			initial
+			begin
+				// Generted test cases
 			$finish
+			end
+		endmodule
+	",
+	"comments": " // Any additonal comments here "
+}
+'''
+
+def design_prompt(design_file: str) -> str:
+
+	with open(design_file, 'r') as f:
+		lines = f.readlines()
+
+	design_chunk = ''.join(lines)
+
+	return f'''The test bench that you generated did not meet coverage goals. 
+I will give you some extra context to help. Here is the design for the main design module:
+{design_chunk}
+
+Generate a Verilog testbench named tb_llm for the following design specification.
+The test bench should meet the statement coverage goal of 100%.
+Generate only the Verilog testbench and no additional words.
+Make sure you are ONLY using Verilog syntax and features, and not SystemVerilog such as for loops.\n
+Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag. Keep the test bench less than 500 lines.\n
+''' + '''Example output:
+{
+	"test bench": "
+		module tb_llm;
+
+			// Clock logic
+
+			initial
+			begin
+				// Generted test cases
+			$finish
+			end
 		endmodule
 	",
 	"comments": " // Any additonal comments here "

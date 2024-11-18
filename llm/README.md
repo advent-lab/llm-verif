@@ -26,16 +26,19 @@ deactivate
 This code creates the virtual python environment that will be envoked by the scripts
 
 ## 5. Try to run the job scripts!
+
+In the methods scripts, you can run them interactively or in batch. If you want to run them interactively to debug, make sure the python call in the script is going to stdout. Otherwise, uncomment the pipe at the end of the line to make it go to a log file.
+
+The scripts take the number of conversations, or runs, as a third argument.
+The scripts take a run id as a fourth argument, which will differentiate the directory names for batched runs. 
+I have an example script called run_parallel_runs.sh which shows how this works.
+
 Example usage of each script:
 ```bash
-<cloned repo path>/llm/method1_job.sh <path to repo> <name of a datapoint>
-
-<cloned repo path>/llm/method2_job.sh <path to repo> <name of a datapoint>
-
-<cloned repo path>/llm/method3_job.sh <path to repo> <name of a datapoint>
+<cloned repo path>/llm/scripts/method6_job.sh <path to repo> <name of a datapoint> <NUMBER OF RUNS> <RUN id>
 ```
 You can also submit them using sbatch if you want them to run as a job on the Sol cluter
 ```bash
-sbatch module1_job.sh <path to repo> <name of a datapoint>
+sbatch scripts/module6_job.sh <path to repo> <name of a datapoint> <NUMBER OF RUNS> <RUN id>
 ```
 

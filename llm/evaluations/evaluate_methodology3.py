@@ -1,8 +1,14 @@
-import llama3_chat as chat
+import sys
+from pathlib import Path
+
+# Add the project root to the PYTHONPATH
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
+import src.llama3_chat as chat
 import argparse
-from prompt_templates import m1_prompt, m3_prompt
-from environment import Environment
-from eval_runs_util import Record
+from src.prompt_templates import m1_prompt, m3_prompt_wo_coverage
+from src.environment import Environment
+from src.eval_runs_util import Record
 
 if __name__=="__main__":
 
@@ -26,7 +32,7 @@ if __name__=="__main__":
 
     for i in range(0,runs):
 
-        record.max_cov = 0
+        record.reset_run()
 
         # Run generations
         # Initialize conversation history with system message
@@ -42,17 +48,15 @@ if __name__=="__main__":
         print(response)
 
         data_point = environment.dataset.get_data_point(environment.design_name)
-        try:
-            cov = chat.get_coverage(environment, response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}.v', data_point=data_point, storage=environment.store)
-        except KeyError:
-            continue
-
+        cov = chat.get_coverage(environment, response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}.v', data_point=data_point, storage=environment.store)
+        
         record.update_dataframe(cov, temperature, top_p, i, 0, tokens_generated, generation_time)
 
         num_iter = 1
         while num_iter < 11:
+            print(f"\n\nRun: {i}, Iteration: {num_iter}")
 
-            prompt3 = m3_prompt(environment.top_design_file_path, cov)
+            prompt3 = m3_prompt_wo_coverage()
             print(prompt3)
 
             conversation.append({"role":"user", "content":prompt3})
@@ -68,7 +72,7 @@ if __name__=="__main__":
                 continue
             record.update_dataframe(cov, temperature, top_p, i, num_iter, tokens_generated, generation_time)
 
-            # Limit conversation memory to about 8196 tokens (estimate based on token count)
+            # Limit conversation memory to about 4000 tokens (estimate based on token count)
             current_token_count = sum(len(environment.tokenizer.encode(msg["content"])) for msg in conversation)
             max_token_count = 128000 - 8196
             while current_token_count > max_token_count:
@@ -78,10 +82,10 @@ if __name__=="__main__":
 
             num_iter += 1
 
-            record.write_to_csv(f'./{environment.design_name}_methodology5.csv')
+            record.write_to_csv(f'./{environment.design_name}_methodology3.csv')
 
         record.update_run_average_total_coverage(run_id=i)
 
-        record.write_to_csv(f'./{environment.design_name}_methodology5.csv')
+        record.write_to_csv(f'./{environment.design_name}_methodology3.csv')
     
-    record.write_to_csv(f'./{environment.design_name}_methodology5.csv')
+    record.write_to_csv(f'./{environment.design_name}_methodology3.csv')
