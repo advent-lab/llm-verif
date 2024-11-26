@@ -31,6 +31,6 @@ source /home/$USER/llm_venv/bin/activate
 module load bittware/questa-23.4
 export LM_LICENSE_FILE=27006@en4228283l.cidse.dhcp.asu.edu
 
-python evaluations/evaluate_methodology6.py -d $REPO_DIR/data_points/$DATA_POINT -g $NUM_RUNS -c /packages/apps/fpga/Questa/questa_fe/bin #&> $DATA_POINT_method6_run_$RUN.log
+python evaluations/evaluate_methodology6.py -d $REPO_DIR/data_points/$DATA_POINT -g $NUM_RUNS -c /packages/apps/fpga/Questa/questa_fe/bin #2>&1 | tee ${DATA_POINT}_method6_run_$RUN.log
 deactivate
 rm -rf venv
