@@ -20,3 +20,7 @@ class Simulator():
     def run_sim(self) -> CoverageResponse:
         """Run the simulation - to be overridden by subclasses"""
         raise NotImplementedError("This method should be implemented by subclasses.")
+
+    def merge_coverage(coverage_dbs: list[str]):
+        """Merge the coverage of a list of provided coverage databases and return the coverage results"""
+        raise NotImplementedError("This method should be implemented by subclasses.")
