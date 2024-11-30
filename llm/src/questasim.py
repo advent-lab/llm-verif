@@ -5,6 +5,7 @@ from src.simulator import Simulator, CoverageResponse
 import re
 from typing import Union, Dict, List
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 class QuestaSim(Simulator):
 
@@ -96,6 +97,19 @@ class QuestaSim(Simulator):
         total_coverage = (total_hits / total_active) * 100.0
 
         return CoverageResponse(True, 0, report_output.stdout.decode(), coverage_list, total_coverage)
+
+    def merge_coverage(coverage_dbs: list[Union[str, Path]]):
+
+        if not all(isinstance(val, str) for val in coverage_dbs) and not all(isinstance(val, Path) for val in coverage_dbs):
+            raise TypeError("Argument coverage_dbs should be a list of strings or Paths")
+
+        for file in coverage_dbs:
+            if os.path.isfile(file):
+                raise ValueError("All file paths in coverage_dbs should be a valid path of a UCDB coverage database file")
+
+        merge_coverage_result = run([f'{self.simulator_path}/vcover', 'merge', '-recursive', '-out', 'merged_coverage.ucdb'] + coverage_dbs, stdout=PIPE, stderr=PIPE)
+
+        
     
     def check_errors(self, questa_output: str) -> bool:
         if not questa_output:
