@@ -98,7 +98,9 @@ class QuestaSim(Simulator):
 
         return CoverageResponse(True, 0, report_output.stdout.decode(), coverage_list, total_coverage)
 
-    def merge_coverage(coverage_dbs: list[Union[str, Path]]):
+    # Returns the path to the merged coverage ucdb
+    # If an empty string is returned, there was an error merging the coverage
+    def merge_coverage(coverage_dbs: list[Union[str, Path]]) -> str:
 
         if not all(isinstance(val, str) for val in coverage_dbs) and not all(isinstance(val, Path) for val in coverage_dbs):
             raise TypeError("Argument coverage_dbs should be a list of strings or Paths")
@@ -108,6 +110,14 @@ class QuestaSim(Simulator):
                 raise ValueError("All file paths in coverage_dbs should be a valid path of a UCDB coverage database file")
 
         merge_coverage_result = run([f'{self.simulator_path}/vcover', 'merge', '-recursive', '-out', 'merged_coverage.ucdb'] + coverage_dbs, stdout=PIPE, stderr=PIPE)
+
+        if not self.check_errors(merge_coverage_result):
+            return ''
+
+        if not os.path.isfile('merged_coverage.ucdb'):
+            return ''
+
+        return os.path.abspath('merged_coverage.ucdb')
 
         
     
