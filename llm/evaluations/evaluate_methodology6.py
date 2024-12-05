@@ -6,6 +6,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from src.environment import Environment
 from src.questasim import QuestaSim
+from src.simulator import CoverageResponse
 from src.llama3_chat import LlamaChat
 import argparse
 from src.prompt_templates import m2_prompts, m3_prompt, design_prompt, error_prompt
@@ -21,7 +22,7 @@ if __name__=="__main__":
 
     environment = Environment(args.design)
     
-    llama = LlamaChat(QuestaSim(args.compiler), temperature=0.3, top_p=0.7, max_new_tokens=8196, timeout_seconds=1200)
+    llama = LlamaChat(QuestaSim(args.compiler), temperature=0.3, top_p=0.7, max_new_tokens=4098, timeout_seconds=1000)
 
     record = Record(environment.design_name, "RUN")
 
@@ -69,10 +70,12 @@ if __name__=="__main__":
         data_point = environment.dataset.get_data_point(environment.design_name)
         try:
             cov = llama.get_coverage(response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}.v', data_point=data_point, storage=environment.store)
-        except KeyError:
-            continue
+            record.update_dataframe(cov, temperature, top_p, i, 0, tokens_generated, generation_time)
+        except KeyError as e:
+            print(f"LLM generated a bad key in the JSON: {e}")
+            cov = CoverageResponse(False, error_code=4, error_message=f"LLM generated a bad key in the JSON: {e}", coverage_list=[], total_coverage=0)
+            update_dataframe(cov, temperature, top_p, i, 0, tokens_generated, generation_time)
 
-        record.update_dataframe(cov, temperature, top_p, i, 0, tokens_generated, generation_time)
         record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
 
         #------------------------------------------------------------------------------------------------------------------
@@ -80,7 +83,7 @@ if __name__=="__main__":
         # If the first test bench generated produced covergae, this will be skipped
         #------------------------------------------------------------------------------------------------------------------
         num_iter = 1
-        while cov.total_coverage == 0 and num_iter < 12:
+        while cov.total_coverage == 0 and cov.total_coverage < 100 and num_iter < 12:
 
             print(f"\n\nRun: {i}, Iteration: {num_iter}")
 
@@ -95,14 +98,45 @@ if __name__=="__main__":
             response = LlamaChat.convert_json_response_to_dict(response)
             try:
                 cov = llama.get_coverage(response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}{num_iter}.v', data_point=data_point, storage=environment.store)
+                record.update_dataframe(cov, temperature, top_p, i, num_iter, tokens_generated, generation_time)
             except KeyError as e:
-                print(f"KeyError: {e}")
-                num_iter += 1
-                continue
-
-            record.update_dataframe(cov, temperature, top_p, i, num_iter, tokens_generated, generation_time)
-
+                print(f"LLM generated a bad key in the JSON: {e}")
+                cov = CoverageResponse(False, error_code=4, error_message=f"LLM generated a bad key in the JSON: {e}", coverage_list=[], total_coverage=0)
+                record.update_dataframe(cov, temperature, top_p, i, num_iter, tokens_generated, generation_time)
+                
             conversation = llama.limit_conversation(conversation)
+
+            if num_iter == 11:
+                # Extend for three additional iterations if there is non-zero coverage or a compile error
+                if cov.total_coverage > 0 or cov.error_code != 1:
+                    print("\nNon-zero coverage or compile error detected. Extending for up to 3 more iterations.")
+                    extension_iter = 1
+                    while extension_iter < 4 and record.max_cov != 100:
+                        print(f"\n\nRun: {i}, Extended Iteration: {num_iter + extension_iter}")
+
+                        prompt3 = m3_prompt(environment.top_design_file_path, cov)
+                        print(prompt3)
+
+                        conversation.append({"role": "user", "content": prompt3})
+
+                        response, tokens_generated, generation_time = llama.generate_response(conversation_history=conversation)
+                        print(response)
+                        conversation.append({"role": "assistant", "content": response})
+                        response = LlamaChat.convert_json_response_to_dict(response)
+
+                        try:
+                            cov = llama.get_coverage(response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}{num_iter + extension_iter}.v', data_point=data_point, storage=environment.store)
+                            record.update_dataframe(cov, temperature, top_p, i, num_iter + extension_iter, tokens_generated, generation_time)
+                        except KeyError as e:
+                            print(f"LLM generated a bad key in the JSON: {e}")
+                            cov = CoverageResponse(False, error_code=4, error_message=f"LLM generated a bad key in the JSON: {e}", coverage_list=[], total_coverage=0)
+                            record.update_dataframe(cov, temperature, top_p, i, num_iter + extension_iter, tokens_generated, generation_time)
+
+                        conversation = llama.limit_conversation(conversation)
+
+                        extension_iter += 1
+
+                        record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
 
             num_iter += 1
 
@@ -113,6 +147,9 @@ if __name__=="__main__":
 
         # If it was able to generate a test bench with 100% coverage, it should move onto the next conversation
         if cov.total_coverage == 100:
+            continue
+
+        if num_iter >= 12:
             continue
 
         print(f"\n\nRun: {i}, Iteration: {num_iter}")
@@ -126,13 +163,13 @@ if __name__=="__main__":
         conversation.append({"role":"assistant", "content":response})
         response = LlamaChat.convert_json_response_to_dict(response)
         try:
-            cov = llama.get_coverage(response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}{num_iter}_from_design.v', data_point=data_point, storage=environment.store)
-        except KeyError:
-            print(f"KeyError: {e}")
-            num_iter += 1
-            continue
+            cov = llama.get_coverage(response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}{num_iter}.v', data_point=data_point, storage=environment.store)
+            record.update_dataframe(cov, temperature, top_p, i, num_iter, tokens_generated, generation_time)
+        except KeyError as e:
+            print(f"LLM generated a bad key in the JSON: {e}")
+            cov = CoverageResponse(False, error_code=4, error_message=f"LLM generated a bad key in the JSON: {e}", coverage_list=[], total_coverage=0)
+            record.update_dataframe(cov, temperature, top_p, i, num_iter, tokens_generated, generation_time)
 
-        record.update_dataframe(cov, temperature, top_p, i, 1, tokens_generated, generation_time)
         record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
 
         llama.limit_conversation(conversation)
@@ -157,15 +194,46 @@ if __name__=="__main__":
 
             try:
                 cov = llama.get_coverage(response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}{num_iter}.v', data_point=data_point, storage=environment.store)
-            except KeyError:
-                print(f"KeyError: {e}")
-                num_iter += 1
-                continue
-            
-            record.update_dataframe(cov, temperature, top_p, i, num_iter, tokens_generated, generation_time)
+                record.update_dataframe(cov, temperature, top_p, i, num_iter, tokens_generated, generation_time)
+            except KeyError as e:
+                print(f"LLM generated a bad key in the JSON: {e}")
+                cov = CoverageResponse(False, error_code=4, error_message=f"LLM generated a bad key in the JSON: {e}", coverage_list=[], total_coverage=0)
+                record.update_dataframe(cov, temperature, top_p, i, num_iter, tokens_generated, generation_time)
 
             # Limit conversation memory to about 8196 tokens (estimate based on token count)
             conversation = llama.limit_conversation(conversation)
+
+            if num_iter == 11:
+                # Extend for three additional iterations if there is non-zero coverage or a compile error
+                if cov.total_coverage > 0 or cov.error_code != 1:
+                    print("\nNon-zero coverage or compile error detected. Extending for up to 3 more iterations.")
+                    extension_iter = 1
+                    while extension_iter < 4 and record.max_cov != 100:
+                        print(f"\n\nRun: {i}, Extended Iteration: {num_iter + extension_iter}")
+
+                        prompt3 = m3_prompt(environment.top_design_file_path, cov)
+                        print(prompt3)
+
+                        conversation.append({"role": "user", "content": prompt3})
+
+                        response, tokens_generated, generation_time = llama.generate_response(conversation_history=conversation)
+                        print(response)
+                        conversation.append({"role": "assistant", "content": response})
+                        response = LlamaChat.convert_json_response_to_dict(response)
+
+                        try:
+                            cov = llama.get_coverage(response[0]['test bench'], f'{args.design}/tb_llm_{environment.design_name}_{i}{num_iter + extension_iter}.v', data_point=data_point, storage=environment.store)
+                            record.update_dataframe(cov, temperature, top_p, i, num_iter + extension_iter, tokens_generated, generation_time)
+                        except KeyError as e:
+                            print(f"LLM generated a bad key in the JSON: {e}")
+                            cov = CoverageResponse(False, error_code=4, error_message=f"LLM generated a bad key in the JSON: {e}", coverage_list=[], total_coverage=0)
+                            record.update_dataframe(cov, temperature, top_p, i, num_iter + extension_iter, tokens_generated, generation_time)
+
+                        conversation = llama.limit_conversation(conversation)
+
+                        extension_iter += 1
+
+                        record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
 
             num_iter += 1
 
