@@ -1,3 +1,6 @@
+# import sys
+# sys.path.append('/home/asbabbit/llm_verif_dataset/llm_src')
+
 from pathlib import Path
 from src.dashboard import Dataset
 from src.storage import FileStore
@@ -33,6 +36,8 @@ class Environment:
                 self.design_specification = spec.read()
 
         self.top_design_file_path = self.dataset.get_design(self.design_name)
+        self.all_design_file_paths = self.dataset.get_design_and_context(self.design_name)
+
         self.module_header = ''
         if not self.top_design_file_path:
             print("Error: No design file(s) avaliable for this design")

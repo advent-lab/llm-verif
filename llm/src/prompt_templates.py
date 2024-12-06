@@ -1,7 +1,12 @@
+# import sys
+# sys.path.append('/home/asbabbit/llm_verif_dataset/llm_src')
+# import xml.etree.ElementTree as ET
+
 from src.questasim import CoverageResponse
 import os
 import pathlib
 from random import randint
+# from environment import Environment
 
 # This function returns the initial prompt used for generating a test bench
 def m1_prompt(design_specification: str, module_header: str) -> str:
@@ -169,44 +174,62 @@ def error_prompt(error_code: int, error_message: str) -> str:
 }
 '''
 
-def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
+# TODO: Create option for LLM to create new test cases instead of repeating itself
+def m3_prompt(all_design_files: list, coverage: CoverageResponse) -> str:
 
 	if coverage.error_code != 0:
 		return error_prompt(coverage.error_code, coverage.error_message)
-	
-	design_filename = os.path.split(design_file)[1]
 
+	# Parse the XML coverage report file and create a dictionary of files with their line misses
 	formatted_coverage_report = ""
-	missed_lines = []
+	missed_lines = {}
 	for inst in coverage.coverage_list:
-		if os.path.split(inst['path'])[1] == design_filename:
-			for stmt in inst['coverage_detail']:
-				if stmt['hits'] == '0':
-					missed_lines.append(int(stmt['ln']))
-		
+		filename = os.path.split(inst['path'])[1]
+		for stmt in inst['coverage_detail']:
+			if stmt['hits'] == '0':
+				line = int(stmt['ln'])
+				if filename not in missed_lines:
+					missed_lines[filename] = {"lines": []}
+				missed_lines[filename]["lines"].append(line)
+	
 		formatted_coverage_report += f"File: {os.path.split(inst['path'])[1]}\tActive: {inst['coverage']['active']}\tHits: {inst['coverage']['hits']}\tPercent: {inst['coverage']['percent']}\n"
 
 	if not missed_lines:
-		return None
+		return "No missed lines left to fix"
 
-	with open(design_file, 'r') as f:
-		lines = f.readlines()
+	#TODO: There maybe accessing to null lists for lines key if file not used in coverage report
+	# Select random file and line where there is a miss
+	rand_file = all_design_files[randint(0, len(all_design_files)-1)]
+	rand_filename = os.path.split(rand_file)[1]
+	rand_line_index = missed_lines[rand_filename]["lines"][randint(0, len(missed_lines[rand_filename]["lines"]) - 1)]
 
-	randline = randint(0, len(missed_lines) - 1)
+	missed_line = ""
+	all_design_content = ""
+	lines_list = {}
+	for file in all_design_files:
+		filename = os.path.split(file)[1]
+		with open(file, 'r') as f:
+			lines = f.readlines()
 
-	lines[missed_lines[randline] - 1] = lines[missed_lines[randline] - 1].replace('\n', " // This is the line that was not covered\n")
+		if rand_filename == filename and lines[rand_line_index] != '\n':
+			lines[rand_line_index] = lines[rand_line_index].replace('\n', " // This is the line that was not covered\n")
+			missed_line = lines[rand_line_index]
 
-	missed_line = lines[missed_lines[randline] - 1]
-	design_chunk = ''.join(lines[missed_lines[randline] - 10:missed_lines[randline] + 11])
+		lines_list[filename] = {"lines": lines}
+		all_design_content = all_design_content + '\n\n' + filename + '\n' + ''.join(lines)
+	
 
-	return '''The test bench that you generated did not meet coverage goals. Use this coverage data and context to generate a test bench that achieves better coverage.
-Coverage report:
+
+	return '''The test bench that you generated did not meet coverage goals. Use the following coverage data and context to generate a test bench that achieves better coverage:
 ''' + formatted_coverage_report + f'''
-I will give you some extra context to help. Try to target this coverage hole at line {missed_lines[randline]} in the file {design_filename}: {missed_line.strip()}
-{design_chunk}
+Try to target this coverage hole at line {rand_line_index} in the file {rand_filename}: {missed_line.strip()}
+If the targed coverage hole at line {rand_line_index} is inside an if statement, review the context and make necessary changes so that the if statement is set to true
+Listed below are the files for the whole design, use them as context to improve coverage.
+{all_design_content}
 
 Generate a Verilog testbench named tb_llm for the following design specification.
 The test bench should meet the statement coverage goal of 100%.
+Freely add new testcases where necessary and deviate from previous testbench generations to reach coverage goals
 Generate only the Verilog testbench and no additional words.
 Make sure you are ONLY using Verilog syntax and features, and not SystemVerilog such as for loops.\n
 Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag. Keep the test bench less than 500 lines.\n
@@ -261,3 +284,38 @@ Provide the generated testbench in a JSON format as shown below. You should put 
 	"comments": " // Any additonal comments here "
 }
 '''
+# def delete_me(xml_path: str) -> list:
+# 	xml_tree = ET.parse(xml_path)
+# 	coverage_list = []
+# 	root = xml_tree.getroot()
+
+# 	total_active = 0
+# 	total_hits = 0
+# 	for child in root[0]:
+# 		coverage_dict = {}
+# 		attrib_list = []
+# 		for cchild in child:
+# 			attrib_list.append(cchild.attrib)
+
+# 		coverage_dict['path'] = child.attrib['path']
+# 		coverage_dict['coverage'] = attrib_list[0]
+# 		coverage_dict['coverage_detail'] = attrib_list[1:]
+		
+# 		total_active = total_active + int(child[0].attrib['active'])
+# 		total_hits = total_hits + int(child[0].attrib['hits'])
+
+# 		coverage_list.append(coverage_dict)	
+# 	return coverage_list
+
+# # Test of m3_promt
+# def main():
+# 	xml_file = "/scratch/asbabbit/mkmif_core_method6_run_4/generations/tb_llm_mkmif_core_02_report.txt"
+# 	environment = Environment('/home/asbabbit/llm_verif_dataset/data_points/mkmif_core')
+# 	coverage_list = delete_me(xml_file)
+# 	prompt = m3_prompt(environment.all_design_file_paths, coverage_list)
+
+# 	with open("delete_me", "w") as file:
+# 		file.write(prompt)
+
+# if __name__ == "__main__":
+# 	main()

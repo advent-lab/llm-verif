@@ -145,7 +145,7 @@ if __name__=="__main__":
         while record.max_cov != 100 and num_iter < 12:
             print(f"\n\nRun: {i}, Iteration: {num_iter}")
 
-            prompt3 = m3_prompt(environment.top_design_file_path, cov)
+            prompt3 = m3_prompt(environment.all_design_file_paths, cov)
             print(prompt3)
 
             conversation.append({"role":"user", "content":prompt3})
