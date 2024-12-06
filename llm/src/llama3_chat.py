@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 from src.dashboard import Dataset
 from src.simulator import Simulator, CoverageResponse
+from math import exp, log10
 
 # Set cache location for model
 if not os.path.isdir(f"/scratch/{os.environ['USER']}/.cache/"):
@@ -59,6 +60,9 @@ class LlamaChat():
 
     # Generate a response from LLM with memory management
     def generate_response(self, conversation_history) -> (str, int, float):
+
+        temperature = LlamaChat.logarithmic_temperature(len(conversation_history))
+
         input_ids = self.tokenizer.apply_chat_template(
             conversation_history,
             add_generation_prompt=True,
@@ -78,7 +82,7 @@ class LlamaChat():
                     max_new_tokens=self.max_new_tokens,
                     eos_token_id=terminators,
                     do_sample=True,
-                    temperature=self.temperature,
+                    temperature=temperature,
                     top_p=self.top_p,
                     stopping_criteria=[lambda ids, scores: time.time() - start_time > self.timeout_seconds]
                 )
@@ -229,3 +233,14 @@ class LlamaChat():
     # TODO: Implement parallel coverage runs
     def parallel_get_coverage():
         pass
+
+    # Returns a temperature for a given number of messages in a conversation
+    @classmethod
+    def capped_sigmoid_temperature(cls, n: int, T_start: float = 0.2, T_end: float = 0.8, N: int = 9, k: float = 0.9) -> float:
+        # Ensure the temperature does not exceed T_end
+        T = T_start + (T_end - T_start) / (1 + exp(-k * ((n - N) / 2)))
+        return min(T, T_end)
+
+    def logarithmic_temperature(cls, n: int, T_start: float = 0.2, T_end: float = 0.8, N: int = 26, k: float = 0.9) -> float:
+        T = T_start + (T_end - T_start)(log10(n + 1) / log10(N + 1))
+        return min(T, T_end)
