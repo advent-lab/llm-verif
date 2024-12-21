@@ -8,7 +8,7 @@ def m1_prompt(design_specification: str, module_header: str) -> str:
     return f'''Generate a Verilog testbench named tb_llm for the following design specification.
 The test bench should meet the statement coverage goal of 100%.
 Generate only the Verilog testbench and no additional words.
-Make sure you are ONLY using Verilog syntax and features, and not SystemVerilog such as for loops.\n
+Make sure you are ONLY using Verilog syntax and features, and not SystemVerilog such as for loops and asserts.\n
 Module header:\n{module_header}\n
 Design Specification:\n{design_specification}\n
 Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag. Keep the test bench less than 500 lines.\n
@@ -208,7 +208,7 @@ I will give you some extra context to help. Try to target this coverage hole at 
 Generate a Verilog testbench named tb_llm for the following design specification.
 The test bench should meet the statement coverage goal of 100%.
 Generate only the Verilog testbench and no additional words.
-Make sure you are ONLY using Verilog syntax and features, and not SystemVerilog such as for loops.\n
+Make sure you are ONLY using Verilog syntax and features, and not SystemVerilog such as for loops and asserts.\n
 Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag. Keep the test bench less than 500 lines.\n
 ''' + '''Example output:
 {
@@ -242,7 +242,7 @@ I will give you some extra context to help. Here is the design for the main desi
 Generate a Verilog testbench named tb_llm for the following design specification.
 The test bench should meet the statement coverage goal of 100%.
 Generate only the Verilog testbench and no additional words.
-Make sure you are ONLY using Verilog syntax and features, and not SystemVerilog such as for loops.\n
+Make sure you are ONLY using Verilog syntax and features, and not SystemVerilog such as for loops and asserts.\n
 Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag. Keep the test bench less than 500 lines.\n
 ''' + '''Example output:
 {
