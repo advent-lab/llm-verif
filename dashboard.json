@@ -1,19 +1,16 @@
 {
     "lab4-fitbit_tracker":{
-        "verif": [
-            
-        ],
+        "verif": [],
         "verif_context": [],
-        "design": [
-            "$(BASE_DIR)/lab4-fitbit_tracker/design/top.v"
-        ],
+        "design": [],
         "design_context": [
             "$(BASE_DIR)/lab4-fitbit_tracker/design_context/pulse_generator.v",
             "$(BASE_DIR)/lab4-fitbit_tracker/design_context/bin2bcd_fsm.v",
             "$(BASE_DIR)/lab4-fitbit_tracker/design_context/four_digit_display.v",
             "$(BASE_DIR)/lab4-fitbit_tracker/design_context/debouncer.v",
             "$(BASE_DIR)/lab4-fitbit_tracker/design_context/fitbit_tracker.v",
-            "$(BASE_DIR)/lab4-fitbit_tracker/design_context/Rotator.v"
+            "$(BASE_DIR)/lab4-fitbit_tracker/design_context/Rotator.v",
+            "$(BASE_DIR)/lab4-fitbit_tracker/design/top.v"
         ],
         "spec": [
             "$(BASE_DIR)/lab4-fitbit_tracker/spec/spec.txt"
