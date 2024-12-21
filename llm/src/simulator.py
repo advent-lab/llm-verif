@@ -7,6 +7,7 @@ class CoverageResponse:
         # 2: simulation error
         # 3: simulation timeout
         # 4: JSON Decode error -> incomplete testbench
+        # 5: No $finish found -> LLM did not generate finish in test bench. Avoids running a test bench that will not finish
         self.error_code = error_code
         self.error_message = error_message
         self.coverage_list = coverage_list
@@ -19,4 +20,8 @@ class Simulator():
 
     def run_sim(self) -> CoverageResponse:
         """Run the simulation - to be overridden by subclasses"""
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
+    def merge_coverage(coverage_dbs: list[str]):
+        """Merge the coverage of a list of provided coverage databases and return the coverage results"""
         raise NotImplementedError("This method should be implemented by subclasses.")

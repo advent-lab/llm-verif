@@ -168,6 +168,8 @@ def error_prompt(error_code: int, error_message: str) -> str:
 	"comments": " // Any additonal comments here "
 }
 '''
+	elif error_code == 5:
+		return "You did not add a $finish command to your test bench so I cannot simulate it. Please add the $finish command in the correct place in the test bench."
 
 def m3_prompt(design_file: str, coverage: CoverageResponse) -> str:
 

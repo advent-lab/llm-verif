@@ -33,7 +33,9 @@ class Record:
                 "max total coverage",
                 "average total coverage",
                 "tokens generated",
-                "generation time"
+                "generation time",
+                "run merged coverage",
+                "cross run merged coverage"
             ])
         elif run_type == "EVAL":
             self.df = pd.DataFrame(columns=[
@@ -128,6 +130,12 @@ class Record:
                 "tokens generated": self.tokens_generated,
                 "generation time": self.generation_time
             }])])
+
+    def update_run_merge_coverage(self, coverage: CoverageResponse, run: int):
+        self.df[df['run #'] == run]['run merged coverage'] = coverage.total_coverage
+
+    def update_cross_run_merge_coverage(self, coverage: CoverageResponse):
+        self.df['cross run merged coverage'] = coverage.total_coverage
 
     def reset_run(self):
         self.total_fail = 0

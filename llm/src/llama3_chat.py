@@ -212,6 +212,9 @@ class LlamaChat():
 
         return coverage_response
 
+    def get_merge_coverage(self, run: int):
+        self.simulator.merge_coverage()
+
     def limit_conversation(self, conversation) -> dict[str, str]:
         # Limit conversation memory to about 8196 tokens (estimate based on token count)
         current_token_count = sum(len(self.tokenizer.encode(msg["content"])) for msg in conversation)

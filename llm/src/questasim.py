@@ -5,6 +5,7 @@ from src.simulator import Simulator, CoverageResponse
 import re
 from typing import Union, Dict, List
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 class QuestaSim(Simulator):
 
@@ -20,6 +21,9 @@ class QuestaSim(Simulator):
         design_dir = os.path.split(os.path.split(tb_path)[0])[0]
 
         tb_name = self.get_testbench_name(tb_path)
+
+        if not self.has_finish(tb_path):
+            return CoverageResponse(False, error_code=5, error_message="Test bench is missing a $finish command.", coverage_list=[], total_coverage=0)
 
         compile_command = self.vlog_builder(tb_path=tb_path, data_point=data_point)
 
@@ -96,6 +100,27 @@ class QuestaSim(Simulator):
         total_coverage = (total_hits / total_active) * 100.0
 
         return CoverageResponse(True, 0, report_output.stdout.decode(), coverage_list, total_coverage)
+
+    # Returns the path to the merged coverage ucdb
+    # If an empty string is returned, there was an error merging the coverage
+    def merge_coverage(coverage_dbs: list[Union[str, Path]]) -> str:
+
+        if not all(isinstance(val, str) for val in coverage_dbs) and not all(isinstance(val, Path) for val in coverage_dbs):
+            raise TypeError("Argument coverage_dbs should be a list of strings or Paths")
+
+        for file in coverage_dbs:
+            if os.path.isfile(file):
+                raise ValueError("All file paths in coverage_dbs should be a valid path of a UCDB coverage database file")
+
+        merge_coverage_result = run([f'{self.simulator_path}/vcover', 'merge', '-recursive', '-out', 'merged_coverage.ucdb'] + coverage_dbs, stdout=PIPE, stderr=PIPE)
+
+        if not self.check_errors(merge_coverage_result):
+            return ''
+
+        if not os.path.isfile('merged_coverage.ucdb'):
+            return ''
+
+        return os.path.abspath('merged_coverage.ucdb')
     
     def check_errors(self, questa_output: str) -> bool:
         if not questa_output:
@@ -150,5 +175,25 @@ class QuestaSim(Simulator):
     def vlog_builder(self, tb_path: str, data_point: dict) -> str:
         return f"vlog -cover s {tb_path} {' '.join(data_point['design'])} {' '.join(data_point['design_context'])}"
 
-    def merge_coverage(self, run_id: int):
-        pass
+    def has_finish(self, file_path):
+        """
+        Checks if '$finish' is present in a Verilog test bench file.
+        
+        Args:
+            file_path (str): Path to the Verilog test bench file.
+        
+        Returns:
+            bool: True if '$finish' is found, False otherwise.
+        """
+        finish_pattern = re.compile(r'\$finish\b')
+
+        try:
+            with open(file_path, 'r') as file:
+                for line in file:
+                    if finish_pattern.search(line):
+                        return True
+        except FileNotFoundError:
+            print(f"Error: File not found - {file_path}")
+            return False
+
+        return False
