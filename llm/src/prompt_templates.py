@@ -223,13 +223,17 @@ def m3_prompt(all_design_files: list, coverage: CoverageResponse) -> str:
 	return '''The test bench that you generated did not meet coverage goals. Use the following coverage data and context to generate a test bench that achieves better coverage:
 ''' + formatted_coverage_report + f'''
 Try to target this coverage hole at line {rand_line_index} in the file {rand_filename}: {missed_line.strip()}
-If the targed coverage hole at line {rand_line_index} is inside an if statement, review the context and make necessary changes so that the if statement is set to true
+Please see if the targed coverage hole at line {rand_line_index} is inside an if or case statement and try to hit that condition
 Listed below are the files for the whole design, use them as context to improve coverage.
 {all_design_content}
 
+There are three options for improving line coverage, choose one of these option:
+1. Add another testcase to a previously generated testbench
+2. Modify a testcase from a previously generated testbench
+3. Generate a completely new testbench without previous generations as context
+
 Generate a Verilog testbench named tb_llm for the following design specification.
 The test bench should meet the statement coverage goal of 100%.
-Freely add new testcases where necessary and deviate from previous testbench generations to reach coverage goals
 Generate only the Verilog testbench and no additional words.
 Make sure you are ONLY using Verilog syntax and features, and not SystemVerilog such as for loops.\n
 Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag. Keep the test bench less than 500 lines.\n
