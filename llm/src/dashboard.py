@@ -30,9 +30,15 @@ class Dataset:
     def get_design_context(self, design_name: str) -> Union[str, list, None]:
         return self.check_list(self.dataset[design_name], 'design_context')
 
-    def get_design_and_context(self, design_name: str) -> Union[str, list, None]:
+    def get_design_and_context(self, design_name: str) -> Union[list, None]:
         design = self.get_design(design_name)
         design_context = self.get_design_context(design_name)
+
+        # Ensure both design and design_context are lists of strings
+        if isinstance(design, str):
+            design = [design]  # Cast string to list
+        if isinstance(design_context, str):
+            design_context = [design_context]  # Cast string to list
 
         if not design and not design_context:
             return None
@@ -41,7 +47,7 @@ class Dataset:
         elif not design_context:
             return design
         else:
-            return design + design_context
+            return design_context + design
 
     def replace_base_dir(self):
         for tkey in self.dataset.keys():
