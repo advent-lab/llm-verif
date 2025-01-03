@@ -241,6 +241,7 @@ class LlamaChat():
         T = T_start + (T_end - T_start) / (1 + exp(-k * ((n - N) / 2)))
         return min(T, T_end)
 
+    @classmethod
     def logarithmic_temperature(cls, n: int, T_start: float = 0.2, T_end: float = 0.8, N: int = 26, k: float = 0.9) -> float:
         T = T_start + (T_end - T_start)(log10(n + 1) / log10(N + 1))
         return min(T, T_end)
