@@ -2,8 +2,8 @@
 
 #SBATCH -N 1            # number of nodes
 #SBATCH -c 32            # number of cores 
-#SBATCH -t 0-04:00:00
-#SBATCH -G h100:2
+#SBATCH -t 0-00:30:00
+#SBATCH -G a100:2
 #SBATCH -p htc      # partition 
 #SBATCH -q public       # QOS
 #SBATCH -o slurm.%j.out # file to save job's STDOUT (%j = JobId)
