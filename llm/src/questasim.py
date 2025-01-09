@@ -1,102 +1,199 @@
 from subprocess import run, PIPE, TimeoutExpired
 import datetime
 import os
+import logging
+import shutil
 from src.simulator import Simulator, CoverageResponse
 import re
 from typing import Union, Dict, List
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import List, Tuple
+
+logging.basicConfig(level=logging.INFO)
 
 class QuestaSim(Simulator):
 
     def __init__(self, simulator_path: str):
         super().__init__(simulator_path)
     
-    def run_sim(self, tb_path: str, data_point: dict, log_name: str) -> CoverageResponse:
-        # Get the name of the test bench module
-        # We need to do this because the LLM could name the module anything
+    @staticmethod
+    def run_command(command: List[str], log_file: str = None, timeout: int = None) -> str:
+        """
+        Run a command in the shell and capture its output.
 
-        questa_dir = self.simulator_path
+        Args:
+            command (List[str]): The command to execute.
+            log_file (str, optional): File to log the output.
+            timeout (int, optional): Timeout in seconds.
 
-        design_dir = os.path.split(os.path.split(tb_path)[0])[0]
+        Returns:
+            str: Standard output of the command.
 
-        tb_name = self.get_testbench_name(tb_path)
-
-        compile_command = self.vlog_builder(tb_path=tb_path, data_point=data_point)
-
-        # Run the simulation and log the output
-        # with open(log_file, 'w+') as f:
-        #   f.write(f"--- QuestaSim Simulation: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n")
-        #   f.flush()
-        #        # run(['make', 'clean', 'all'], stdout=f, stderr=f)
-        run(['rm', '-rf', f'{design_dir}/work', 'work', 'transcript'])
-        
-        
-        # TODO: adapt for other designs
-        # compile_output = run([f'{questa_dir}/vlog', '-cover', 's'] + [os.path.join(design_dir, path) for path in os.listdir(design_dir)], stdout=PIPE, stderr=PIPE)
-        print(compile_command.split())
-        compile_output0 = run(compile_command.split(), stdout=PIPE, stderr=PIPE)
-        if not self.check_errors(compile_output0.stdout.decode()):
-            return CoverageResponse(False, 1, compile_output0.stdout.decode())
-
-        compile_output1 = run([f'{questa_dir}/vlog', '-cover', 's', tb_path], stdout=PIPE, stderr=PIPE)
-
-        compile_output = compile_output0.stdout.decode() + compile_output1.stdout.decode()
-
-        with open(f'{log_name}_compile.log', 'w+') as f:
-            f.write(compile_output) 
-        
-
-        if not self.check_errors(compile_output1.stdout.decode()):
-            return CoverageResponse(False, 1, compile_output1.stdout.decode())
-
+        Raises:
+            RuntimeError: If the command fails or times out.
+        """
         try:
-            sim_output = run([f'{questa_dir}/vsim', f'work.{tb_name}', '-coverage', '-c', '-do', f'coverage exclude -du {tb_name};coverage save -onexit {log_name}.ucdb;run -all;exit;'], stdout=PIPE, stderr=PIPE, timeout=60*5)
-            
-            with open(f'{log_name}_sim.log', 'w+') as f:
-                f.write(sim_output.stdout.decode()) 
-            
-            if not self.check_errors(sim_output.stdout.decode()):
-                return CoverageResponse(False, 2, sim_output.stdout.decode())
+            result = run(command, stdout=PIPE, stderr=PIPE, timeout=timeout)
+            output = result.stdout.decode()
+            if log_file:
+                with open(log_file, 'w') as f:
+                    f.write(output)
+            return output
         except TimeoutExpired:
+            raise RuntimeError(f"Command {' '.join(command)} timed out.")
+        except Exception as e:
+            raise RuntimeError(f"Failed to execute {' '.join(command)}: {e}")
 
-            with open(f'{log_name}_sim.log', 'w+') as f:
-                f.write(sim_output.stdout.decode()) 
-
-            return CoverageResponse(False, 3, "Simulation timeout")
-
+    @staticmethod
+    def cleanup(directory: str):
         """
-        report_output = run([f'{questa_dir}/vcover', 'report', 'coverage.ucdb'], stdout=PIPE, stderr=PIPE)
-        if not check_errors(report_output.stdout.decode()):
-            return CoverageResponse(False, 4, report_output.stdout.decode())
+        Cleanup temporary simulation files.
+
+        Args:
+            directory (str): Directory containing temporary files.
         """
+        try:
+            shutil.rmtree(os.path.join(directory, "work"), ignore_errors=True)
+            os.remove(os.path.join(directory, "transcript"))
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            logging.warning(f"Error during cleanup: {e}")
 
-        report_output = run([f'{questa_dir}/vsim', '-viewcov', f'{log_name}.ucdb', '-c', '-do', f'coverage report -output {log_name}_report.txt -srcfile=* -detail -all -dump -annotate -option -assert -directive -cvg -codeAll -xml;exit;'], stdout=PIPE, stderr=PIPE)
+    def compile_design(self, tb_path: str, data_point: dict) -> str:
+        """
+        Compile the design files.
 
-        xml_tree = ET.parse(f'{log_name}_report.txt')
-        coverage_list = []
+        Args:
+            tb_path (str): Path to the testbench file.
+            data_point (dict): Data point for the simulation.
+
+        Returns:
+            str: Compilation output.
+        """
+        compile_command = self.vlog_builder(tb_path=tb_path, data_point=data_point)
+        return self.run_command(compile_command)
+
+    def run_simulation(self, tb_name: str, log_name: str) -> str:
+        """
+        Run the simulation.
+
+        Args:
+            tb_name (str): Testbench module name.
+            log_name (str): Log file name.
+
+        Returns:
+            str: Simulation output.
+        """
+        questa_dir = self.simulator_path
+        command = [
+            f'{questa_dir}/vsim',
+            f'work.{tb_name}',
+            '-coverage',
+            '-c',
+            '-do',
+            f'coverage exclude -du {tb_name};coverage save -onexit {log_name}.ucdb;run -all;exit;'
+        ]
+        return self.run_command(command, timeout=300)
+
+    def generate_coverage_report(self, log_name: str) -> str:
+        """
+        Generate the coverage report.
+
+        Args:
+            log_name (str): Log file name.
+
+        Returns:
+            str: Report generation output.
+        """
+        questa_dir = self.simulator_path
+        command = [
+            f'{questa_dir}/vsim',
+            '-viewcov',
+            f'{log_name}.ucdb',
+            '-c',
+            '-do',
+            f'coverage report -output {log_name}_report.txt -du=* -detail -annotate -code s -xml;exit;'
+        ]
+        return self.run_command(command)
+
+    @staticmethod
+    def parse_coverage_report(report_path: str) -> Tuple[List[dict], float]:
+        """
+        Parse the coverage report XML and extract coverage details.
+
+        Args:
+            report_path (str): Path to the XML report file.
+
+        Returns:
+            Tuple[List[dict], float]: List of coverage details and total coverage percentage.
+        """
+        xml_tree = ET.parse(report_path)
         root = xml_tree.getroot()
 
+        coverage_list = []
         total_active = 0
         total_hits = 0
+
         for child in root[0]:
-            coverage_dict = {}
-            attrib_list = []
-            for cchild in child:
-                attrib_list.append(cchild.attrib)
-
-            coverage_dict['path'] = child.attrib['path']
-            coverage_dict['coverage'] = attrib_list[0]
-            coverage_dict['coverage_detail'] = attrib_list[1:]
-            
-            total_active = total_active + int(child[0].attrib['active'])
-            total_hits = total_hits + int(child[0].attrib['hits'])
-
+            coverage_dict = {'path': child.attrib['path']}
+            coverage_dict['coverage'] = child[0].attrib
+            coverage_dict['coverage_detail'] = [c.attrib for c in child[1:]]
+            total_active += int(child[0].attrib['active'])
+            total_hits += int(child[0].attrib['hits'])
             coverage_list.append(coverage_dict)
 
-        total_coverage = (total_hits / total_active) * 100.0
+        total_coverage = (total_hits / total_active) * 100.0 if total_active > 0 else 0.0
+        return coverage_list, total_coverage
 
-        return CoverageResponse(True, 0, report_output.stdout.decode(), coverage_list, total_coverage)
+    def run_sim(self, tb_path: str, data_point: dict, log_name: str) -> CoverageResponse:
+        """
+        Run the simulation and generate the coverage report.
+
+        Args:
+            tb_path (str): Path to the testbench file.
+            data_point (dict): Data point for the simulation.
+            log_name (str): Log file name.
+
+        Returns:
+            CoverageResponse: Response containing coverage data.
+        """
+        if not os.path.exists(tb_path):
+            raise ValueError(f"Testbench path does not exist: {tb_path}")
+        if not data_point:
+            raise ValueError("Data point is required for simulation.")
+
+        questa_dir = self.simulator_path
+        design_dir = os.path.split(os.path.split(tb_path)[0])[0]
+        tb_name = self.get_testbench_name(tb_path)
+
+        # Cleanup
+        self.cleanup(design_dir)
+
+        # Compilation
+        try:
+            compile_output = self.compile_design(tb_path, data_point)
+            logging.info("Compilation successful.")
+        except RuntimeError as e:
+            return CoverageResponse(False, 1, str(e))
+
+        # Simulation
+        try:
+            sim_output = self.run_simulation(tb_name, log_name)
+            logging.info("Simulation successful.")
+        except RuntimeError as e:
+            return CoverageResponse(False, 2, str(e))
+
+        # Coverage Report
+        try:
+            self.generate_coverage_report(log_name)
+            coverage_list, total_coverage = self.parse_coverage_report(f'{log_name}_report.txt')
+            logging.info("Coverage report generated successfully.")
+            return CoverageResponse(True, 0, sim_output, coverage_list, total_coverage)
+        except RuntimeError as e:
+            return CoverageResponse(False, 3, str(e))
+
 
     # Returns the path to the merged coverage ucdb
     # If an empty string is returned, there was an error merging the coverage
