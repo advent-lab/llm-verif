@@ -111,7 +111,7 @@ if __name__=="__main__":
         except KeyError as e:
             print(f"LLM generated a bad key in the JSON: {e}")
             cov = CoverageResponse(False, error_code=4, error_message=f"LLM generated a bad key in the JSON: {e}", coverage_list=[], total_coverage=0)
-            update_dataframe(cov, temperature, top_p, i, 0, tokens_generated, generation_time)
+            record.update_dataframe(cov, temperature, top_p, i, 0, tokens_generated, generation_time)
 
         record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
 
