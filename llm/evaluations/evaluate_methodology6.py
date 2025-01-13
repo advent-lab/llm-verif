@@ -19,19 +19,26 @@ if __name__=="__main__":
     parser.add_argument('-g', '--generations', type=int, required=True)
     parser.add_argument('-c', '--compiler', type=str, required=True)
     parser.add_argument(
-        '-s', 
-        '--sampling', 
-        type=bool, 
+        '--no_sampling', 
         required=False, 
-        default=True, 
+        action='store_false', 
         help="This is a boolean flag that determines whether the LLM should use sampling to generate responses."
+    )
+    parser.ad argument(
+        '-t',
+        '--temperature',
+        type=float,
+        required=False,
+        default=0.3,   
+        help="This is the temperature that the LLM will use to generate responses. The default is 0.3 unless set otherwise using the -t option. This constant value can also be overriden by using the --temperature_function option."
     )
     parser.add_argument(
         '--temperature_function',
         type=str,
         required=False,
         default="constant",
-        help="This is the temperature function that the LLM will use to generate responses. The default is 'constant'."
+        choices=["constant", "logarithmic", "capped_sigmoid"],
+        help="This is the temperature function that the LLM will use to generate responses. The default is a constant temperature of 0.3 unless set otherwise using the -t option."
     )
     parser.add_argument(
         '-S',
@@ -44,9 +51,8 @@ if __name__=="__main__":
     parser.add_argument(
         '-m',
         '--merge-coverage',
-        type=bool,
         required=False,
-        default=True,
+        action='store_true',
         help="This is a boolean flag that determines whether the system should merge coverage reports."
     )
     args = parser.parse_args()
