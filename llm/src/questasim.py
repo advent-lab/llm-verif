@@ -136,13 +136,28 @@ class QuestaSim(Simulator):
         total_active = 0
         total_hits = 0
 
-        for child in root[0]:
-            coverage_dict = {'path': child.attrib['path']}
-            coverage_dict['coverage'] = child[0].attrib
-            coverage_dict['coverage_detail'] = [c.attrib for c in child[1:]]
-            total_active += int(child[0].attrib['active'])
-            total_hits += int(child[0].attrib['hits'])
-            coverage_list.append(coverage_dict)
+        for du_data in root.findall('.//DuData'):
+            du_name = du_data.get('du')
+            file_map = du_data.find('.//fileMap')
+            file_path = file_map.get('path') if file_map is not None else "unknown"
+
+            statements = du_data.find('statements')
+            active = int(statements.get('active', 0))
+            hits = int(statements.get('hits', 0))
+            percent = float(statements.get('percent', 0.0))
+
+            total_active += active
+            total_hits += hits
+
+            coverage_list.append({
+                'path': file_path,
+                'du': du_name,
+                'coverage': {
+                    'active': active,
+                    'hits': hits,
+                    'percent': percent
+                }
+            })
 
         total_coverage = (total_hits / total_active) * 100.0 if total_active > 0 else 0.0
         return coverage_list, total_coverage
@@ -197,7 +212,7 @@ class QuestaSim(Simulator):
 
     # Returns the path to the merged coverage ucdb
     # If an empty string is returned, there was an error merging the coverage
-    def merge_coverage(coverage_dbs: list[Union[str, Path]]) -> str:
+    def merge_coverage(self, coverage_dbs: list[Union[str, Path]]) -> str:
 
         if not all(isinstance(val, str) for val in coverage_dbs) and not all(isinstance(val, Path) for val in coverage_dbs):
             raise TypeError("Argument coverage_dbs should be a list of strings or Paths")
