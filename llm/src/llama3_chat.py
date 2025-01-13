@@ -284,16 +284,42 @@ class LlamaChat:
     def get_merge_coverage(self, run: int):
         self.simulator.merge_coverage()
 
-    def limit_conversation(self, conversation) -> dict[str, str]:
-        # Limit conversation memory to about 8196 tokens (estimate based on token count)
+    def limit_conversation(self, conversation: list[dict]) -> list[dict]:
+        """
+        Limit the conversation memory to ensure it stays within token limits.
+
+        Args:
+            conversation (list[dict]): The conversation history.
+
+        Returns:
+            list[dict]: The truncated conversation history.
+
+        Raises:
+            ValueError: If the conversation is empty or improperly formatted.
+        """
+        if not conversation or not isinstance(conversation, list):
+            logging.error("Empty or invalid conversation passed to limit_conversation.")
+            raise ValueError("Conversation must be a non-empty list of messages.")
+        
+        # Ensure the system prompt is always retained
+        if len(conversation) == 1:
+            logging.warning("Conversation contains only the system prompt; no truncation needed.")
+            return conversation
+
         current_token_count = sum(len(self.tokenizer.encode(msg["content"])) for msg in conversation)
         max_token_count = 128000 - self.max_new_tokens
-        while current_token_count > max_token_count:
-            # Remove the oldest messages to maintain memory size
-            conversation.pop(1)  # Assuming the first message is the system prompt, so we pop the second one
+
+        # Trim conversation until within token limits
+        while current_token_count > max_token_count and len(conversation) > 1:
+            # Preserve the system message (index 0)
+            conversation.pop(1)
             current_token_count = sum(len(self.tokenizer.encode(msg["content"])) for msg in conversation)
 
+        if current_token_count > max_token_count:
+            logging.warning("Conversation could not be fully limited within token limits.")
+
         return conversation
+
 
     def parallel_get_coverage(self, test_benches: list[str], data_points: list[dict]) -> list[CoverageResponse]:
         """
