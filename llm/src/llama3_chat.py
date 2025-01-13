@@ -46,7 +46,7 @@ class LlamaChat:
     """
 
     def __init__(self, simulator: Simulator, do_sample: bool, temperature_function: str = "constant",
-                 temperature: float = 0.3, top_p: float = 0.7, max_new_tokens: int = 4098, timeout_seconds: int = 1000):
+                 temperature: float = 0.3, top_p: float = 0.7, max_new_tokens: int = 4098, timeout_seconds: int = 1000, seed: Union[int, None] = None):
         """
         Initialize the LlamaChat class.
 
@@ -60,7 +60,7 @@ class LlamaChat:
             timeout_seconds (int): Timeout for text generation in seconds.
         """
         self.simulator = simulator
-        self.model, self.tokenizer = self.load_model()
+        self.model, self.tokenizer = self.load_model(seed=seed)
         self.do_sample = do_sample
 
         if temperature_function == "constant":
@@ -89,6 +89,14 @@ class LlamaChat:
         Raises:
             Exception: If the model or tokenizer fails to load.
         """
+
+        # Set PyTorch random seed if provided
+        if seed is not None:
+            logging.info(f"Setting PyTorch seed to {seed}.")
+            torch.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+            # np.random.seed(seed)
+
         os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache/"
 
         model_id = "meta-llama/Meta-Llama-3.1-70B-Instruct"
