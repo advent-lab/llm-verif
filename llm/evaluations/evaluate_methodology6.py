@@ -22,17 +22,17 @@ def parse_json_response(response: str) -> CoverageResponse:
         return test_bench_code, None
     else:
         error_message = parsed_response.get("error", "JSON parsing error.")
-        return None, CoverageResponse(False, status, error_message)
+        return None, CoverageResponse(False, 4, error_message)
 
 
 def evaluate_coverage(
-    test_bench_code: str, tb_path: str, environment: Environment, run: int, iteration: int
+    test_bench_code: str, tb_path: str, environment: Environment, llama: LlamaChat, run: int, iteration: int
 ) -> CoverageResponse:
     """
     Evaluate the coverage for a generated test bench.
     """
     if not test_bench_code:
-        return CoverageResponse(False, 4, "Empty test bench.")
+        return CoverageResponse(False, 4, "Empty test bench. Likely due to a JSON Decode error.")
     
     try:
         data_point = environment.dataset.get_data_point(environment.design_name)
