@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -103,10 +104,28 @@ def run_iteration(
         try:
             merged_ucdb_path = f"{args.design}/merged_coverage_{environment.design_name}_{run_index}.ucdb"
             log_name = f"{args.design}/merged_coverage_{environment.design_name}_{run_index}"
-            coverage_dbs = [f"{args.design}/tb_llm_{environment.design_name}_{i}.ucdb" for i in range(iteration)]
+
+            # Check FileStore for UCDB files
+            if environment.store:
+                stored_ucdb_files = [
+                    os.path.join(environment.store.storage_path, f"tb_llm_{environment.design_name}_{i}.ucdb")
+                    for i in range(iteration)
+                ]
+            else:
+                stored_ucdb_files = [
+                    f"{args.design}/tb_llm_{environment.design_name}_{i}.ucdb"
+                    for i in range(iteration)
+                ]
+
+            # Filter for existing UCDB files
+            coverage_dbs = [file for file in stored_ucdb_files if os.path.exists(file)]
+
+            if not coverage_dbs:
+                logging.warning("No UCDB files found for merging coverage.")
+                return
 
             # Call QuestaSim to merge coverage
-            merge_output = environment.store.simulator.generate_merged_coverage_report(
+            merge_output = llama.simulator.generate_merged_coverage_report(
                 du=environment.design_module_name,
                 coverage_dbs=coverage_dbs,
                 log_name=log_name,
@@ -122,7 +141,6 @@ def run_iteration(
     # Final Write to CSV
     record.update_run_average_total_coverage(run_id=run_index)
     record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
-
 
 
 def main():
