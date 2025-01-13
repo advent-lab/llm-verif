@@ -284,7 +284,7 @@ class LlamaChat:
     def get_merge_coverage(self, run: int):
         self.simulator.merge_coverage()
 
-    def limit_conversation(self, conversation: list[dict]) -> list[dict]:
+    def limit_conversation(self, conversation: list[dict], context_window: int = 128000) -> list[dict]:
         """
         Limit the conversation memory to ensure it stays within token limits.
 
@@ -307,7 +307,7 @@ class LlamaChat:
             return conversation
 
         current_token_count = sum(len(self.tokenizer.encode(msg["content"])) for msg in conversation)
-        max_token_count = 128000 - self.max_new_tokens
+        max_token_count = context_window - self.max_new_tokens
 
         # Trim conversation until within token limits
         while current_token_count > max_token_count and len(conversation) > 1:
