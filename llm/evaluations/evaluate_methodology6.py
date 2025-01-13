@@ -1,3 +1,4 @@
+import logging
 import sys
 from pathlib import Path
 
@@ -68,6 +69,13 @@ def run_iteration(
 ):
     """
     Execute a single run of test bench generation and coverage evaluation.
+
+    Args:
+        run_index (int): Index of the current run.
+        llama (LlamaChat): Instance of the LlamaChat class.
+        environment (Environment): The Environment object for the design.
+        record (Record): The Record object for storing results.
+        args (argparse.Namespace): Command-line arguments.
     """
     temperature = args.temperature
     top_p = 0.7
@@ -90,9 +98,31 @@ def run_iteration(
         conversation = llama.limit_conversation(conversation)
         iteration += 1
 
+    # Merged Coverage Logic
+    if args.merge_coverage:
+        try:
+            merged_ucdb_path = f"{args.design}/merged_coverage_{environment.design_name}_{run_index}.ucdb"
+            log_name = f"{args.design}/merged_coverage_{environment.design_name}_{run_index}"
+            coverage_dbs = [f"{args.design}/tb_llm_{environment.design_name}_{i}.ucdb" for i in range(iteration)]
+
+            # Call QuestaSim to merge coverage
+            merge_output = environment.store.simulator.generate_merged_coverage_report(
+                du=environment.design_module_name,
+                coverage_dbs=coverage_dbs,
+                log_name=log_name,
+            )
+            logging.info("Merged coverage generated successfully.")
+            # Parse merged coverage
+            merged_coverage, total_coverage = QuestaSim.parse_coverage_report(f"{log_name}_report.txt")
+            record.update_cross_run_merge_coverage(CoverageResponse(True, 0, "Merged successfully", merged_coverage, total_coverage))
+
+        except Exception as e:
+            logging.error(f"Failed to generate merged coverage: {e}")
+    
     # Final Write to CSV
     record.update_run_average_total_coverage(run_id=run_index)
     record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
+
 
 
 def main():
