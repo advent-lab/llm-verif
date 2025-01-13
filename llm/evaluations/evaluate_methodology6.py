@@ -24,7 +24,7 @@ if __name__=="__main__":
         action='store_false', 
         help="This is a boolean flag that determines whether the LLM should use sampling to generate responses."
     )
-    parser.ad argument(
+    parser.add_argument(
         '-t',
         '--temperature',
         type=float,
