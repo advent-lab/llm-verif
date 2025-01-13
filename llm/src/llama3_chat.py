@@ -12,46 +12,85 @@ from pathlib import Path
 from src.dashboard import Dataset
 from src.simulator import Simulator, CoverageResponse
 from math import exp, log10
+import logging
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any
+
+logging.basicConfig(level=logging.INFO)
 
 # Set cache location for model
 if not os.path.isdir(f"/scratch/{os.environ['USER']}/.cache/"):
     os.mkdir(f"/scratch/{os.environ['USER']}/.cache/")
 os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache/"
 
-class LlamaChat():
+class LlamaChat:
+    """
+    A class for interacting with the Llama 3.1 language model for conversational AI tasks.
 
-    def __init__(
-        self, 
-        simulator: Simulator, 
-        do_sample: bool,
-        temperature_function: str = "constant",
-        temperature: float = 0.3, 
-        top_p: float = 0.7, max_new_tokens: 
-        int = 4098, 
-        timeout_seconds: int = 1000
-    ):
+    The LlamaChat class provides functionalities for:
+    - Loading and managing the Llama model and tokenizer.
+    - Generating responses based on conversation history.
+    - Implementing dynamic temperature scaling for sampling.
+    - Managing coverage simulations with QuestaSim integration.
+    - Logging conversations and managing memory.
 
+    Attributes:
+        simulator (Simulator): An instance of the Simulator class for running coverage tests.
+        model (AutoModelForCausalLM): The loaded Llama model.
+        tokenizer (AutoTokenizer): The tokenizer for the Llama model.
+        do_sample (bool): Flag to enable sampling during text generation.
+        temperature_function (callable): Function to determine the sampling temperature.
+        top_p (float): Top-p probability for nucleus sampling.
+        max_new_tokens (int): Maximum number of tokens to generate.
+        timeout_seconds (int): Timeout for text generation in seconds.
+    """
+
+    def __init__(self, simulator: Simulator, do_sample: bool, temperature_function: str = "constant",
+                 temperature: float = 0.3, top_p: float = 0.7, max_new_tokens: int = 4098, timeout_seconds: int = 1000):
+        """
+        Initialize the LlamaChat class.
+
+        Args:
+            simulator (Simulator): An instance of the Simulator class for running coverage tests.
+            do_sample (bool): Whether to enable sampling during generation.
+            temperature_function (str): The function used for dynamic temperature scaling. Options: 'constant', 'logarithmic', 'capped_sigmoid'.
+            temperature (float): The base temperature for sampling (used if temperature_function is 'constant').
+            top_p (float): Top-p probability for nucleus sampling.
+            max_new_tokens (int): Maximum number of tokens to generate in a single response.
+            timeout_seconds (int): Timeout for text generation in seconds.
+        """
         self.simulator = simulator
-
         self.model, self.tokenizer = self.load_model()
-
         self.do_sample = do_sample
 
         if temperature_function == "constant":
-            self.temperature_function = lambda: temperature
+            self.temperature_function = lambda _: temperature
         elif temperature_function == "logarithmic":
             self.temperature_function = LlamaChat.logarithmic_temperature
         elif temperature_function == "capped_sigmoid":
             self.temperature_function = LlamaChat.capped_sigmoid_temperature
+        else:
+            raise ValueError(f"Unknown temperature function: {temperature_function}")
 
         self.top_p = top_p
         self.max_new_tokens = max_new_tokens
-        self.timeout_seconds= timeout_seconds
+        self.timeout_seconds = timeout_seconds
 
-    def load_model(self, seed: Union[int, None] = None) -> AutoTokenizer:
+    def load_model(self, seed: Union[int, None] = None) -> tuple[AutoModelForCausalLM, AutoTokenizer]:
+        """
+        Load the Llama model and tokenizer with quantization settings.
+
+        Args:
+            seed (Union[int, None]): Random seed for reproducibility. Default is None.
+
+        Returns:
+            tuple: A tuple containing the loaded model (AutoModelForCausalLM) and tokenizer (AutoTokenizer).
+
+        Raises:
+            Exception: If the model or tokenizer fails to load.
+        """
         os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache/"
 
-        # Model and tokenizer setup with quantization
         model_id = "meta-llama/Meta-Llama-3.1-70B-Instruct"
         compute_dtype = getattr(torch, "float16")
 
@@ -70,15 +109,32 @@ class LlamaChat():
             device_map="auto",
         )
 
-        # Optional manual device map
+        # Save device map for debugging
         device_map = infer_auto_device_map(model)
         with open("./device_map.json", 'w+') as j:
             json.dump(device_map, j)
-        
+
         return model, tokenizer
 
-    # Generate a response from LLM with memory management
-    def generate_response(self, conversation_history) -> tuple[str, int, float]:
+    def generate_response(self, conversation_history: list[dict]) -> tuple[str, int, float]:
+        """
+        Generate a response from the model given the conversation history.
+
+        Args:
+            conversation_history (list[dict]): The conversation history as a list of messages.
+
+        Returns:
+            tuple[str, int, float]: 
+                - The generated response as a string.
+                - The number of tokens in the response.
+                - The time taken to generate the response in seconds.
+
+        Raises:
+            ValueError: If the conversation history is empty or invalid.
+            Exception: For unexpected errors during text generation.
+        """
+        if not conversation_history:
+            raise ValueError("Conversation history is required.")
 
         input_ids = self.tokenizer.apply_chat_template(
             conversation_history,
@@ -88,51 +144,45 @@ class LlamaChat():
 
         terminators = [self.tokenizer.convert_tokens_to_ids("<|eot_id|>")]
 
-        # Start tracking time
         start_time = time.time()
-        response = None
-
         try:
             with torch.no_grad():
-                outputs = None
-                if self.do_sample:
-                    outputs = self.model.generate(
-                        input_ids,
-                        max_new_tokens=self.max_new_tokens,
-                        eos_token_id=terminators,
-                        do_sample=True,
-                        temperature=self.temperature_function(len(conversation_history)),
-                        top_p=self.top_p,
-                        stopping_criteria=[lambda ids, scores: time.time() - start_time > self.timeout_seconds]
-                    )
-                else:
-                    outputs = self.model.generate(
-                        input_ids,
-                        max_new_tokens=self.max_new_tokens,
-                        eos_token_id=terminators,
-                        do_sample=False,
-                        stopping_criteria=[lambda ids, scores: time.time() - start_time > self.timeout_seconds]
-                    )
-            
-            elapsed_time = time.time() - start_time
+                outputs = self.model.generate(
+                    input_ids,
+                    max_new_tokens=self.max_new_tokens,
+                    eos_token_id=terminators,
+                    do_sample=self.do_sample,
+                    temperature=self.temperature_function(len(conversation_history)) if self.do_sample else None,
+                    top_p=self.top_p if self.do_sample else None,
+                )
 
-            # Decode the response and calculate token count
+            elapsed_time = time.time() - start_time
             response_ids = outputs[0][input_ids.shape[-1]:]
             response = self.tokenizer.decode(response_ids, skip_special_tokens=True)
             token_count = len(response_ids)
 
         except Exception as e:
-            print("Generation timed out or encountered an error:", e)
-            elapsed_time = self.timeout_seconds  # Set to max if timeout occurs
+            logging.error(f"Error during generation: {e}")
+            response = ""
             token_count = 0
+            elapsed_time = self.timeout_seconds
 
-        # Free up memory post-generation
-        torch.cuda.empty_cache()
+        finally:
+            torch.cuda.empty_cache()
 
         return response, token_count, elapsed_time
     
-    # Function to log the conversation to a file
-    def log_conversation(self, conversation_update, log_file):
+    def log_conversation(self, conversation_update: list[dict], log_file: str):
+        """
+        Log the conversation history to a specified file.
+
+        Args:
+            conversation_update (list[dict]): A list of message dictionaries to log.
+            log_file (str): Path to the log file.
+
+        Returns:
+            None
+        """
         with open(log_file, 'a') as f:
             f.write(f"--- Conversation Log: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n")
             for message in conversation_update:
@@ -150,33 +200,61 @@ class LlamaChat():
             lines.append(line)
         return "\n".join(lines)
 
-    # Parse JSON Response from LLM to dict
     @staticmethod
-    def convert_json_response_to_dict(generated_response: str) -> tuple:
+    def convert_json_response_to_dict(generated_response: str) -> tuple[dict[str, Any], int]:
+        """
+        Extract and parse JSON content from an AI-generated response.
 
-        # If the response is empty or None, return an error
-        if not generated_response:
-            print(f"GPU timeout")
-            return ({"test bench": ""}, 0)
-        
-        # Find the first and last JSON curly braces
-        first_pos = generated_response.find('{')
-        if first_pos != -1:
-            generated_response = generated_response[first_pos:]
-        
-        last_pos = generated_response.rfind('}')
-        if last_pos != -1:
-            generated_response = generated_response[:last_pos + 1]
+        This method identifies and parses JSON-like content embedded within the model's response.
+        If the response contains invalid JSON or no JSON at all, it attempts to extract the most
+        plausible JSON segment and returns a default structure for errors.
 
+        Args:
+            generated_response (str): The AI-generated response containing JSON-like content.
+
+        Returns:
+            Tuple[Dict[str, Any], int]:
+                - The parsed JSON object as a dictionary.
+                - A status code:
+                    - 0: Successfully parsed JSON.
+                    - 1: Empty response or no JSON found.
+                    - 2: JSON parsing failed.
+                    - 3: Other unexpected errors.
+
+        Notes:
+            - This function is designed for scenarios where the AI response might contain
+              additional non-JSON text before or after the JSON content.
+        """
+        # Handle empty response
+        if not generated_response or not isinstance(generated_response, str):
+            logging.error("Empty or invalid response received.")
+            return {"error": "Empty response"}, 1
+
+        # Attempt to extract JSON-like content
         try:
-            # Parse JSON
-            decoder = json.JSONDecoder(strict=False)
-            parsed_response = decoder.raw_decode(generated_response)
-        except json.JSONDecodeError as e:
-            print(f"JSONDecodeError: {e}")
-            return ({"test bench":""}, 0)
+            # Locate the first and last JSON braces
+            start_idx = generated_response.find('{')
+            end_idx = generated_response.rfind('}')
+            
+            if start_idx == -1 or end_idx == -1 or start_idx > end_idx:
+                logging.error("No valid JSON structure found in the response.")
+                return {"error": "No JSON content found"}, 1
 
-        return parsed_response
+            # Extract the JSON substring
+            json_str = generated_response[start_idx:end_idx + 1]
+
+            # Parse the JSON content
+            parsed_response = json.loads(json_str)
+            return parsed_response, 0
+
+        except json.JSONDecodeError as e:
+            logging.error(f"JSONDecodeError: {e}. Response: {generated_response}")
+            return {"error": "Malformed JSON content"}, 2
+
+        except Exception as e:
+            logging.error(f"Unexpected error during JSON parsing: {e}")
+            return {"error": "Unexpected error"}, 3
+
 
     # TODO: Create call to QuestaSim to get coverage
     def get_coverage(self, generated_response: str, tb_path: str, data_point: dict, storage: FileStore = None) -> CoverageResponse:
@@ -217,18 +295,56 @@ class LlamaChat():
 
         return conversation
 
-    # TODO: Implement parallel coverage runs
-    def parallel_get_coverage():
-        pass
+    def parallel_get_coverage(self, test_benches: list[str], data_points: list[dict]) -> list[CoverageResponse]:
+        """
+        Run coverage simulations in parallel for multiple test benches.
 
-    # Returns a temperature for a given number of messages in a conversation
+        Args:
+            test_benches (list[str]): List of test bench file paths.
+            data_points (list[dict]): List of data points for each simulation.
+
+        Returns:
+            list[CoverageResponse]: List of coverage responses.
+        """
+        with ThreadPoolExecutor() as executor:
+            futures = [
+                executor.submit(self.get_coverage, tb, dp)
+                for tb, dp in zip(test_benches, data_points)
+            ]
+            return [future.result() for future in futures]
+
+
     @staticmethod
     def capped_sigmoid_temperature(n: int, T_start: float = 0.2, T_end: float = 0.8, N: int = 9, k: float = 0.9) -> float:
-        # Ensure the temperature does not exceed T_end
+        """
+        Calculate a capped sigmoid temperature for dynamic sampling.
+
+        Args:
+            n (int): The number of messages in the conversation.
+            T_start (float): Starting temperature.
+            T_end (float): Maximum temperature.
+            N (int): Number of messages where the temperature approaches T_end.
+            k (float): Scaling factor.
+
+        Returns:
+            float: The computed temperature.
+        """
         T = T_start + (T_end - T_start) / (1 + exp(-k * ((n - N) / 2)))
         return min(T, T_end)
 
     @staticmethod
-    def logarithmic_temperature(n: int, T_start: float = 0.2, T_end: float = 0.8, N: int = 26, k: float = 0.9) -> float:
-        T = T_start + (T_end - T_start)(log10(n + 1) / log10(N + 1))
+    def logarithmic_temperature(n: int, T_start: float = 0.2, T_end: float = 0.8, N: int = 26) -> float:
+        """
+        Compute a logarithmic temperature for sampling.
+
+        Args:
+            n (int): The number of messages in the conversation.
+            T_start (float): The starting temperature.
+            T_end (float): The maximum temperature.
+            N (int): The number of messages where the temperature approaches T_end.
+
+        Returns:
+            float: The computed temperature.
+        """
+        T = T_start + (T_end - T_start) * (log10(n + 1) / log10(N + 1))
         return min(T, T_end)
