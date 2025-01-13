@@ -18,6 +18,37 @@ if __name__=="__main__":
     parser.add_argument('-d', '--design', type=str, required=True, help="This is the path of the design directory that you would like to generate test benches for, not the path of the design file.")
     parser.add_argument('-g', '--generations', type=int, required=True)
     parser.add_argument('-c', '--compiler', type=str, required=True)
+    parser.add_argument(
+        '-s', 
+        '--sampling', 
+        type=bool, 
+        required=False, 
+        default=True, 
+        help="This is a boolean flag that determines whether the LLM should use sampling to generate responses."
+    )
+    parser.add_argument(
+        '--temperature_function',
+        type=str,
+        required=False,
+        default="constant",
+        help="This is the temperature function that the LLM will use to generate responses. The default is 'constant'."
+    )
+    parser.add_argument(
+        '-S',
+        '--seed',
+        type=int,
+        required=False,
+        default=None,
+        help="This is the seed that the LLM will use to generate responses. The default is None."
+    )
+    parser.add_argument(
+        '-m',
+        '--merge-coverage',
+        type=bool,
+        required=False,
+        default=True,
+        help="This is a boolean flag that determines whether the system should merge coverage reports."
+    )
     args = parser.parse_args()
 
     environment = Environment(args.design)
