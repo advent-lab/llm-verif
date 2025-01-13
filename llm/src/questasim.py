@@ -117,6 +117,32 @@ class QuestaSim(Simulator):
             f'coverage report -output {log_name}_report.txt -du=* -detail -annotate -code s -xml;exit;'
         ]
         return self.run_command(command)
+    
+    def generate_merged_coverage_ucdb(self, du: str, coverage_dbs: List[str], log_name: str) -> str:
+        """
+        Generate the coverage report.
+
+        Args:
+            du (str): Name of the design unit to be merged
+            coverage dbs (List[str]): List of UCDB coverage databases to merge together.
+            log_name (str): Log file name.
+
+        Returns:
+            str: Report generation output.
+        """
+
+        questa_dir = self.simulator_path
+        command = [
+            f'{questa_dir}/vcover',
+            'merge',
+            '-du',
+            f'{du}'
+            '-recursive'
+            '-out',
+            f'{log_name}.ucdb',
+        ] + coverage_dbs
+
+        return self.run_command(command)
 
     @staticmethod
     def parse_coverage_report(report_path: str) -> Tuple[List[dict], float]:
@@ -189,6 +215,8 @@ class QuestaSim(Simulator):
         # Compilation
         try:
             compile_output = self.compile_design(tb_path, data_point)
+            if not QuestaSim.check_errors(compile_output):
+                raise RuntimeError(compile_output)
             logging.info("Compilation successful.")
         except RuntimeError as e:
             return CoverageResponse(False, 1, str(e))
@@ -196,6 +224,8 @@ class QuestaSim(Simulator):
         # Simulation
         try:
             sim_output = self.run_simulation(tb_name, log_name)
+            if not QuestaSim.check_errors(sim_output):
+                raise RuntimeError(sim_output)
             logging.info("Simulation successful.")
         except RuntimeError as e:
             return CoverageResponse(False, 2, str(e))
@@ -209,31 +239,47 @@ class QuestaSim(Simulator):
         except RuntimeError as e:
             return CoverageResponse(False, 3, str(e))
 
+    def generate_merged_coverage_report(
+        self, du: str, coverage_dbs: List[Union[str, Path]], log_name: str
+    ) -> str:
+        """
+        Generate a merged coverage XML report for a specific design unit.
 
-    # Returns the path to the merged coverage ucdb
-    # If an empty string is returned, there was an error merging the coverage
-    def merge_coverage(self, coverage_dbs: list[Union[str, Path]]) -> str:
+        This method combines multiple coverage databases (`.ucdb` files) into a single coverage
+        report and generates a detailed XML coverage report for the specified design unit.
 
-        if not all(isinstance(val, str) for val in coverage_dbs) and not all(isinstance(val, Path) for val in coverage_dbs):
-            raise TypeError("Argument coverage_dbs should be a list of strings or Paths")
+        Args:
+            du (str): The name of the design unit to generate the report for.
+            coverage_dbs (List[Union[str, Path]]): A list of paths to coverage databases (`.ucdb` files).
+            log_name (str): The base name of the log files to be generated.
 
-        for file in coverage_dbs:
-            if os.path.isfile(file):
-                raise ValueError("All file paths in coverage_dbs should be a valid path of a UCDB coverage database file")
+        Returns:
+            str: The output of the generated XML coverage report.
 
-        merge_coverage_result = run([f'{self.simulator_path}/vcover', 'merge', '-recursive', '-out', 'merged_coverage.ucdb'] + coverage_dbs, stdout=PIPE, stderr=PIPE)
+        Raises:
+            TypeError: If `coverage_dbs` is not a homogeneous list of strings or Paths.
+            RuntimeError: If an error occurs during the merging or report generation process.
+        """
+        # Validate input
+        if not all(isinstance(val, (str, Path)) for val in coverage_dbs):
+            raise TypeError("Argument coverage_dbs should be a list of strings or Paths.")
 
-        if not self.check_errors(merge_coverage_result):
-            return ''
+        try:
+            # Merge coverage databases
+            merge_output = self.generate_merged_coverage_ucdb(du, coverage_dbs, log_name)
+            if not QuestaSim.check_errors(merge_output):
+                raise RuntimeError(f"Error during UCDB merge: {merge_output}")
 
-        if not os.path.isfile('merged_coverage.ucdb'):
-            return ''
+            # Generate the coverage report
+            report_output = self.generate_coverage_report(log_name)
+            return report_output
+        except Exception as e:
+            # Propagate exception for the caller to handle
+            raise RuntimeError(f"Failed to generate merged coverage report: {e}") from e
 
-        return os.path.abspath('merged_coverage.ucdb')
 
-        
-    
-    def check_errors(self, questa_output: str) -> bool:
+    @staticmethod
+    def check_errors(questa_output: str) -> bool:
         if not questa_output:
             return False
 
@@ -264,27 +310,5 @@ class QuestaSim(Simulator):
 
         return ''
 
-    def get_makefile_design_compilation(self, makefile: str, questa_dir: str, design_dir: str) -> str:
-        with open(makefile, 'r') as f:
-            lines = f.readlines()
-
-        compile_command = ''
-        for idx, line in enumerate(lines):
-            if "compile_design:" in line:
-                compile_command = lines[idx + 2]
-                break
-        
-        compile_command = compile_command.strip()
-        compile_command = (compile_command.replace('$(QUESTA_ROOT)', questa_dir)).replace('$(BASE_DIR)', design_dir)
-
-        return compile_command
-
-    # TODO: Write Makefile parser
-    def parse_makefile(self, makefile: str):
-        pass
-
     def vlog_builder(self, tb_path: str, data_point: dict) -> str:
         return f"vlog -cover s {tb_path} {' '.join(data_point['design'])} {' '.join(data_point['design_context'])}"
-
-    def merge_coverage(self, run_id: int):
-        pass
