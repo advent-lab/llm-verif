@@ -1,3 +1,5 @@
+from datetime import datetime
+from typing import Union
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from accelerate import infer_auto_device_map
 import torch
@@ -18,18 +20,35 @@ os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache/"
 
 class LlamaChat():
 
-    def __init__(self, simulator: Simulator, temperature: float, top_p: float, max_new_tokens: int, timeout_seconds: int):
+    def __init__(
+        self, 
+        simulator: Simulator, 
+        do_sample: bool,
+        temperature_function: str = "constant",
+        temperature: float = 0.3, 
+        top_p: float = 0.7, max_new_tokens: 
+        int = 4098, 
+        timeout_seconds: int = 1000
+    ):
 
         self.simulator = simulator
 
         self.model, self.tokenizer = self.load_model()
 
-        self.temperature = temperature
+        self.do_sample = do_sample
+
+        if temperature_function == "constant":
+            self.temperature_function = lambda: temperature
+        elif temperature_function == "logarithmic":
+            self.temperature_function = LlamaChat.logarithmic_temperature
+        elif temperature_function == "capped_sigmoid":
+            self.temperature_function = LlamaChat.capped_sigmoid_temperature
+
         self.top_p = top_p
         self.max_new_tokens = max_new_tokens
         self.timeout_seconds= timeout_seconds
 
-    def load_model(self) -> AutoTokenizer:
+    def load_model(self, seed: Union[int, None] = None) -> AutoTokenizer:
         os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache/"
 
         # Model and tokenizer setup with quantization
@@ -59,9 +78,7 @@ class LlamaChat():
         return model, tokenizer
 
     # Generate a response from LLM with memory management
-    def generate_response(self, conversation_history) -> (str, int, float):
-
-        temperature = LlamaChat.logarithmic_temperature(len(conversation_history))
+    def generate_response(self, conversation_history) -> tuple[str, int, float]:
 
         input_ids = self.tokenizer.apply_chat_template(
             conversation_history,
@@ -77,15 +94,25 @@ class LlamaChat():
 
         try:
             with torch.no_grad():
-                outputs = self.model.generate(
-                    input_ids,
-                    max_new_tokens=self.max_new_tokens,
-                    eos_token_id=terminators,
-                    do_sample=True,
-                    temperature=temperature,
-                    top_p=self.top_p,
-                    stopping_criteria=[lambda ids, scores: time.time() - start_time > self.timeout_seconds]
-                )
+                outputs = None
+                if self.do_sample:
+                    outputs = self.model.generate(
+                        input_ids,
+                        max_new_tokens=self.max_new_tokens,
+                        eos_token_id=terminators,
+                        do_sample=True,
+                        temperature=self.temperature_function(len(conversation_history)),
+                        top_p=self.top_p,
+                        stopping_criteria=[lambda ids, scores: time.time() - start_time > self.timeout_seconds]
+                    )
+                else:
+                    outputs = self.model.generate(
+                        input_ids,
+                        max_new_tokens=self.max_new_tokens,
+                        eos_token_id=terminators,
+                        do_sample=False,
+                        stopping_criteria=[lambda ids, scores: time.time() - start_time > self.timeout_seconds]
+                    )
             
             elapsed_time = time.time() - start_time
 
@@ -96,54 +123,14 @@ class LlamaChat():
 
         except Exception as e:
             print("Generation timed out or encountered an error:", e)
-            elapsed_time = timeout_seconds  # Set to max if timeout occurs
+            elapsed_time = self.timeout_seconds  # Set to max if timeout occurs
             token_count = 0
 
         # Free up memory post-generation
         torch.cuda.empty_cache()
 
         return response, token_count, elapsed_time
-
-
-    # Function to generate a response from the LLM in batch
-    # TODO: Test
-    def batch_generate(self, conversations, batch_size=10, max_new_tokens=10000, temperature=0.3, top_p=0.7) -> list:
-        generated_testbenches = []
-        
-        for i in range(0, len(conversations), batch_size):
-            batch_conversations = conversations[i:i+batch_size]
-            for conversation in batch_conversations:
-                try:
-                    # Prepare the input for Llama3.1
-                    input_ids = self.tokenizer.apply_chat_template(
-                        conversation,
-                        add_generation_prompt=True,
-                        return_tensors="pt"
-                    ).to(self.model.device)
-
-                    terminators = [
-                        self.tokenizer.eos_token_id,
-                        self.tokenizer.convert_tokens_to_ids("<|eot_id|>")
-                    ]
-
-                    with torch.no_grad():
-                        outputs = self.model.generate(
-                            input_ids,
-                            max_new_tokens=max_new_tokens,
-                            eos_token_id=terminators,
-                            do_sample=True,
-                            temperature=temperature,
-                            top_p=top_p,
-                        )
-
-                    testbench_code = self.tokenizer.decode(outputs, skip_special_tokens=True)
-                    generated_testbenches.append(testbench_code)
-                except Exception as e:
-                    print(f"Error generating for conversation {conversation}: {str(e)}")
-                    generated_testbenches.append(f"Error for {conversation}")
-        
-        return generated_testbenches
-
+    
     # Function to log the conversation to a file
     def log_conversation(self, conversation_update, log_file):
         with open(log_file, 'a') as f:
@@ -164,8 +151,8 @@ class LlamaChat():
         return "\n".join(lines)
 
     # Parse JSON Response from LLM to dict
-    @classmethod
-    def convert_json_response_to_dict(cls, generated_response: str) -> tuple:
+    @staticmethod
+    def convert_json_response_to_dict(generated_response: str) -> tuple:
 
         # If the response is empty or None, return an error
         if not generated_response:
@@ -235,13 +222,13 @@ class LlamaChat():
         pass
 
     # Returns a temperature for a given number of messages in a conversation
-    @classmethod
-    def capped_sigmoid_temperature(cls, n: int, T_start: float = 0.2, T_end: float = 0.8, N: int = 9, k: float = 0.9) -> float:
+    @staticmethod
+    def capped_sigmoid_temperature(n: int, T_start: float = 0.2, T_end: float = 0.8, N: int = 9, k: float = 0.9) -> float:
         # Ensure the temperature does not exceed T_end
         T = T_start + (T_end - T_start) / (1 + exp(-k * ((n - N) / 2)))
         return min(T, T_end)
 
-    @classmethod
-    def logarithmic_temperature(cls, n: int, T_start: float = 0.2, T_end: float = 0.8, N: int = 26, k: float = 0.9) -> float:
+    @staticmethod
+    def logarithmic_temperature(n: int, T_start: float = 0.2, T_end: float = 0.8, N: int = 26, k: float = 0.9) -> float:
         T = T_start + (T_end - T_start)(log10(n + 1) / log10(N + 1))
         return min(T, T_end)
