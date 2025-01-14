@@ -240,19 +240,18 @@ class LlamaChat:
 
         # Attempt to extract JSON-like content
         try:
-            # Locate the first and last JSON braces
-            start_idx = generated_response.find('{')
-            end_idx = generated_response.rfind('}')
+            # Find the first and last JSON curly braces
+            first_pos = generated_response.find('{')
+            if first_pos != -1:
+                generated_response = generated_response[first_pos:]
             
-            if start_idx == -1 or end_idx == -1 or start_idx > end_idx:
-                logging.error("No valid JSON structure found in the response.")
-                return {"error": "No JSON content found"}, 1
+            last_pos = generated_response.rfind('}')
+            if last_pos != -1:
+                generated_response = generated_response[:last_pos + 1]
 
-            # Extract the JSON substring
-            json_str = generated_response[start_idx:end_idx + 1]
-
-            # Parse the JSON content
-            parsed_response = json.loads(json_str)
+            # Parse JSON
+            decoder = json.JSONDecoder(strict=False)
+            parsed_response = decoder.raw_decode(generated_response)
             return parsed_response, 0
 
         except json.JSONDecodeError as e:
