@@ -125,6 +125,26 @@ class Record:
         self.num_sim_fail = 0
         self.num_timeout_fail = 0
 
+    def update_run_average_total_coverage(self, run_id: int):
+        if self.run_type == "RUN":
+            # Select rows where "run #" matches the given run_id
+            run = self.df[self.df["run #"] == run_id]
+            
+            # Calculate the average statement coverage for this run
+            run_coverages = run["statement coverage"].values
+            average_coverage = np.average([x for x in run_coverages if x != 0])
+            
+            # Update the "average total coverage" column for all matching rows
+            self.df.loc[self.df["run #"] == run_id, "average total coverage"] = average_coverage
+
+    def update_all_average_total_coverage(self):
+        if self.run_type == "RUN":
+            all_coverages = self.df["statement coverage"].values
+            average_coverage = np.average([x for x in all_coverages if x != 0])
+            
+            # Update the "average total coverage" column for all matching rows
+            self.df["average total coverage"] = average_coverage
+
     def write_to_csv(self, filename: str):
         """
         Write the dataframe to a CSV file.
@@ -143,4 +163,14 @@ class Record:
         """
         if self.run_type == "RUN" and self.include_merge_coverage:
             self.df["cross run merged coverage"] = coverage.total_coverage
+
+    def update_run_merge_coverage(self, coverage: CoverageResponse, run: int):
+        """
+        Update the dataframe with merged run coverage results.
+
+        Args:
+            coverage (CoverageResponse): The coverage response from merged iterations.
+        """
+        if self.run_type == "RUN" and self.include_merge_coverage:
+            self.df[self.df['run #'] == run]['run merged coverage'] = coverage.total_coverage
 
