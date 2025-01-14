@@ -12,4 +12,50 @@ class TestRecord(unittest.TestCase):
         
         record = Record("test_design", "RUN", False)
 
-        self.a
+        columns = record.df.columns
+
+        assert columns == [
+            "design",
+            "run #",
+            "iteration #",
+            "temperature",
+            "top_p",
+            "pass",
+            "compile fail",
+            "sim fail",
+            "timeout fail",
+            "report fail",
+            "decode fail",
+            "statement coverage",
+            "tokens generated",
+            "generation time",
+            "max total coverage",
+            "average total coverage",
+        ]
+
+    def setUpMergeCoverage(self):
+        
+        record = Record("test_design", "RUN", True)
+
+        columns = record.df.columns
+
+        assert columns == [
+            "design",
+            "run #",
+            "iteration #",
+            "temperature",
+            "top_p",
+            "pass",
+            "compile fail",
+            "sim fail",
+            "timeout fail",
+            "report fail",
+            "decode fail",
+            "statement coverage",
+            "tokens generated",
+            "generation time",
+            "max total coverage",
+            "average total coverage",
+            "run merged coverage",
+            "cross run merged coverage",
+        ]
