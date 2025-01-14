@@ -115,6 +115,16 @@ class Record:
 
         self.df = pd.concat([self.df, pd.DataFrame([data])], ignore_index=True)
 
+    def reset_run(self):
+        self.total_fail = 0
+        self.total_pass = 0
+        self.max_cov = 0
+        self.num_compile_fail = 0
+        self.num_decode_fail = 0
+        self.num_report_fail = 0
+        self.num_sim_fail = 0
+        self.num_timeout_fail = 0
+
     def write_to_csv(self, filename: str):
         """
         Write the dataframe to a CSV file.
