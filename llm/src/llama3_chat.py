@@ -220,7 +220,7 @@ class LlamaChat:
         return "\n".join(lines)
 
     @staticmethod
-    def convert_json_response_to_dict(generated_response: str | None) -> tuple[dict[str, Any], int]:
+    def convert_json_response_to_dict(generated_response: str) -> tuple[dict[str, Any], int]:
         """
         Extract and parse JSON content from an AI-generated response.
 
@@ -245,7 +245,7 @@ class LlamaChat:
               additional non-JSON text before or after the JSON content.
         """
         # Handle empty response
-        if not generated_response or not isinstance(generated_response, str):
+        if not generated_response:
             logging.error("Empty or invalid response received.")
             return {"error": "Empty response"}, 1
 
