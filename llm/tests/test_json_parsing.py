@@ -8,8 +8,6 @@ import unittest
 from src.llama3_chat import LlamaChat
 
 class TestJsonParse(unittest.TestCase):
-    def setUp(self):
-        self.llama_chat = LlamaChat(None, True, skip_load=True)
 
     def test_json_parse(self):
         response = """
@@ -20,7 +18,7 @@ class TestJsonParse(unittest.TestCase):
         `
         Here is some JSON
         """
-        test_bench_code, error_code = self.llama_chat.convert_json_response_to_dict(response)
+        test_bench_code, error_code = LlamaChat.convert_json_response_to_dict(response)
         print(test_bench_code)
         print(test_bench_code[0].get("test bench"))
         self.assertEqual(error_code, 0)

@@ -41,7 +41,7 @@ class LlamaChat:
         timeout_seconds (int): Timeout for text generation in seconds.
     """
 
-    def __init__(self, simulator: Simulator, do_sample: bool, temperature_function: str = "constant",
+    def __init__(self, simulator: Simulator | None, do_sample: bool, temperature_function: str = "constant",
             temperature: float = 0.3, top_p: float = 0.7, max_new_tokens: int = 4098, timeout_seconds: int = 1000, seed: Union[int, None] = None, skip_load: bool = False):
         """
         Initialize the LlamaChat class.
