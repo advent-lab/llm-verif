@@ -14,16 +14,16 @@ import argparse
 from src.prompt_templates import m2_prompts, m3_prompt, design_prompt, error_prompt
 from src.eval_runs_util import Record
 
-def parse_json_response(response: str) -> CoverageResponse:
+def parse_json_response(response: str) -> tuple[str, CoverageResponse]:
     """
     Parse the JSON response from LlamaChat and handle errors.
     """
     parsed_response, status = LlamaChat.convert_json_response_to_dict(response)
     if status == 0:  # Valid JSON
-        test_bench_code = parsed_response.get("test bench", "")
+        test_bench_code = parsed_response[0].get("test bench", "")
         return test_bench_code, None
     else:
-        error_message = parsed_response.get("error", "JSON parsing error.")
+        error_message = parsed_response[0].get("error", "JSON parsing error.")
         return None, CoverageResponse(False, 4, error_message)
 
 

@@ -46,7 +46,7 @@ class LlamaChat:
     """
 
     def __init__(self, simulator: Simulator, do_sample: bool, temperature_function: str = "constant",
-                 temperature: float = 0.3, top_p: float = 0.7, max_new_tokens: int = 4098, timeout_seconds: int = 1000, seed: Union[int, None] = None):
+            temperature: float = 0.3, top_p: float = 0.7, max_new_tokens: int = 4098, timeout_seconds: int = 1000, seed: Union[int, None] = None, skip_load: bool = False):
         """
         Initialize the LlamaChat class.
 
@@ -58,9 +58,11 @@ class LlamaChat:
             top_p (float): Top-p probability for nucleus sampling.
             max_new_tokens (int): Maximum number of tokens to generate in a single response.
             timeout_seconds (int): Timeout for text generation in seconds.
+            skip_load (bool): FOR TESTING ONLY. For faster testing, set this argument to true to skip loading the model
         """
         self.simulator = simulator
-        self.model, self.tokenizer = self.load_model(seed=seed)
+        if not skip_load:
+            self.model, self.tokenizer = self.load_model(seed=seed)
         self.do_sample = do_sample
 
         if temperature_function == "constant":
