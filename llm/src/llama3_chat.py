@@ -1,20 +1,16 @@
 from datetime import datetime
-from typing import Union
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, PreTrainedModel, PreTrainedTokenizer, PreTrainedTokenizerFast
 from accelerate import infer_auto_device_map
 import torch
 import os
 import json
 from src.storage import FileStore
-import re
 import time
-from pathlib import Path
-from src.dashboard import Dataset
 from src.simulator import Simulator, CoverageResponse
 from math import exp, log10
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any
+from typing import Any, Callable, Union
 
 logging.basicConfig(level=logging.INFO)
 
@@ -60,6 +56,16 @@ class LlamaChat:
             timeout_seconds (int): Timeout for text generation in seconds.
             skip_load (bool): FOR TESTING ONLY. For faster testing, set this argument to true to skip loading the model
         """
+        self.simulator: Simulator | Any
+        self.model: PreTrainedModel | Any
+        self.tokenizer: PreTrainedTokenizer | Any
+        self.do_sample: bool
+        self.temperature_function: Callable[[int], float]
+        self.temperature: float
+        self.top_p: float
+        self.max_new_tokens: int
+        self.timeout_seconds: int
+
         self.simulator = simulator
         if not skip_load:
             self.model, self.tokenizer = self.load_model(seed=seed)
@@ -78,7 +84,7 @@ class LlamaChat:
         self.max_new_tokens = max_new_tokens
         self.timeout_seconds = timeout_seconds
 
-    def load_model(self, seed: Union[int, None] = None) -> tuple[AutoModelForCausalLM, AutoTokenizer]:
+    def load_model(self, seed: Union[int, None] = None) -> tuple[PreTrainedModel, PreTrainedTokenizer]:
         """
         Load the Llama model and tokenizer with quantization settings.
 
@@ -86,7 +92,7 @@ class LlamaChat:
             seed (Union[int, None]): Random seed for reproducibility. Default is None.
 
         Returns:
-            tuple: A tuple containing the loaded model (AutoModelForCausalLM) and tokenizer (AutoTokenizer).
+            tuple: A tuple containing the loaded model (PreTrainedModel) and tokenizer (PreTrainedTokenizer).
 
         Raises:
             Exception: If the model or tokenizer fails to load.
@@ -95,7 +101,7 @@ class LlamaChat:
         # Set PyTorch random seed if provided
         if seed is not None:
             logging.info(f"Setting PyTorch seed to {seed}.")
-            torch.manual_seed(seed)
+            torch.manual_seed(seed) # type: ignore
             torch.cuda.manual_seed_all(seed)
             # np.random.seed(seed)
 
@@ -111,8 +117,8 @@ class LlamaChat:
             bnb_4bit_use_double_quant=False,
         )
 
-        tokenizer = AutoTokenizer.from_pretrained(model_id)
-        model = AutoModelForCausalLM.from_pretrained(
+        tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(model_id) # type: ignore
+        model: PreTrainedModel = AutoModelForCausalLM.from_pretrained( # type: ignore
             model_id,
             quantization_config=bnb_config,
             torch_dtype=torch.bfloat16,
@@ -120,13 +126,13 @@ class LlamaChat:
         )
 
         # Save device map for debugging
-        device_map = infer_auto_device_map(model)
+        device_map = infer_auto_device_map(model) # type: ignore
         with open("./device_map.json", 'w+') as j:
             json.dump(device_map, j)
 
-        return model, tokenizer
+        return model, tokenizer # type: ignore
 
-    def generate_response(self, conversation_history: list[dict]) -> tuple[str, int, float]:
+    def generate_response(self, conversation_history: list[dict[str, str]]) -> tuple[str, int, float]:
         """
         Generate a response from the model given the conversation history.
 
@@ -149,19 +155,19 @@ class LlamaChat:
         # Evaluate new temperature based on temperautre function
         self.temperature = self.temperature_function(len(conversation_history))
 
-        input_ids = self.tokenizer.apply_chat_template(
+        input_ids = self.tokenizer.apply_chat_template( # type: ignore
             conversation_history,
             add_generation_prompt=True,
             return_tensors="pt"
-        ).to(self.model.device)
+        ).to(self.model.device) # type: ignore
 
-        terminators = [self.tokenizer.convert_tokens_to_ids("<|eot_id|>")]
+        terminators: list[int | list[int]] = [self.tokenizer.convert_tokens_to_ids("<|eot_id|>")]
 
         start_time = time.time()
         try:
             with torch.no_grad():
-                outputs = self.model.generate(
-                    input_ids,
+                outputs = self.model.generate( # type: ignore
+                    input_ids, # type: ignore
                     max_new_tokens=self.max_new_tokens,
                     eos_token_id=terminators,
                     do_sample=self.do_sample,
@@ -170,9 +176,9 @@ class LlamaChat:
                 )
 
             elapsed_time = time.time() - start_time
-            response_ids = outputs[0][input_ids.shape[-1]:]
-            response = self.tokenizer.decode(response_ids, skip_special_tokens=True)
-            token_count = len(response_ids)
+            response_ids = outputs[0][input_ids.shape[-1]:] # type: ignore
+            response = self.tokenizer.decode(response_ids, skip_special_tokens=True) # type: ignore
+            token_count = len(response_ids) # type: ignore
 
         except Exception as e:
             logging.error(f"Error during generation: {e}")
@@ -185,7 +191,7 @@ class LlamaChat:
 
         return response, token_count, elapsed_time
     
-    def log_conversation(self, conversation_update: list[dict], log_file: str):
+    def log_conversation(self, conversation_update: list[dict[str, str]], log_file: str):
         """
         Log the conversation history to a specified file.
 
@@ -203,9 +209,9 @@ class LlamaChat:
             f.write("\n")
 
     # Function to collect multi-line input from the user
-    def get_multiline_input(self, prompt="Enter your message (end with 'END' on a new line):"):
+    def get_multiline_input(self, prompt: str ="Enter your message (end with 'END' on a new line):"):
         print(prompt)
-        lines = []
+        lines: list[str] = []
         while True:
             line = input()
             if line.strip().upper() == "END":
@@ -214,7 +220,7 @@ class LlamaChat:
         return "\n".join(lines)
 
     @staticmethod
-    def convert_json_response_to_dict(generated_response: str) -> tuple[dict[str, Any], int]:
+    def convert_json_response_to_dict(generated_response: str | None) -> tuple[dict[str, Any], int]:
         """
         Extract and parse JSON content from an AI-generated response.
 
