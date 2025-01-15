@@ -11,7 +11,7 @@ from src.llama3_chat import LlamaChat
 class TestLlamaChat(unittest.TestCase):
     def setUp(self):
         # Mock the LlamaChat class and its tokenizer
-        self.llama_chat = LlamaChat(None, True)  # Pass dummy arguments for simplicity
+        self.llama_chat = LlamaChat(None, True, skip_load=True)  # Pass dummy arguments for simplicity
         self.llama_chat.tokenizer = MagicMock()
 
         # Mock the tokenizer.encode method to return token counts
