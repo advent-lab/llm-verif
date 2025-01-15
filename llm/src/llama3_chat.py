@@ -146,6 +146,9 @@ class LlamaChat:
         if not conversation_history:
             raise ValueError("Conversation history is required.")
 
+        # Evaluate new temperature based on temperautre function
+        self.temperature = self.temperature_function(len(conversation_history))
+
         input_ids = self.tokenizer.apply_chat_template(
             conversation_history,
             add_generation_prompt=True,
@@ -162,7 +165,7 @@ class LlamaChat:
                     max_new_tokens=self.max_new_tokens,
                     eos_token_id=terminators,
                     do_sample=self.do_sample,
-                    temperature=self.temperature_function(len(conversation_history)) if self.do_sample else None,
+                    temperature=self.temperature if self.do_sample else None,
                     top_p=self.top_p if self.do_sample else None,
                 )
 

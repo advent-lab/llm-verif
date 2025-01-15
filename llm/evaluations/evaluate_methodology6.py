@@ -46,7 +46,7 @@ def evaluate_coverage(
 
 def generate_and_evaluate(
     conversation: list[dict], prompt: str, llama: LlamaChat, tb_path: str, environment: Environment, 
-    record: Record, run: int, iteration: int, temperature: float, top_p: float
+    record: Record, run: int, iteration: int
 ) -> CoverageResponse:
     """
     Generate a test bench and evaluate its coverage.
@@ -57,11 +57,11 @@ def generate_and_evaluate(
 
     test_bench_code, coverage_error = parse_json_response(response)
     if coverage_error:
-        record.update_dataframe(coverage_error, temperature, top_p, run, iteration, tokens_generated, gen_time)
+        record.update_dataframe(coverage_error, llama.temperature, llama.top_p, run, iteration, tokens_generated, gen_time)
         return coverage_error
     
     cov = evaluate_coverage(test_bench_code, tb_path, environment, run, iteration)
-    record.update_dataframe(cov, temperature, top_p, run, iteration, tokens_generated, gen_time)
+    record.update_dataframe(cov, llama.temperature, llama.top_p, run, iteration, tokens_generated, gen_time)
     return cov
 
 
