@@ -280,6 +280,7 @@ class LlamaChat:
             return CoverageResponse(False, 4, "Empty test bench (JSON Decode Error)")
 
         # Write the generated testbench to a file
+        print(tb_path)
         with open(tb_path, "w+") as testbench_file:
             testbench_file.write(generated_response)
 
