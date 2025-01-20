@@ -325,10 +325,12 @@ class LlamaChat:
             return conversation
 
         current_token_count = sum(len(self.tokenizer.encode(msg["content"])) for msg in conversation)
+        print(f"Current token count: {current_token_count}")
         max_token_count = context_window - self.max_new_tokens
 
         # Trim conversation until within token limits
         while current_token_count > max_token_count and len(conversation) > 1:
+            print(f"Trimming conversation to fit within token limits: {current_token_count} > {max_token_count}")
             # Preserve the system message (index 0)
             conversation.pop(1)
             current_token_count = sum(len(self.tokenizer.encode(msg["content"])) for msg in conversation)

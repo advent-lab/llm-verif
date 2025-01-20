@@ -51,9 +51,11 @@ def generate_and_evaluate(
     """
     Generate a test bench and evaluate its coverage.
     """
+    print(prompt)
     conversation.append({"role": "user", "content": prompt})
     response, tokens_generated, gen_time = llama.generate_response(conversation)
     conversation.append({"role": "assistant", "content": response})
+    print(response)
 
     if json:
         test_bench_code, coverage_error = parse_json_response(response)

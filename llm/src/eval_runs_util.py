@@ -115,6 +115,8 @@ class Record:
 
         self.df = pd.concat([self.df, pd.DataFrame([data])], ignore_index=True)
 
+        print(self.df)
+
     def reset_run(self):
         self.total_fail = 0
         self.total_pass = 0
@@ -137,6 +139,8 @@ class Record:
             # Update the "average total coverage" column for all matching rows
             self.df.loc[self.df["run #"] == run_id, "average total coverage"] = average_coverage # type: ignore
 
+            print(self.df)
+
     def update_all_average_total_coverage(self):
         if self.run_type == "RUN":
             all_coverages = self.df["statement coverage"].values
@@ -144,6 +148,8 @@ class Record:
             
             # Update the "average total coverage" column for all matching rows
             self.df["average total coverage"] = average_coverage
+
+            print(self.df)
 
     def write_to_csv(self, filename: str):
         """
@@ -164,6 +170,8 @@ class Record:
         if self.run_type == "RUN" and self.include_merge_coverage:
             self.df["cross run merged coverage"] = coverage.total_coverage
 
+        print(self.df)
+
     def update_run_merge_coverage(self, coverage: CoverageResponse, run: int):
         """
         Update the dataframe with merged run coverage results.
@@ -173,4 +181,6 @@ class Record:
         """
         if self.run_type == "RUN" and self.include_merge_coverage:
             self.df[self.df['run #'] == run]['run merged coverage'] = coverage.total_coverage
+
+        print(self.df)
 
