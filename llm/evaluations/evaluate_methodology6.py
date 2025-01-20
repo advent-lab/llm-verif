@@ -45,12 +45,15 @@ def evaluate_coverage(
 
 
 def generate_and_evaluate(
-    conversation: list[dict], prompt: str, llama: LlamaChat, tb_path: str, environment: Environment, 
+    conversation: list[dict], prompt: str, llama: LlamaChat, environment: Environment, 
     record: Record, run: int, iteration: int, json: bool = True
 ) -> CoverageResponse:
     """
     Generate a test bench and evaluate its coverage.
     """
+
+    tb_path = f'{environment.design_dir}/tb_llm_{environment.design_name}_{run}_{iteration}.v'
+
     print(prompt)
     conversation.append({"role": "user", "content": prompt})
     response, tokens_generated, gen_time = llama.generate_response(conversation)
@@ -89,18 +92,17 @@ def run_conversation(
     prompt1, prompt2 = m2_prompts(environment.design_specification, environment.module_header)
     
     # Stage 1: Generate verification plan
-    tb_path = f'{args.design}/tb_llm_{environment.design_name}_{run_index}.v'
-    cov = generate_and_evaluate(conversation, prompt1, llama, tb_path, environment, record, run_index, 0, json=False)
+    cov = generate_and_evaluate(conversation, prompt1, llama, environment, record, run_index, 0, json=False)
 
     # Stage 2: Generate test bench
     if cov.success:
-        cov = generate_and_evaluate(conversation, prompt2, llama, tb_path, environment, record, run_index, 1)
+        cov = generate_and_evaluate(conversation, prompt2, llama, environment, record, run_index, 1)
     
     # Iterative Refinement
     iteration = 2
     while not cov.success or (cov.total_coverage < 100 and iteration <= 12):
         prompt = error_prompt(cov.error_code, cov.error_message) if not cov.success else m3_prompt(environment.all_design_file_paths, cov)
-        cov = generate_and_evaluate(conversation, prompt, llama, tb_path, environment, record, run_index, iteration)
+        cov = generate_and_evaluate(conversation, prompt, llama, environment, record, run_index, iteration)
         conversation = llama.limit_conversation(conversation)
         iteration += 1
 
