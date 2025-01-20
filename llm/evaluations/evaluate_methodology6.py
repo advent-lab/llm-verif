@@ -170,12 +170,13 @@ def main():
     args = parser.parse_args()
 
     environment = Environment(args)
+    record = Record(environment.design_name, "RUN")
+    
     llama = LlamaChat(
         QuestaSim(args.compiler), do_sample=not args.no_sampling,
         temperature_function=args.temperature_function, temperature=args.temperature,
         top_p=0.7, max_new_tokens=4098, timeout_seconds=1000, seed=args.seed
     )
-    record = Record(environment.design_name, "RUN")
 
     for run_index in range(args.generations):
         print(f"\nStarting Run {run_index}")
