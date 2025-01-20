@@ -212,12 +212,18 @@ class QuestaSim(Simulator):
         design_dir = os.path.split(os.path.split(tb_path)[0])[0]
         tb_name = self.get_testbench_name(tb_path)
 
+        # Check for $finish in the testbench
+        if not self.has_finish(tb_path):
+            return CoverageResponse(False, 5, "No $finish found in the test bench. Simulation will not finish.")
+
         # Cleanup
         self.cleanup(design_dir)
 
         # Compilation
         try:
             compile_output = self.compile_design(tb_path, data_point)
+            with  open(f'{log_name}_compile.log', 'w') as f:
+                f.write(compile_output)
             if not QuestaSim.check_errors(compile_output):
                 raise RuntimeError(compile_output)
             logging.info("Compilation successful.")
@@ -227,6 +233,8 @@ class QuestaSim(Simulator):
         # Simulation
         try:
             sim_output = self.run_simulation(tb_name, log_name)
+            with open(f'{log_name}_sim.log', 'w') as f:
+                f.write(sim_output)
             if not QuestaSim.check_errors(sim_output):
                 raise RuntimeError(sim_output)
             logging.info("Simulation successful.")
