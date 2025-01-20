@@ -61,7 +61,7 @@ def generate_and_evaluate(
             record.update_dataframe(coverage_error, llama.temperature, llama.top_p, run, iteration, tokens_generated, gen_time)
             return coverage_error
         
-        cov = evaluate_coverage(test_bench_code, tb_path, environment, run, iteration)
+        cov = evaluate_coverage(test_bench_code, tb_path, environment, llama, run, iteration)
         record.update_dataframe(cov, llama.temperature, llama.top_p, run, iteration, tokens_generated, gen_time)
         return cov
     
