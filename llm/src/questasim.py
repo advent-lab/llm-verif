@@ -72,8 +72,9 @@ class QuestaSim(Simulator):
         Returns:
             str: Compilation output.
         """
-        compile_command = self.vlog_builder(tb_path=tb_path, data_point=data_point)
-        return self.run_command([compile_command])
+        print(tb_path)
+        compile_command = self.vlog_builder(tb_path=tb_path, data_point=data_point).split()
+        return self.run_command(compile_command)
 
     def run_simulation(self, tb_name: str, log_name: str) -> str:
         """
@@ -322,7 +323,7 @@ class QuestaSim(Simulator):
         return ''
 
     def vlog_builder(self, tb_path: str, data_point: dict) -> str:
-        return f"vlog -cover s {tb_path} {' '.join(data_point['design'])} {' '.join(data_point['design_context'])}"
+        return f"vlog +cover=s {tb_path} {' '.join(data_point['design'])} {' '.join(data_point['design_context'])}"
 
     def has_finish(self, file_path):
         """
