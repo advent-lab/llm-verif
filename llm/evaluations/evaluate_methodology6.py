@@ -64,10 +64,12 @@ def generate_and_evaluate(
         test_bench_code, coverage_error = parse_json_response(response)
         if coverage_error:
             record.update_dataframe(coverage_error, llama.temperature, llama.top_p, run, iteration, tokens_generated, gen_time)
+            record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
             return coverage_error
         
         cov = evaluate_coverage(test_bench_code, tb_path, environment, llama, run, iteration)
         record.update_dataframe(cov, llama.temperature, llama.top_p, run, iteration, tokens_generated, gen_time)
+        record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
         return cov
     
     return CoverageResponse(True, 0, "", [], 0)
