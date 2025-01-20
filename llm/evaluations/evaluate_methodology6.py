@@ -148,7 +148,7 @@ def run_conversation(
             logging.info("Merged coverage generated successfully.")
             # Parse merged coverage
             merged_coverage, total_coverage = QuestaSim.parse_coverage_report(f"{log_name}_report.txt")
-            record.update_cross_run_merge_coverage(CoverageResponse(True, 0, "Merged successfully", merged_coverage, total_coverage))
+            record.update_run_merge_coverage(CoverageResponse(True, 0, "Merged successfully", merged_coverage, total_coverage), run_index)
 
         except Exception as e:
             logging.error(f"Failed to generate merged coverage: {e}")
@@ -185,6 +185,49 @@ def main():
         print(f"\nStarting Run {run_index}")
         record.reset_run()
         run_conversation(run_index, llama, environment, record, args)
+
+    if args.merge_coverage:
+        try:
+            merged_ucdb_path = f"{args.design}/merged_coverage_{environment.design_name}.ucdb"
+            log_name = f"{args.design}/merged_coverage_{environment.design_name}"
+
+            # Check FileStore for UCDB files
+            if environment.store:
+                stored_ucdb_files = [
+                    os.path.join(environment.store.storage_path, f"tb_llm_{environment.design_name}_{i}_{j}.ucdb")
+                    for i in range(args.generations)
+                    for j in range(args.max_iterations)
+                ]
+            else:
+                stored_ucdb_files = [
+                    f"{args.design}/tb_llm_{environment.design_name}_{i}_{j}.ucdb"
+                    for i in range(args.generations)
+                    for j in range(args.max_iterations)
+                ]
+
+            # Filter for existing UCDB files
+            coverage_dbs = [file for file in stored_ucdb_files if os.path.exists(file)]
+
+            if not coverage_dbs:
+                logging.warning("No UCDB files found for merging coverage.")
+                return
+
+            # Call QuestaSim to merge coverage
+            merge_output = llama.simulator.generate_merged_coverage_report(
+                du=environment.design_module_name,
+                coverage_dbs=coverage_dbs,
+                log_name=log_name,
+            )
+            logging.info("Merged coverage generated successfully.")
+            # Parse merged coverage
+            merged_coverage, total_coverage = QuestaSim.parse_coverage_report(f"{log_name}_report.txt")
+            record.update_cross_run_merge_coverage(CoverageResponse(True, 0, "Merged successfully", merged_coverage, total_coverage))
+
+        except Exception as e:
+            logging.error(f"Failed to generate merged coverage: {e}")
+    
+    # Final Write to CSV
+    record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
 
 
 if __name__ == "__main__":
