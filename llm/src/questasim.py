@@ -137,8 +137,8 @@ class QuestaSim(Simulator):
             f'{questa_dir}/vcover',
             'merge',
             '-du',
-            f'{du}'
-            '-recursive'
+            f'{du}',
+            '-recursive',
             '-out',
             f'{log_name}.ucdb',
         ] + coverage_dbs
