@@ -3,7 +3,7 @@ import datetime
 import os
 import logging
 import shutil
-from src.simulator import Simulator, CoverageResponse
+from src.simulator import Simulator, CoverageResponse, DU
 import re
 from typing import Union, Dict, List
 import xml.etree.ElementTree as ET
@@ -73,7 +73,7 @@ class QuestaSim(Simulator):
             str: Compilation output.
         """
         compile_command = self.vlog_builder(tb_path=tb_path, data_point=data_point)
-        return self.run_command(compile_command)
+        return self.run_command([compile_command])
 
     def run_simulation(self, tb_name: str, log_name: str) -> str:
         """
@@ -145,7 +145,7 @@ class QuestaSim(Simulator):
         return self.run_command(command)
 
     @staticmethod
-    def parse_coverage_report(report_path: str) -> Tuple[List[dict], float]:
+    def parse_coverage_report(report_path: str) -> tuple[list[DU], float]:
         """
         Parse the coverage report XML and extract coverage details.
 
@@ -168,27 +168,30 @@ class QuestaSim(Simulator):
             file_path = file_map.get('path') if file_map is not None else "unknown"
 
             statements = du_data.find('statements')
-            active = int(statements.get('active', 0))
-            hits = int(statements.get('hits', 0))
-            percent = float(statements.get('percent', 0.0))
+            active =  int(statements.get('active', 0)) if statements else 0
+            hits = int(statements.get('hits', 0)) if statements else 0
+            percent = float(statements.get('percent', 0.0)) if statements else 0
+            
+            details = du_data.findall('.//stmt')
 
-            total_active += active
+            total_active += active 
             total_hits += hits
 
-            coverage_list.append({
-                'path': file_path,
-                'du': du_name,
-                'coverage': {
+            coverage_list.append(DU(
+                path=str(file_path),
+                du=str(du_name),
+                coverage={
                     'active': active,
                     'hits': hits,
                     'percent': percent
-                }
-            })
+                },
+                coverage_details=details
+            ))
 
         total_coverage = (total_hits / total_active) * 100.0 if total_active > 0 else 0.0
         return coverage_list, total_coverage
 
-    def run_sim(self, tb_path: str, data_point: dict, log_name: str) -> CoverageResponse:
+    def run_sim(self, tb_path: str, data_point: dict[str, str | list[str]] | None, log_name: str) -> CoverageResponse:
         """
         Run the simulation and generate the coverage report.
 
@@ -240,7 +243,7 @@ class QuestaSim(Simulator):
             return CoverageResponse(False, 3, str(e))
 
     def generate_merged_coverage_report(
-        self, du: str, coverage_dbs: List[Union[str, Path]], log_name: str
+        self, du: str, coverage_dbs: list[str], log_name: str
     ) -> str:
         """
         Generate a merged coverage XML report for a specific design unit.

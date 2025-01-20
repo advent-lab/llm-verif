@@ -135,7 +135,7 @@ class Record:
             average_coverage = np.average([x for x in run_coverages if x != 0])
             
             # Update the "average total coverage" column for all matching rows
-            self.df.loc[self.df["run #"] == run_id, "average total coverage"] = average_coverage
+            self.df.loc[self.df["run #"] == run_id, "average total coverage"] = average_coverage # type: ignore
 
     def update_all_average_total_coverage(self):
         if self.run_type == "RUN":

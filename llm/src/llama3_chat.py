@@ -263,7 +263,7 @@ class LlamaChat:
             # Parse JSON
             decoder = json.JSONDecoder(strict=False)
             parsed_response = decoder.raw_decode(generated_response)
-            return parsed_response, 0
+            return parsed_response[0], 0
 
         except json.JSONDecodeError as e:
             logging.error(f"JSONDecodeError: {e}. Response: {generated_response}")
@@ -275,7 +275,7 @@ class LlamaChat:
 
 
     # TODO: Create call to QuestaSim to get coverage
-    def get_coverage(self, generated_response: str, tb_path: str, data_point: dict, storage: FileStore = None) -> CoverageResponse:
+    def get_coverage(self, generated_response: str, tb_path: str, data_point: dict[str, str | list[str]] | None, storage: FileStore = None) -> CoverageResponse:
         if not generated_response:
             return CoverageResponse(False, 4, "Empty test bench (JSON Decode Error)")
 
@@ -302,7 +302,7 @@ class LlamaChat:
     def get_merge_coverage(self, run: int):
         self.simulator.merge_coverage()
 
-    def limit_conversation(self, conversation: list[dict], context_window: int = 128000) -> list[dict]:
+    def limit_conversation(self, conversation: list[dict[str, str]], context_window: int = 128000) -> list[dict]:
         """
         Limit the conversation memory to ensure it stays within token limits.
 
@@ -339,7 +339,7 @@ class LlamaChat:
         return conversation
 
 
-    def parallel_get_coverage(self, test_benches: list[str], data_points: list[dict]) -> list[CoverageResponse]:
+    def parallel_get_coverage(self, responses: str, test_benches: list[str], data_points: list[dict]) -> list[CoverageResponse]:
         """
         Run coverage simulations in parallel for multiple test benches.
 
@@ -352,8 +352,8 @@ class LlamaChat:
         """
         with ThreadPoolExecutor() as executor:
             futures = [
-                executor.submit(self.get_coverage, tb, dp)
-                for tb, dp in zip(test_benches, data_points)
+                executor.submit(self.get_coverage, response, tb, dp)
+                for response, tb, dp in zip(responses, test_benches, data_points)
             ]
             return [future.result() for future in futures]
 

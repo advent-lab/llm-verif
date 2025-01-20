@@ -63,11 +63,11 @@ class TestParseCoverageReport(unittest.TestCase):
         # Assert coverage list
         self.assertEqual(len(coverage_list), len(expected_coverage_list))
         for actual, expected in zip(coverage_list, expected_coverage_list):
-            self.assertEqual(actual['path'], expected['path'])
-            self.assertEqual(actual['du'], expected['du'])
-            self.assertEqual(actual['coverage']['active'], expected['coverage']['active'])
-            self.assertEqual(actual['coverage']['hits'], expected['coverage']['hits'])
-            self.assertAlmostEqual(actual['coverage']['percent'], expected['coverage']['percent'], places=1)
+            self.assertEqual(actual.path, expected['path'])
+            self.assertEqual(actual.du, expected['du'])
+            self.assertEqual(actual.coverage['active'], expected['coverage']['active'])
+            self.assertEqual(actual.coverage['hits'], expected['coverage']['hits'])
+            self.assertAlmostEqual(actual.coverage['percent'], expected['coverage']['percent'], places=1)
 
 if __name__ == '__main__':
     unittest.main()

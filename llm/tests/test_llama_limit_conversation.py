@@ -28,7 +28,7 @@ class TestLlamaChat(unittest.TestCase):
 
     def test_invalid_conversation_type(self):
         with self.assertRaises(ValueError) as context:
-            self.llama_chat.limit_conversation("invalid_input")
+            self.llama_chat.limit_conversation("invalid_input") #type: ignore
         self.assertEqual(str(context.exception), "Conversation must be a non-empty list of messages.")
 
     def test_only_system_prompt(self):

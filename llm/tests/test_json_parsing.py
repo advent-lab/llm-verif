@@ -20,7 +20,7 @@ class TestJsonParse(unittest.TestCase):
         """
         test_bench_code, error_code = LlamaChat.convert_json_response_to_dict(response)
         print(test_bench_code)
-        print(test_bench_code[0].get("test bench"))
+        print(test_bench_code.get("test bench"))
         self.assertEqual(error_code, 0)
 
 if __name__=="__main__":

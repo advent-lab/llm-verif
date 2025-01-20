@@ -1,10 +1,24 @@
+from xml.etree.ElementTree import Element
+
+class DU:
+    def __init__(self, path: str, du: str, coverage: dict[str, int | float], coverage_details: list[Element]) -> None:
+        self.path: str
+        self.du: str
+        self.coverage: dict[str, int | float]
+        self.coverage_details: list[Element]
+
+        self.path = path
+        self.du = du
+        self.coverage = coverage
+        self.coverage_details = coverage_details
+
 class CoverageResponse:
-    def __init__(self, success: bool, error_code: int, error_message: str = "", coverage_list: list[dict[str, str]] = [], total_coverage: float = 0):
+    def __init__(self, success: bool, error_code: int, error_message: str = "", coverage_list: list[DU] = [], total_coverage: float = 0):
         
         self.success: bool
         self.error_code: int
         self.error_message: str
-        self.coverage_list: list[dict[str, str]]
+        self.coverage_list: list[DU]
         self.total_coverage: float
         
         self.success = success
@@ -25,6 +39,14 @@ class Simulator():
     def __init__(self, simulator_path: str):
         self.simulator_path = simulator_path
 
-    def run_sim(self) -> CoverageResponse:
+    def run_sim(self, tb_path: str, data_point: dict[str, str | list[str]] | None, log_name: str) -> CoverageResponse:
         """Run the simulation - to be overridden by subclasses"""
+        raise NotImplementedError("This method should be implemented by subclasses.")
+    
+    def generate_merged_coverage_report(self, du: str, coverage_dbs: list[str], log_name: str) -> str:
+        """Generate merged coverage report - to be overridden by subclasses"""
+        raise NotImplementedError("This method should be implemented by subclasses.")
+    
+    def merge_coverage(self) -> str:
+        """Merge coverage - to be overridden by subclasses"""
         raise NotImplementedError("This method should be implemented by subclasses.")

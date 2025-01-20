@@ -15,7 +15,7 @@ class Dataset:
         self.dataset = decoder.raw_decode(dashboard_content)[0]
         self.replace_base_dir()
 
-    def get_data_point(self, design_name: str) -> Union[dict, None]:
+    def get_data_point(self, design_name: str) -> Union[dict[str, str | list[str]], None]:
         if design_name in self.dataset.keys():
             return self.dataset[design_name]
         else:
@@ -27,10 +27,10 @@ class Dataset:
     def get_design(self, design_name: str) -> Union[str, list, None]:
         return self.check_list(self.dataset[design_name], 'design')
 
-    def get_design_context(self, design_name: str) -> Union[str, list, None]:
+    def get_design_context(self, design_name: str) -> str | list[str]:
         return self.check_list(self.dataset[design_name], 'design_context')
 
-    def get_design_and_context(self, design_name: str) -> Union[list, None]:
+    def get_design_and_context(self, design_name: str) -> list[str]:
         design = self.get_design(design_name)
         design_context = self.get_design_context(design_name)
 
@@ -41,7 +41,7 @@ class Dataset:
             design_context = [design_context]  # Cast string to list
 
         if not design and not design_context:
-            return None
+            return []
         elif not design:
             return design_context
         elif not design_context:
@@ -58,9 +58,9 @@ class Dataset:
                     for i in range(len(self.dataset[tkey][dkey])):
                         self.dataset[tkey][dkey][i] = self.dataset[tkey][dkey][i].replace('$(BASE_DIR)', self.base_dir)
 
-    def check_list(self, dlist: Union[str, list], key: str) -> list:
+    def check_list(self, dlist: dict[str, list[str]], key: str) -> list[str] | str:
         if len(dlist[key]) == 0:
-            return None
+            return []
         elif len(dlist[key]) == 1:
             return dlist[key][0]
         else:

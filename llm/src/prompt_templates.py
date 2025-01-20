@@ -188,15 +188,15 @@ def m3_prompt(all_design_files: list[str], coverage: CoverageResponse) -> str:
 	formatted_coverage_report = ""
 	missed_lines = {}
 	for inst in coverage.coverage_list:
-		filename = os.path.split(inst['path'])[1]
-		for stmt in inst['coverage_detail']:
-			if stmt['hits'] == '0':
-				line = int(stmt['ln'])
+		filename = os.path.split(inst.path)[1]
+		for stmt in inst.coverage_details:
+			if stmt.get('hits') == '0':
+				line = int(str(stmt.get('ln')))
 				if filename not in missed_lines:
 					missed_lines[filename] = {"lines": []}
 				missed_lines[filename]["lines"].append(line)
 	
-		formatted_coverage_report += f"File: {os.path.split(inst['path'])[1]}\tActive: {inst['coverage']['active']}\tHits: {inst['coverage']['hits']}\tPercent: {inst['coverage']['percent']}\n"
+		formatted_coverage_report += f"File: {os.path.split(inst.path)[1]}\tActive: {inst.coverage['active']}\tHits: {inst.coverage['hits']}\tPercent: {inst.coverage['percent']}\n"
 
 	if not missed_lines:
 		return "No missed lines left to fix"
