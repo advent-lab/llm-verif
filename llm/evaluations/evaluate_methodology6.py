@@ -46,7 +46,7 @@ def evaluate_coverage(
 
 def generate_and_evaluate(
     conversation: list[dict], prompt: str, llama: LlamaChat, tb_path: str, environment: Environment, 
-    record: Record, run: int, iteration: int
+    record: Record, run: int, iteration: int, json: bool = True
 ) -> CoverageResponse:
     """
     Generate a test bench and evaluate its coverage.
@@ -55,17 +55,20 @@ def generate_and_evaluate(
     response, tokens_generated, gen_time = llama.generate_response(conversation)
     conversation.append({"role": "assistant", "content": response})
 
-    test_bench_code, coverage_error = parse_json_response(response)
-    if coverage_error:
-        record.update_dataframe(coverage_error, llama.temperature, llama.top_p, run, iteration, tokens_generated, gen_time)
-        return coverage_error
+    if json:
+        test_bench_code, coverage_error = parse_json_response(response)
+        if coverage_error:
+            record.update_dataframe(coverage_error, llama.temperature, llama.top_p, run, iteration, tokens_generated, gen_time)
+            return coverage_error
+        
+        cov = evaluate_coverage(test_bench_code, tb_path, environment, run, iteration)
+        record.update_dataframe(cov, llama.temperature, llama.top_p, run, iteration, tokens_generated, gen_time)
+        return cov
     
-    cov = evaluate_coverage(test_bench_code, tb_path, environment, run, iteration)
-    record.update_dataframe(cov, llama.temperature, llama.top_p, run, iteration, tokens_generated, gen_time)
-    return cov
+    return CoverageResponse(True, 0, "", [], 0)
 
 
-def run_iteration(
+def run_conversation(
     run_index: int, llama: LlamaChat, environment: Environment, record: Record, args: argparse.Namespace
 ):
     """
@@ -85,7 +88,7 @@ def run_iteration(
     
     # Stage 1: Generate verification plan
     tb_path = f'{args.design}/tb_llm_{environment.design_name}_{run_index}.v'
-    cov = generate_and_evaluate(conversation, prompt1, llama, tb_path, environment, record, run_index, 0)
+    cov = generate_and_evaluate(conversation, prompt1, llama, tb_path, environment, record, run_index, 0, json=False)
 
     # Stage 2: Generate test bench
     if cov.success:
@@ -166,7 +169,7 @@ def main():
     for run_index in range(args.generations):
         print(f"\nStarting Run {run_index}")
         record.reset_run()
-        run_iteration(run_index, llama, environment, record, args)
+        run_conversation(run_index, llama, environment, record, args)
 
 
 if __name__ == "__main__":

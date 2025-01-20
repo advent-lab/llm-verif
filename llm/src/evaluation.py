@@ -26,7 +26,7 @@ def estimate_pass_at_k(
         num_samples_it = iter(num_samples)
 
     # Return the estimations
-    return np.array([estimator(int(n), int(c), k) for n, c in zip(num_samples_it, num_correct)])
+    return np.array([pass_at_k(int(n), int(c), k) for n, c in zip(num_samples_it, num_correct)])
 
 def pass_at_k(n: int, c: int, k: int) -> float:
     """
