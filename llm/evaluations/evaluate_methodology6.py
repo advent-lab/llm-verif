@@ -123,12 +123,12 @@ def run_conversation(
             # Check FileStore for UCDB files
             if environment.store:
                 stored_ucdb_files = [
-                    os.path.join(environment.store.storage_path, f"tb_llm_{environment.design_name}_{i}.ucdb")
+                    os.path.join(environment.store.storage_path, f"tb_llm_{environment.design_name}_{run_index}_{i}.ucdb")
                     for i in range(iteration)
                 ]
             else:
                 stored_ucdb_files = [
-                    f"{args.design}/tb_llm_{environment.design_name}_{i}.ucdb"
+                    f"{args.design}/tb_llm_{environment.design_name}_{run_index}_{i}.ucdb"
                     for i in range(iteration)
                 ]
 
