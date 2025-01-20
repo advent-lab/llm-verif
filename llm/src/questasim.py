@@ -169,9 +169,9 @@ class QuestaSim(Simulator):
             file_path = file_map.get('path') if file_map is not None else "unknown"
 
             statements = du_data.find('statements')
-            active =  int(statements.get('active', 0)) if statements else 0
-            hits = int(statements.get('hits', 0)) if statements else 0
-            percent = float(statements.get('percent', 0.0)) if statements else 0
+            active =  int(statements.get('active', 0)) if statements is not None else 0
+            hits = int(statements.get('hits', 0)) if statements is not None else 0
+            percent = float(statements.get('percent', 0.0)) if statements is not None else 0
             
             details = du_data.findall('.//stmt')
 

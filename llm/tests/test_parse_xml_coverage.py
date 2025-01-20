@@ -55,7 +55,7 @@ class TestParseCoverageReport(unittest.TestCase):
 
         # Call the function under test
         questa_sim = QuestaSim("dummy/path")  # Path isn't used for this function
-        coverage_list, total_coverage = questa_sim.parse_coverage_report(self.mock_coverage_file.name)
+        coverage_list, total_coverage = questa_sim.parse_coverage_report("./test_resources/all_du_coverage.txt")
 
         # Assert total coverage
         self.assertAlmostEqual(total_coverage, expected_total_coverage, places=1)
