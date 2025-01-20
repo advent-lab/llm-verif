@@ -11,7 +11,7 @@ from src.questasim import QuestaSim
 from src.simulator import CoverageResponse
 from src.llama3_chat import LlamaChat
 import argparse
-from src.prompt_templates import m2_prompts, m3_prompt, design_prompt, error_prompt
+from src.prompt_templates import m1_prompt, m2_prompts, m3_prompt, design_prompt, error_prompt
 from src.eval_runs_util import Record
 
 def parse_json_response(response: str) -> tuple[str | None, CoverageResponse | None]:
@@ -90,15 +90,19 @@ def run_conversation(
     """
     temperature = args.temperature
     top_p = 0.7
+    cov = CoverageResponse(True, 0, "")
     conversation = [{"role": "system", "content": "You are a verification assistant."}]
-    prompt1, prompt2 = m2_prompts(environment.design_specification, environment.module_header)
+    if environment.testplan:
+        testplan_prompt, testbench_prompt = m2_prompts(environment.design_specification, environment.module_header)
     
-    # Stage 1: Generate verification plan
-    cov = generate_and_evaluate(conversation, prompt1, llama, environment, record, run_index, 0, json=False)
-
+        # Stage 1: Generate verification plan
+        cov = generate_and_evaluate(conversation, testplan_prompt, llama, environment, record, run_index, 0, json=False)
+    else:
+        testbench_prompt = m1_prompt(environment.design_specification, environment.module_header)
+    
     # Stage 2: Generate test bench
     if cov.success:
-        cov = generate_and_evaluate(conversation, prompt2, llama, environment, record, run_index, 1)
+        cov = generate_and_evaluate(conversation, testbench_prompt, llama, environment, record, run_index, 1)
     
     # Iterative Refinement
     iteration = 2
@@ -165,7 +169,7 @@ def main():
     parser.add_argument('--testplan', action='store_true', help="Enable generating a test plan before generating any test benches.")
     args = parser.parse_args()
 
-    environment = Environment(args.design)
+    environment = Environment(args)
     llama = LlamaChat(
         QuestaSim(args.compiler), do_sample=not args.no_sampling,
         temperature_function=args.temperature_function, temperature=args.temperature,

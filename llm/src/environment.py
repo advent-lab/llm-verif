@@ -1,21 +1,25 @@
 # import sys
 # sys.path.append('/home/asbabbit/llm_verif_dataset/llm_src')
 
+from ast import Name
 from pathlib import Path
 from src.dashboard import Dataset
 from src.storage import FileStore
 import os
 import re
+from argparse import Namespace
 
 class Environment:
 
-    def __init__(self, design_dir: str):
-        self.design_dir = design_dir
+    def __init__(self, env_options: Namespace):
+        self.design_dir = env_options.design_dir
         self.design_name = os.path.split(self.design_dir)[1]
         self.design_dir_path = Path(self.design_dir)
         self.dashboard_path = f'{str(self.design_dir_path.parents[1])}/dashboard.json'
 
         self.dataset = Dataset(self.dashboard_path)
+
+        self.testplan = env_options.testplan
 
         # Create the prompt
         # Read the specification file
