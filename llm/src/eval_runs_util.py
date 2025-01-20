@@ -183,7 +183,7 @@ class Record:
             coverage (CoverageResponse): The coverage response from merged iterations.
         """
         if self.run_type == "RUN" and self.include_merge_coverage:
-            self.df[self.df['run #'] == run]['run merged coverage'] = coverage.total_coverage
+            self.df.loc[self.df['run #'] == run, 'run merged coverage'] = coverage.total_coverage
 
         print(self.df)
 
