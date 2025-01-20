@@ -101,6 +101,9 @@ class Record:
             "generation time": self.generation_time,
         }
 
+        if coverage.total_coverage > self.max_cov:
+            self.max_cov = coverage.total_coverage
+
         if self.run_type == "RUN":
             data.update({
                 "max total coverage": self.max_cov,
