@@ -85,17 +85,17 @@ def run_iteration(
     
     # Stage 1: Generate verification plan
     tb_path = f'{args.design}/tb_llm_{environment.design_name}_{run_index}.v'
-    cov = generate_and_evaluate(conversation, prompt1, llama, tb_path, environment, record, run_index, 0, temperature, top_p)
+    cov = generate_and_evaluate(conversation, prompt1, llama, tb_path, environment, record, run_index, 0)
 
     # Stage 2: Generate test bench
     if cov.success:
-        cov = generate_and_evaluate(conversation, prompt2, llama, tb_path, environment, record, run_index, 1, temperature, top_p)
+        cov = generate_and_evaluate(conversation, prompt2, llama, tb_path, environment, record, run_index, 1)
     
     # Iterative Refinement
     iteration = 2
     while not cov.success or (cov.total_coverage < 100 and iteration <= 12):
         prompt = error_prompt(cov.error_code, cov.error_message) if not cov.success else m3_prompt(environment.all_design_file_paths, cov)
-        cov = generate_and_evaluate(conversation, prompt, llama, tb_path, environment, record, run_index, iteration, temperature, top_p)
+        cov = generate_and_evaluate(conversation, prompt, llama, tb_path, environment, record, run_index, iteration)
         conversation = llama.limit_conversation(conversation)
         iteration += 1
 

@@ -49,7 +49,7 @@ Design specification:\n{design_specification}
 # The first prompt should be used to generate the verification plan
 # The second prompt should be used to generate the test bench after the verification plan is generated
 # The second prompt assumes that conversation histroy is being provided to the LLM in addition to the second prompt
-def m2_prompts(design_specification: str, module_header: str) -> (str, str):
+def m2_prompts(design_specification: str, module_header: str) -> tuple[str, str]:
     p1 = f'''We are going to use a 2 stage process to generate a Verilog test bench for a Verilog design. 
 Right now we are in the first stage. 
 Generate a verification plan with test scenarios that will achieve full statement coverage of design described by the following design specification and module header.
@@ -176,8 +176,10 @@ def error_prompt(error_code: int, error_message: str) -> str:
 	elif error_code == 5:
 		return "You did not add a $finish command to your test bench so I cannot simulate it. Please add the $finish command in the correct place in the test bench."
 
+	return ""
+
 # TODO: Create option for LLM to create new test cases instead of repeating itself
-def m3_prompt(all_design_files: list, coverage: CoverageResponse) -> str:
+def m3_prompt(all_design_files: list[str], coverage: CoverageResponse) -> str:
 
 	if coverage.error_code != 0:
 		return error_prompt(coverage.error_code, coverage.error_message)

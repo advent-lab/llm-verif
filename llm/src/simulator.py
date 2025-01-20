@@ -1,5 +1,12 @@
 class CoverageResponse:
-    def __init__(self, success: bool, error_code: int, error_message: str = "", coverage_list: list[dict[str, str]] = [], total_coverage: int = 0):
+    def __init__(self, success: bool, error_code: int, error_message: str = "", coverage_list: list[dict[str, str]] = [], total_coverage: float = 0):
+        
+        self.success: bool
+        self.error_code: int
+        self.error_message: str
+        self.coverage_list: list[dict[str, str]]
+        self.total_coverage: float
+        
         self.success = success
         # Error codes
         # 0: success -> ignore error message
@@ -20,8 +27,4 @@ class Simulator():
 
     def run_sim(self) -> CoverageResponse:
         """Run the simulation - to be overridden by subclasses"""
-        raise NotImplementedError("This method should be implemented by subclasses.")
-
-    def merge_coverage(coverage_dbs: list[str]):
-        """Merge the coverage of a list of provided coverage databases and return the coverage results"""
         raise NotImplementedError("This method should be implemented by subclasses.")
