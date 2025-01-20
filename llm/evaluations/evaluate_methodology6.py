@@ -162,6 +162,7 @@ def main():
     parser.add_argument('--temperature_function', type=str, default="constant", choices=["constant", "logarithmic", "capped_sigmoid"], help="Temperature function.")
     parser.add_argument('-S', '--seed', type=int, default=None, help="Random seed for reproducibility.")
     parser.add_argument('-m', '--merge-coverage', action='store_true', help="Merge coverage reports.")
+    parser.add_argument('--testplan', action='store_true', help="Enable generating a test plan before generating any test benches.")
     args = parser.parse_args()
 
     environment = Environment(args.design)
