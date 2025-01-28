@@ -92,6 +92,9 @@ def run_conversation(
     top_p = 0.7
     cov = CoverageResponse(True, 0, "")
     conversation = [{"role": "system", "content": "You are a verification assistant."}]
+    stack_pointer = 1
+    print("Length of conversation: ", len(conversation))
+    print("Stack pointer: ", stack_pointer)
     iteration = 0
     if environment.testplan:
         testplan_prompt, testbench_prompt = m2_prompts(environment.design_specification, environment.module_header)
@@ -99,20 +102,39 @@ def run_conversation(
         # Stage 1: Generate verification plan
         cov = generate_and_evaluate(conversation, testplan_prompt, llama, environment, record, run_index, iteration, json=False)
         iteration += 1
+        stack_pointer += 2
     else:
         testbench_prompt = m1_prompt(environment.design_specification, environment.module_header)
     
+    print("Length of conversation: ", len(conversation))
+    print("Stack pointer: ", stack_pointer)
+
     # Stage 2: Generate test bench
     if cov.success:
         cov = generate_and_evaluate(conversation, testbench_prompt, llama, environment, record, run_index, iteration)
-    
+        if cov.success:
+            stack_pointer += 2
+
+    print("Length of conversation: ", len(conversation))
+    print("Stack pointer: ", stack_pointer)    
+
     # Iterative Refinement
     iteration += 1
     while record.max_cov < 100 and iteration <= args.max_iterations:
+        #if cov.success and not has_all_files:
+            #conversation = conversation[:(stack_pointer+1)] + [conversation[len(conversation) - 1]]
+            #stack_pointer = len(conversation) + 1 # add 1 to account for the m3_prompt that will be added to the conversation history
+            #has_all_files = True
         prompt = error_prompt(cov.error_code, cov.error_message) if not cov.success else m3_prompt(environment.all_design_file_paths, cov)
         cov = generate_and_evaluate(conversation, prompt, llama, environment, record, run_index, iteration)
+        if cov.success and args.remove_polluted_context: 
+            conversation = conversation[:(stack_pointer+1)] + [conversation[len(conversation) - 1]]
+            stack_pointer = len(conversation)
+            print(conversation)
         conversation = llama.limit_conversation(conversation)
         iteration += 1
+        print("Length of conversation: ", len(conversation))
+        print("Stack pointer: ", stack_pointer)
 
     # Merged Coverage Logic
     if args.merge_coverage:
@@ -169,6 +191,7 @@ def main():
     parser.add_argument('-S', '--seed', type=int, default=None, help="Random seed for reproducibility.")
     parser.add_argument('-m', '--merge-coverage', action='store_true', help="Merge coverage reports.")
     parser.add_argument('--testplan', action='store_true', help="Enable generating a test plan before generating any test benches.")
+    parser.add_argument('--remove_polluted_context', action='store_true', help='Enable the removal of polluted content from the conversation history')
     parser.add_argument('--max_iterations', type=int, default=12, help="Maximum number of iterations for iterative refinement.")
     args = parser.parse_args()
 

@@ -2,7 +2,7 @@
 
 #SBATCH -N 1            # number of nodes
 #SBATCH -c 32            # number of cores 
-#SBATCH -t 0-00:30:00
+#SBATCH -t 0-01:10:00
 #SBATCH -G a100:2
 #SBATCH -p htc      # partition 
 #SBATCH -q public       # QOS
@@ -31,6 +31,6 @@ source /home/$USER/llm_venv/bin/activate
 module load bittware/questa-23.4
 export LM_LICENSE_FILE=27006@en4228283l.scai.dhcp.asu.edu
 
-python evaluations/evaluate_methodology6.py -d $REPO_DIR/data_points/$DATA_POINT -g $NUM_RUNS --max_iterations 4 -c /packages/apps/fpga/Questa/questa_fe/bin -m --testplan 2>&1 | tee ${DATA_POINT}_method6_run_$RUN.log
+python evaluations/evaluate_methodology6.py -d $REPO_DIR/data_points/$DATA_POINT -g $NUM_RUNS --max_iterations 10 -c /packages/apps/fpga/Questa/questa_fe/bin -m --testplan 2>&1 | tee ${DATA_POINT}_method6_run_$RUN.log
 deactivate
 rm -rf venv
