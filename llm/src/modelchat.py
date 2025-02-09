@@ -1,11 +1,10 @@
-from modelchat import ModelChat
 from datetime import datetime
+from tracemalloc import start
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, PreTrainedModel, PreTrainedTokenizer, PreTrainedTokenizerFast
 from accelerate import infer_auto_device_map
 import torch
 import os
 import json
-from modelchat import ModelChat
 from src.storage import FileStore
 import time
 from src.simulator import Simulator, CoverageResponse
@@ -14,24 +13,12 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Union
 
-logging.basicConfig(level=logging.INFO)
-
-# Set cache location for model
-if not os.path.isdir(f"/scratch/{os.environ['USER']}/.cache/"):
-    os.mkdir(f"/scratch/{os.environ['USER']}/.cache/")
-os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache/"
-
-class LlamaChat(ModelChat):
+class ModelChat:
     """
-    A class for interacting with the Llama 3.1 language model for conversational AI tasks.
+    An interface for implementing an LLM model chat class
 
-    The LlamaChat class provides functionalities for:
-    - Loading and managing the Llama model and tokenizer.
-    - Generating responses based on conversation history.
-    - Implementing dynamic temperature scaling for sampling.
-    - Managing coverage simulations with QuestaSim integration.
-    - Logging conversations and managing memory.
-
+    Using the interface, you can instantiate API based or local based model's in the generate_response.
+    
     Attributes:
         simulator (Simulator): An instance of the Simulator class for running coverage tests.
         model (AutoModelForCausalLM): The loaded Llama model.
@@ -46,7 +33,7 @@ class LlamaChat(ModelChat):
     def __init__(self, simulator: Simulator | None, do_sample: bool, temperature_function: str = "constant",
             temperature: float = 0.3, top_p: float = 0.7, max_new_tokens: int = 4098, timeout_seconds: int = 1000, seed: Union[int, None] = None, skip_load: bool = False):
         """
-        Initialize the LlamaChat class.
+        Initialize the ModelChat class.
 
         Args:
             simulator (Simulator): An instance of the Simulator class for running coverage tests.
@@ -76,9 +63,9 @@ class LlamaChat(ModelChat):
         if temperature_function == "constant":
             self.temperature_function = lambda _: temperature
         elif temperature_function == "logarithmic":
-            self.temperature_function = LlamaChat.logarithmic_temperature
+            self.temperature_function = ModelChat.logarithmic_temperature
         elif temperature_function == "capped_sigmoid":
-            self.temperature_function = LlamaChat.capped_sigmoid_temperature
+            self.temperature_function = ModelChat.capped_sigmoid_temperature
         else:
             raise ValueError(f"Unknown temperature function: {temperature_function}")
 
@@ -86,9 +73,12 @@ class LlamaChat(ModelChat):
         self.max_new_tokens = max_new_tokens
         self.timeout_seconds = timeout_seconds
 
-    def load_model(self, seed: Union[int, None] = None) -> tuple[PreTrainedModel, PreTrainedTokenizer]:
+    def load_model(self, seed: Union[int, None] = None) -> tuple[None, None]:
         """
-        Load the Llama model and tokenizer with quantization settings.
+        Load the model and tokenizer with quantization settings.
+
+        This method should be implemented if you are using a system where you are loading and configuring the model locally
+        instead of using an API.
 
         Args:
             seed (Union[int, None]): Random seed for reproducibility. Default is None.
@@ -99,41 +89,7 @@ class LlamaChat(ModelChat):
         Raises:
             Exception: If the model or tokenizer fails to load.
         """
-
-        # Set PyTorch random seed if provided
-        if seed is not None:
-            logging.info(f"Setting PyTorch seed to {seed}.")
-            torch.manual_seed(seed) # type: ignore
-            torch.cuda.manual_seed_all(seed)
-            # np.random.seed(seed)
-
-        os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache/"
-
-        model_id = "meta-llama/Meta-Llama-3.1-70B-Instruct"
-        compute_dtype = getattr(torch, "float16")
-
-        bnb_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=compute_dtype,
-            bnb_4bit_use_double_quant=False,
-        )
-
-        tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(model_id) # type: ignore
-        tokenizer.add_special_tokens({"pad_token": "[PAD]"})
-        model: PreTrainedModel = AutoModelForCausalLM.from_pretrained( # type: ignore
-            model_id,
-            quantization_config=bnb_config,
-            torch_dtype=torch.bfloat16,
-            device_map="auto",
-        )
-
-        # Save device map for debugging
-        device_map = infer_auto_device_map(model) # type: ignore
-        with open("./device_map.json", 'w+') as j:
-            json.dump(device_map, j)
-
-        return model, tokenizer # type: ignore
+        return None, None
 
     def unload_model(self):
         """
@@ -141,7 +97,7 @@ class LlamaChat(ModelChat):
         """
         del self.model
 
-    def generate_response(self, conversation_history: list[dict[str, str]]) -> tuple[str, int, float]:
+    def generate_response(self, conversation_history: list[dict[str, str]]):
         """
         Generate a response from the model given the conversation history.
 
@@ -158,130 +114,11 @@ class LlamaChat(ModelChat):
             ValueError: If the conversation history is empty or invalid.
             Exception: For unexpected errors during text generation.
         """
-        if not conversation_history:
-            raise ValueError("Conversation history is required.")
-
-        # Evaluate new temperature based on temperautre function
-        self.temperature = self.temperature_function(len(conversation_history))
-
-        input_ids = self.tokenizer.apply_chat_template( # type: ignore
-            conversation_history,
-            add_generation_prompt=True,
-            return_tensors="pt"
-        ).to(self.model.device) # type: ignore
-
-        terminators: list[int | list[int]] = [self.tokenizer.convert_tokens_to_ids("<|eot_id|>")]
-
-        start_time = time.time()
-        try:
-            with torch.no_grad():
-                outputs = self.model.generate( # type: ignore
-                    input_ids, # type: ignore
-                    max_new_tokens=self.max_new_tokens,
-                    eos_token_id=terminators,
-                    do_sample=self.do_sample,
-                    temperature=self.temperature if self.do_sample else None,
-                    top_p=self.top_p if self.do_sample else None,
-                )
-
-            elapsed_time = time.time() - start_time
-            response_ids = outputs[0][input_ids.shape[-1]:] # type: ignore
-            response = self.tokenizer.decode(response_ids, skip_special_tokens=True) # type: ignore
-            token_count = len(response_ids) # type: ignore
-
-        except Exception as e:
-            logging.error(f"Error during generation: {e}")
-            response = ""
-            token_count = 0
-            elapsed_time = self.timeout_seconds
-
-        finally:
-            torch.cuda.empty_cache()
-
-        return response, token_count, elapsed_time
     
-    def generate_batch_responses(self, batch_conversations: list[list[dict[str, str]]]) -> list[tuple[str, int, float]]:
-
-        if not batch_conversations:
-            raise ValueError("Batch of conversation histories is required.")
-        
-        input_ids_list = []
-        for conversation_history in batch_conversations:
-            self.temperature = self.temperature_function(len(conversation_history))
-            input_ids = self.tokenizer.apply_chat_template( # type: ignore
-                conversation_history,
-                add_generation_prompt=True,
-                return_tensors="pt"
-            )
-            input_ids_list.append(input_ids)
-
-        inputs = self.tokenizer.pad(
-            {"input_ids": input_ids_list},
-            padding=True,
-            return_tensors="pt"
-        ).to(self.model.device)
-
-        terminators: list[int | list[int]] = [
-            self.tokenizer.convert_tokens_to_ids("<|eot_id|>")
-        ]
-
-        start_time = time.time()
-        try:
-            with torch.no_grad():
-                outputs = self.model.generate( # type: ignore
-                    inputs.input_ids, # type: ignore
-                    max_new_tokens=self.max_new_tokens,
-                    eos_token_id=terminators,
-                    do_sample=self.do_sample,
-                    temperature=self.temperature if self.do_sample else None,
-                    top_p=self.top_p if self.do_sample else None,
-                )
-
-            elapsed_time = time.time() - start_time
-
-            responses = []
-            for idx, input_ids in enumerate(inputs["input_ids"]): # type: ignore
-                response_ids = outputs[idx][len(input_ids):] # type: ignore
-                response = self.tokenizer.decode(response_ids, skip_special_tokens=True) # type: ignore
-                token_count = len(response_ids) # type: ignore
-                responses.append((response, token_count, elapsed_time))
-
-        except Exception as e:
-            logging.error(f"Error during batch generation: {e}")
-            responses = [("", 0, self.timeout_seconds)]
-
-        finally:
-            torch.cuda.empty_cache()
-
-        return responses
-    
-    def log_conversation(self, conversation_update: list[dict[str, str]], log_file: str):
+    def generate_batch_responses(self, batch_conversations: list[list[dict[str, str]]]):
         """
-        Log the conversation history to a specified file.
-
-        Args:
-            conversation_update (list[dict]): A list of message dictionaries to log.
-            log_file (str): Path to the log file.
-
-        Returns:
-            None
-        """
-        with open(log_file, 'a') as f:
-            f.write(f"--- Conversation Log: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n")
-            for message in conversation_update:
-                f.write(f"{message['role'].capitalize()}: {message['content']}\n")
-            f.write("\n")
-
-    # Function to collect multi-line input from the user
-    def get_multiline_input(self, prompt: str ="Enter your message (end with 'END' on a new line):"):
-        print(prompt)
-        lines: list[str] = []
-        while True:
-            line = input()
-            if line.strip().upper() == "END":
-                break
-            lines.append(line)
-        return "\n".join(lines)
+        Generate a batch of responses form the model using a batch of inputs
+        """ 
 
     @staticmethod
     def convert_json_response_to_dict(generated_response: str) -> tuple[dict[str, Any], int]:
@@ -337,35 +174,16 @@ class LlamaChat(ModelChat):
             logging.error(f"Unexpected error during JSON parsing: {e}")
             return {"error": "Unexpected error"}, 3
 
-
-    # TODO: Create call to QuestaSim to get coverage
-    def get_coverage(self, generated_response: str, tb_path: str, data_point: dict[str, str | list[str]] | None, storage: FileStore = None) -> CoverageResponse:
-        if not generated_response:
-            return CoverageResponse(False, 4, "Empty test bench (JSON Decode Error)")
-
-        # Write the generated testbench to a file
-        print(tb_path)
-        with open(tb_path, "w+") as testbench_file:
-            testbench_file.write(generated_response)
-
-        # Run QuestaSim to get coverage
-        # env = Environment(questa_dir)
-        log_name = tb_path.split('.')[0]
-        coverage_response = self.simulator.run_sim(tb_path=tb_path, data_point=data_point, log_name=log_name)
-
-        # Move test bench file to storage
-        if storage:
-            storage.move(tb_path)
-            storage.move(f'{log_name}_compile.log')
-            storage.move(f'{log_name}_sim.log')
-            storage.move(f'{log_name}.ucdb')
-            storage.move(f'{log_name}_report.txt')
-        
-
-        return coverage_response
+    def get_coverage(self, generated_response: str, tb_path: str, data_point: dict[str, str | list[str]] | None, storage: FileStore = None):
+        """
+        Query the simulator to get the code coverage of a given test bench
+        """
+        pass
 
     def get_merge_coverage(self, run: int):
-        self.simulator.merge_coverage()
+        """
+        Query the simulator for merge coverage across a run
+        """
 
     def limit_conversation(self, conversation: list[dict[str, str]], context_window: int = 128000) -> list[dict]:
         """
@@ -406,7 +224,7 @@ class LlamaChat(ModelChat):
         return conversation
 
 
-    def parallel_get_coverage(self, responses: str, test_benches: list[str], data_points: list[dict]) -> list[CoverageResponse]:
+    def parallel_get_coverage(self, responses: str, test_benches: list[str], data_points: list[dict]):
         """
         Run coverage simulations in parallel for multiple test benches.
 
@@ -417,12 +235,6 @@ class LlamaChat(ModelChat):
         Returns:
             list[CoverageResponse]: List of coverage responses.
         """
-        with ThreadPoolExecutor() as executor:
-            futures = [
-                executor.submit(self.get_coverage, response, tb, dp)
-                for response, tb, dp in zip(responses, test_benches, data_points)
-            ]
-            return [future.result() for future in futures]
 
 
     @staticmethod
