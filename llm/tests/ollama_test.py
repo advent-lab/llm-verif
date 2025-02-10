@@ -1,10 +1,17 @@
+import sys
+from pathlib import Path
+
+# Add the project root to the PYTHONPATH
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
 import requests
 import time
 import threading
 import statistics
+import json
 
-OLLAMA_URL = "http://localhost:11434/api/generate"  # Ollama API URL
-MODEL_NAME = "llama3:70b"  # Adjust to match your model
+OLLAMA_URL = "http://sg230:11434/api/generate"  # Ollama API URL
+MODEL_NAME = "hf.co/QuantFactory/Meta-Llama-3-8B-GGUF:Q2_K"  # Adjust to match your model
 
 # Number of concurrent threads (simulating multiple users)
 NUM_THREADS = 4  
@@ -16,10 +23,9 @@ response_times = []
 token_counts = []
 error_count = 0
 lock = threading.Lock()  # To safely update shared variables
-
 def send_request(thread_id):
     """
-    Sends multiple sequential requests to the Ollama server and records response statistics.
+    Sends multiple sequential requests to the Ollama server, correctly handling streaming responses.
     """
     global error_count
 
@@ -40,23 +46,44 @@ def send_request(thread_id):
         }
 
         start_time = time.time()
-        try:
-            response = requests.post(OLLAMA_URL, json=payload)
-            elapsed_time = time.time() - start_time
+        full_response = ""
 
-            response_json = response.json()
-            if "response" in response_json:
-                local_response_times.append(elapsed_time)
-                local_token_counts.append(len(response_json["response"].split()))
-            else:
+        try:
+            response = requests.post(OLLAMA_URL, json=payload, stream=True)
+
+            print(f"[DEBUG] Thread {thread_id}, Request {i+1}: Status Code {response.status_code}\n")
+
+            if response.status_code != 200:
+                print(f"[ERROR] Thread {thread_id}, Request {i+1}: HTTP {response.status_code}\n")
                 with lock:
                     error_count += 1
-                print(f"[ERROR] Thread {thread_id}, request {i+1}: {response_json}")
+                continue
+
+            for line in response.iter_lines():
+                if line:
+                    try:
+                        json_data = json.loads(line.decode("utf-8"))
+                        if "response" in json_data:
+                            full_response += json_data["response"]
+                        if "done" in json_data and json_data["done"] is True:
+                            break
+                    except json.JSONDecodeError as e:
+                        print(f"[ERROR] JSON Decode Error in Thread {thread_id}, Request {i+1}: {e}\n")
+
+            elapsed_time = time.time() - start_time
+            if full_response.strip():
+                local_response_times.append(elapsed_time)
+                local_token_counts.append(len(full_response.split()))
+                print(f"[SUCCESS] Thread {thread_id}, Request {i+1}: {len(full_response.split())} tokens in {elapsed_time:.2f}s")
+            else:
+                print(f"[ERROR] Thread {thread_id}, Request {i+1}: Empty response received.")
+                with lock:
+                    error_count += 1
 
         except Exception as e:
             with lock:
                 error_count += 1
-            print(f"[ERROR] Thread {thread_id}, request {i+1} failed: {e}")
+            print(f"[ERROR] Thread {thread_id}, Request {i+1} failed: {e}")
 
     # Store results safely
     with lock:
