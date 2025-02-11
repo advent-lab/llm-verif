@@ -17,6 +17,8 @@ Make sure you are ONLY using Verilog syntax and features, and not SystemVerilog 
 Module header:\n{module_header}\n
 Design Specification:\n{design_specification}\n
 Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag. Keep the test bench less than 500 lines.\n
+Here are some additional guidelines for the test bench: \n
+Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n
 ''' + '''Example output:
 {
 	"test bench": "
@@ -58,6 +60,8 @@ Design specification:\n{design_specification}
 '''
     p2 = '''Now we are in the second stage of the verification process. Generate a Verilog testbench for the module using the module header, specification, and verification plan.
 Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag. Keep the test bench less than 500 lines.
+Here are some additional guidelines for the test bench: \n
+Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n
 Example output:
 {
 	"test bench": "
@@ -79,6 +83,8 @@ Example output:
 
 def m3_prompt_wo_coverage() -> str:
 	return '''The generated testbench did not meet coverage goals. Adjust the test bench to increase the coverage by adding more stimulus or exploring more possible edge cases. Make sure you are exercising the full range of inputs for each port. Make sure you are explicitly exploring error cases. You are able to reset the design under test if needed. Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n
+Here are some additional guidelines for the test bench: \n
+Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n
 Example output:
 {
 	"test bench": "
@@ -102,7 +108,9 @@ def error_prompt(error_code: int, error_message: str) -> str:
 
 	# Handle error responses from QuestaSim
 	if error_code == 1:
-		return f"The generated test bench failed to compile. Use the following error message to fix the errors. Use the same JSON format for the new testbench. Error Message:\n{error_message}\nProvide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
+		return f'''The generated test bench failed to compile. Use the following error message to fix the errors. Use the same JSON format for the new testbench. Error Message:\n{error_message}\nProvide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n
+Here are some additional guidelines for the test bench: \n
+Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n''' + '''Example output:
 {
 	"test bench": "
 		module tb_llm;
@@ -120,7 +128,9 @@ def error_prompt(error_code: int, error_message: str) -> str:
 }
 '''
 	elif error_code == 2:
-		return f"The generated test bench failed to simulate. Use the following error message to fix the errors Use the same JSON format for the new testbench. Error Message:\n{error_message}\nProvide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
+		return f'''The generated test bench failed to simulate. Use the following error message to fix the errors Use the same JSON format for the new testbench. Error Message:\n{error_message}\nProvide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n
+Here are some additional guidelines for the test bench: \n
+Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n''' + '''Example output:
 {
 	"test bench": "
 		module tb_llm;
@@ -138,7 +148,9 @@ def error_prompt(error_code: int, error_message: str) -> str:
 }
 '''
 	elif error_code == 3:
-		return f"The generated test bench took to long to simulate and timed out. Try to shorten the testbench. Use the same JSON format for the new testbench.Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
+		return f'''The generated test bench took to long to simulate and timed out. Try to shorten the testbench. Use the same JSON format for the new testbench.Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n
+Here are some additional guidelines for the test bench: \n
+Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n''' + '''Example output:
 {
 	"test bench": "
 		module tb_llm;
@@ -156,7 +168,9 @@ def error_prompt(error_code: int, error_message: str) -> str:
 }
 '''
 	elif error_code == 4:
-		return f"You failed to generate a test bench. You either generated a terminating token too early, ran past the token limit, or took too long to generate. Try generating a shorter test bench with higher quality tests. Use the same JSON format for the new testbench. Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n" + '''Example output:
+		return f'''You failed to generate a test bench. You either generated a terminating token too early, ran past the token limit, or took too long to generate. Try generating a shorter test bench with higher quality tests. Use the same JSON format for the new testbench. Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n
+Here are some additional guidelines for the test bench: \n
+Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n''' + '''Example output:
 {
 	"test bench": "
 		module tb_llm;
@@ -184,7 +198,13 @@ def m3_prompt(all_design_files: list[str], coverage: CoverageResponse) -> str:
 	if coverage.error_code != 0:
 		return error_prompt(coverage.error_code, coverage.error_message)
 
-	# Parse the XML coverage report file and create a dictionary of files with their line misses
+	# check if any of the files have 100% coverage. If so, remove it from the list to prevent invalid accesses
+	files_w_missed = all_design_files.copy()
+	for module in coverage.coverage_list:
+		if 'percent' in module.coverage:
+			if (module.coverage['percent'] == 100.0): # has 100% coverage
+				files_w_missed.remove(module.path)
+
 	formatted_coverage_report = ""
 	missed_lines = {}
 	for inst in coverage.coverage_list:
@@ -203,14 +223,14 @@ def m3_prompt(all_design_files: list[str], coverage: CoverageResponse) -> str:
 
 	#TODO: There maybe accessing to null lists for lines key if file not used in coverage report
 	# Select random file and line where there is a miss
-	rand_file = all_design_files[randint(0, len(all_design_files)-1)]
+	rand_file = files_w_missed[randint(0, len(files_w_missed)-1)]
 	rand_filename = os.path.split(rand_file)[1]
 	rand_line_index = missed_lines[rand_filename]["lines"][randint(0, len(missed_lines[rand_filename]["lines"]) - 1)]
 
 	missed_line = ""
 	all_design_content = ""
 	lines_list = {}
-	for file in all_design_files:
+	for file in files_w_missed:
 		filename = os.path.split(file)[1]
 		with open(file, 'r') as f:
 			lines = f.readlines()
@@ -241,6 +261,8 @@ The test bench should meet the statement coverage goal of 100%.
 Generate only the Verilog testbench and no additional words.
 Make sure you are ONLY using Verilog syntax and features, and not SystemVerilog such as for loops and asserts.\n
 Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag. Keep the test bench less than 500 lines.\n
+Here are some additional guidelines for the test bench: \n
+Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n
 ''' + '''Example output:
 {
 	"test bench": "
@@ -275,6 +297,8 @@ The test bench should meet the statement coverage goal of 100%.
 Generate only the Verilog testbench and no additional words.
 Make sure you are ONLY using Verilog syntax and features, and not SystemVerilog such as for loops and asserts.\n
 Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag. Keep the test bench less than 500 lines.\n
+Here are some additional guidelines for the test bench: \n
+Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n
 ''' + '''Example output:
 {
 	"test bench": "

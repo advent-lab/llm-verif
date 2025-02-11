@@ -1,0 +1,147 @@
+<?xml version="1.0"?>
+<coverage_report questa_version="2023.3" command="coverage report -output /home/ehilaneh/llm_verif_dataset/data_points/cryptech_uart/merged_coverage_cryptech_uart_0_report.txt -du=* -detail -annotate -code s -xml">
+<code_coverage_report
+lines="1"
+byDU="1">
+<DuData
+du="uart_core">
+<sourceTable files="1">
+<fileMap fn="0" path="/home/ehilaneh/llm_verif_dataset/data_points/cryptech_uart/design/uart_core.v"/>
+</sourceTable>
+<statements active="133" hits="77" percent="57.89"/>
+<stmt fn="0" ln="113" st="1" hits="21"/>
+<stmt fn="0" ln="123" st="1" hits="21"/>
+<stmt fn="0" ln="127" st="1" hits="7"/>
+<stmt fn="0" ln="128" st="1" hits="7"/>
+<stmt fn="0" ln="129" st="1" hits="7"/>
+<stmt fn="0" ln="130" st="1" hits="7"/>
+<stmt fn="0" ln="131" st="1" hits="7"/>
+<stmt fn="0" ln="132" st="1" hits="7"/>
+<stmt fn="0" ln="134" st="1" hits="7"/>
+<stmt fn="0" ln="135" st="1" hits="7"/>
+<stmt fn="0" ln="136" st="1" hits="7"/>
+<stmt fn="0" ln="137" st="1" hits="7"/>
+<stmt fn="0" ln="138" st="1" hits="7"/>
+<stmt fn="0" ln="139" st="1" hits="7"/>
+<stmt fn="0" ln="144" st="1" hits="14"/>
+<stmt fn="0" ln="149" st="1" hits="0"/>
+<stmt fn="0" ln="154" st="1" hits="0"/>
+<stmt fn="0" ln="159" st="1" hits="14"/>
+<stmt fn="0" ln="164" st="1" hits="0"/>
+<stmt fn="0" ln="169" st="1" hits="14"/>
+<stmt fn="0" ln="174" st="1" hits="14"/>
+<stmt fn="0" ln="179" st="1" hits="0"/>
+<stmt fn="0" ln="184" st="1" hits="0"/>
+<stmt fn="0" ln="189" st="1" hits="7"/>
+<stmt fn="0" ln="194" st="1" hits="0"/>
+<stmt fn="0" ln="199" st="1" hits="0"/>
+<stmt fn="0" ln="211" st="1" hits="16"/>
+<stmt fn="0" ln="213" st="1" hits="16"/>
+<stmt fn="0" ln="214" st="1" hits="16"/>
+<stmt fn="0" ln="218" st="1" hits="1"/>
+<stmt fn="0" ln="219" st="1" hits="1"/>
+<stmt fn="0" ln="224" st="1" hits="0"/>
+<stmt fn="0" ln="225" st="1" hits="0"/>
+<stmt fn="0" ln="236" st="1" hits="46"/>
+<stmt fn="0" ln="238" st="1" hits="46"/>
+<stmt fn="0" ln="239" st="1" hits="46"/>
+<stmt fn="0" ln="243" st="1" hits="17"/>
+<stmt fn="0" ln="244" st="1" hits="17"/>
+<stmt fn="0" ln="249" st="1" hits="14"/>
+<stmt fn="0" ln="250" st="1" hits="14"/>
+<stmt fn="0" ln="262" st="1" hits="14"/>
+<stmt fn="0" ln="264" st="1" hits="14"/>
+<stmt fn="0" ln="265" st="1" hits="14"/>
+<stmt fn="0" ln="269" st="1" hits="0"/>
+<stmt fn="0" ln="270" st="1" hits="0"/>
+<stmt fn="0" ln="275" st="1" hits="0"/>
+<stmt fn="0" ln="276" st="1" hits="0"/>
+<stmt fn="0" ln="287" st="1" hits="28"/>
+<stmt fn="0" ln="289" st="1" hits="28"/>
+<stmt fn="0" ln="290" st="1" hits="28"/>
+<stmt fn="0" ln="294" st="1" hits="7"/>
+<stmt fn="0" ln="295" st="1" hits="7"/>
+<stmt fn="0" ln="300" st="1" hits="0"/>
+<stmt fn="0" ln="301" st="1" hits="0"/>
+<stmt fn="0" ln="314" st="1" hits="38"/>
+<stmt fn="0" ln="316" st="1" hits="38"/>
+<stmt fn="0" ln="317" st="1" hits="38"/>
+<stmt fn="0" ln="318" st="1" hits="38"/>
+<stmt fn="0" ln="319" st="1" hits="38"/>
+<stmt fn="0" ln="320" st="1" hits="38"/>
+<stmt fn="0" ln="321" st="1" hits="38"/>
+<stmt fn="0" ln="322" st="1" hits="38"/>
+<stmt fn="0" ln="323" st="1" hits="38"/>
+<stmt fn="0" ln="324" st="1" hits="38"/>
+<stmt fn="0" ln="332" st="1" hits="17"/>
+<stmt fn="0" ln="333" st="1" hits="17"/>
+<stmt fn="0" ln="334" st="1" hits="17"/>
+<stmt fn="0" ln="341" st="1" hits="14"/>
+<stmt fn="0" ln="345" st="1" hits="14"/>
+<stmt fn="0" ln="346" st="1" hits="14"/>
+<stmt fn="0" ln="353" st="1" hits="0"/>
+<stmt fn="0" ln="354" st="1" hits="0"/>
+<stmt fn="0" ln="355" st="1" hits="0"/>
+<stmt fn="0" ln="356" st="1" hits="0"/>
+<stmt fn="0" ln="366" st="1" hits="0"/>
+<stmt fn="0" ln="370" st="1" hits="0"/>
+<stmt fn="0" ln="371" st="1" hits="0"/>
+<stmt fn="0" ln="372" st="1" hits="0"/>
+<stmt fn="0" ln="375" st="1" hits="0"/>
+<stmt fn="0" ln="376" st="1" hits="0"/>
+<stmt fn="0" ln="384" st="1" hits="0"/>
+<stmt fn="0" ln="387" st="1" hits="0"/>
+<stmt fn="0" ln="388" st="1" hits="0"/>
+<stmt fn="0" ln="389" st="1" hits="0"/>
+<stmt fn="0" ln="390" st="1" hits="0"/>
+<stmt fn="0" ln="399" st="1" hits="0"/>
+<stmt fn="0" ln="400" st="1" hits="0"/>
+<stmt fn="0" ln="401" st="1" hits="0"/>
+<stmt fn="0" ln="402" st="1" hits="0"/>
+<stmt fn="0" ln="421" st="1" hits="28"/>
+<stmt fn="0" ln="423" st="1" hits="28"/>
+<stmt fn="0" ln="424" st="1" hits="28"/>
+<stmt fn="0" ln="425" st="1" hits="28"/>
+<stmt fn="0" ln="426" st="1" hits="28"/>
+<stmt fn="0" ln="427" st="1" hits="28"/>
+<stmt fn="0" ln="428" st="1" hits="28"/>
+<stmt fn="0" ln="429" st="1" hits="28"/>
+<stmt fn="0" ln="430" st="1" hits="28"/>
+<stmt fn="0" ln="431" st="1" hits="28"/>
+<stmt fn="0" ln="432" st="1" hits="28"/>
+<stmt fn="0" ln="433" st="1" hits="28"/>
+<stmt fn="0" ln="434" st="1" hits="28"/>
+<stmt fn="0" ln="439" st="1" hits="21"/>
+<stmt fn="0" ln="440" st="1" hits="21"/>
+<stmt fn="0" ln="443" st="1" hits="7"/>
+<stmt fn="0" ln="444" st="1" hits="7"/>
+<stmt fn="0" ln="445" st="1" hits="7"/>
+<stmt fn="0" ln="446" st="1" hits="7"/>
+<stmt fn="0" ln="447" st="1" hits="7"/>
+<stmt fn="0" ln="448" st="1" hits="7"/>
+<stmt fn="0" ln="449" st="1" hits="7"/>
+<stmt fn="0" ln="458" st="1" hits="0"/>
+<stmt fn="0" ln="459" st="1" hits="0"/>
+<stmt fn="0" ln="460" st="1" hits="0"/>
+<stmt fn="0" ln="461" st="1" hits="0"/>
+<stmt fn="0" ln="462" st="1" hits="0"/>
+<stmt fn="0" ln="463" st="1" hits="0"/>
+<stmt fn="0" ln="471" st="1" hits="0"/>
+<stmt fn="0" ln="472" st="1" hits="0"/>
+<stmt fn="0" ln="473" st="1" hits="0"/>
+<stmt fn="0" ln="477" st="1" hits="0"/>
+<stmt fn="0" ln="486" st="1" hits="0"/>
+<stmt fn="0" ln="490" st="1" hits="0"/>
+<stmt fn="0" ln="494" st="1" hits="0"/>
+<stmt fn="0" ln="495" st="1" hits="0"/>
+<stmt fn="0" ln="496" st="1" hits="0"/>
+<stmt fn="0" ln="497" st="1" hits="0"/>
+<stmt fn="0" ln="501" st="1" hits="0"/>
+<stmt fn="0" ln="502" st="1" hits="0"/>
+<stmt fn="0" ln="503" st="1" hits="0"/>
+<stmt fn="0" ln="511" st="1" hits="0"/>
+<stmt fn="0" ln="514" st="1" hits="0"/>
+<stmt fn="0" ln="515" st="1" hits="0"/>
+</DuData>
+</code_coverage_report>
+</coverage_report>
