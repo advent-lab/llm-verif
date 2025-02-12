@@ -56,7 +56,7 @@ class Environment:
 
         self.design_module_name = self.get_design_name(self.top_design_file_path)
 
-        self.store = FileStore('./generations')
+        self.store = FileStore(args.output)
 
     def get_design_name(self, design_path: str) -> str:
         split_filename = os.path.split(design_path)[1].split('.')
