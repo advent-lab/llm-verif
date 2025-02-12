@@ -170,6 +170,7 @@ def main():
     parser.add_argument('-m', '--merge-coverage', action='store_true', help="Merge coverage reports.")
     parser.add_argument('--testplan', action='store_true', help="Enable generating a test plan before generating any test benches.")
     parser.add_argument('--max_iterations', type=int, default=12, help="Maximum number of iterations for iterative refinement.")
+    parser.add_argument('-o', '--output', type=str, default="./logs", help="Output directory for log files.")
     args = parser.parse_args()
 
     environment = Environment(args)
