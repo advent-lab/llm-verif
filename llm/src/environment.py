@@ -68,7 +68,12 @@ class Environment:
 
         return split_filename[0]
 
-    def extract_verilog_module_header(self, design_path: str) -> str:
+    # TODO: Fix this function so that it looks for a specific module header and 
+    # not just the first one
+    # 
+    # TODO: Write some tests for this too
+    @staticmethod
+    def extract_verilog_module_header(design_path: str) -> str:
         # Read the file line by line to identify the header
         with open(design_path, 'r') as f:
             lines = f.readlines()
