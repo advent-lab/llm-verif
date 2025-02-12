@@ -6,7 +6,7 @@ from accelerate import infer_auto_device_map
 import torch
 import os
 import json
-from modelchat import ModelChat
+from src.modelchat import ModelChat
 from src.storage import FileStore
 import time
 from src.simulator import Simulator, CoverageResponse

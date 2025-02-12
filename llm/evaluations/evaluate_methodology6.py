@@ -212,6 +212,7 @@ def main():
     parser.add_argument('--remove_polluted_context', action='store_true', help='Enable the removal of polluted content from the conversation history')
     parser.add_argument('--max_iterations', type=int, default=12, help="Maximum number of iterations for iterative refinement.")
     parser.add_argument('--max_valid_iter', type=int, default=10, help="Maximum number of successful iterations")
+    parser.add_argument('-o', '--output', type=str, default="./logs", help="Output directory for log files.")
     args = parser.parse_args()
 
     environment = Environment(args)
