@@ -2,10 +2,13 @@
 # sys.path.append('/home/asbabbit/llm_verif_dataset/llm_src')
 # import xml.etree.ElementTree as ET
 
+import re
+from typing import Any
 from src.questasim import CoverageResponse
 import os
 import pathlib
 from random import randint
+from src.environment import Environment
 # from environment import Environment
 
 # This function returns the initial prompt used for generating a test bench
@@ -193,63 +196,72 @@ Please declare signals before using them. When instantiating the DUT, the signal
 	return ""
 
 # TODO: Create option for LLM to create new test cases instead of repeating itself
-def m3_prompt(all_design_files: list[str], coverage: CoverageResponse) -> str:
+def m3_prompt(coverage: CoverageResponse) -> str:
 
 	if coverage.error_code != 0:
 		return error_prompt(coverage.error_code, coverage.error_message)
 
 	# check if any of the files have 100% coverage. If so, remove it from the list to prevent invalid accesses
+	"""
 	files_w_missed = all_design_files.copy()
 	for module in coverage.coverage_list:
 		if 'percent' in module.coverage:
 			if (module.coverage['percent'] == 100.0): # has 100% coverage
 				files_w_missed.remove(module.path)
+	"""
 
 	formatted_coverage_report = ""
 	missed_lines = {}
+	uncovered_dus = []
 	for inst in coverage.coverage_list:
-		filename = os.path.split(inst.path)[1]
+		design_unit = inst.du
 		for stmt in inst.coverage_details:
 			if stmt.get('hits') == '0':
 				line = int(str(stmt.get('ln')))
-				if filename not in missed_lines:
-					missed_lines[filename] = {"lines": []}
-				missed_lines[filename]["lines"].append(line)
-	
-		formatted_coverage_report += f"File: {os.path.split(inst.path)[1]}\tActive: {inst.coverage['active']}\tHits: {inst.coverage['hits']}\tPercent: {inst.coverage['percent']}\n"
+				if design_unit not in missed_lines:
+					missed_lines[design_unit] = {"path": inst.path, "lines": []}
+				missed_lines[design_unit]["lines"].append(line) # type: ignore
+
+		uncovered_dus.append(design_unit)
+		formatted_coverage_report += f"File: {os.path.split(inst.path)[1]}\tDesign Unit: {design_unit}\tActive: {inst.coverage['active']}\tHits: {inst.coverage['hits']}\tPercent: {inst.coverage['percent']}\n"
 
 	if not missed_lines:
 		return "No missed lines left to fix"
 
 	#TODO: There maybe accessing to null lists for lines key if file not used in coverage report
 	# Select random file and line where there is a miss
-	rand_file = files_w_missed[randint(0, len(files_w_missed)-1)]
-	rand_filename = os.path.split(rand_file)[1]
-	rand_line_index = missed_lines[rand_filename]["lines"][randint(0, len(missed_lines[rand_filename]["lines"]) - 1)]
+	rand_du = uncovered_dus[randint(0, len(uncovered_dus) - 1)]
+	rand_du_filepath: str = missed_lines[rand_du]["path"] # type: ignore
+	rand_du_filename: str = os.path.split(rand_du_filepath)[1] # type: ignore
 
-	missed_line = ""
-	all_design_content = ""
-	lines_list = {}
-	for file in files_w_missed:
-		filename = os.path.split(file)[1]
-		with open(file, 'r') as f:
-			lines = f.readlines()
+	with open(rand_du_filepath, 'r') as f:
+		lines = f.readlines()
 
-		if rand_filename == filename and lines[rand_line_index] != '\n':
-			lines[rand_line_index] = lines[rand_line_index].replace('\n', " // This is the line that was not covered\n")
-			missed_line = lines[rand_line_index]
+	for missed_line in missed_lines[rand_du]["lines"]:
 
-		lines_list[filename] = {"lines": lines}
-		all_design_content = all_design_content + '\n\n' + filename + '\n' + ''.join(lines)
-	
+		lines[missed_line - 1] = lines[missed_line - 1].replace('\n', "\t// This is a line that was not covered\n")
 
+	start_line = None
+	end_line = None
+
+	# Loop through the lines to find the module definition
+	for i, line in enumerate(lines):
+		if re.match(rf"\s*module\s+{rand_du}\b", line):
+			start_line = i
+		if re.match(r"\s*endmodule\b", line) and start_line is not None:
+			end_line = i
+			break  # Stop after finding the first matching module
+
+	module = ""
+	if start_line is not None and end_line is not None:
+		module = ''.join(lines[start_line:end_line])
 
 	return '''The test bench that you generated did not meet coverage goals. Use the following coverage data and context to generate a test bench that achieves better coverage:
 ''' + formatted_coverage_report + f'''
-Try to target this coverage hole at line {rand_line_index} in the file {rand_filename}: {missed_line.strip()}
-Please see if the targed coverage hole at line {rand_line_index} is inside an if or case statement and try to hit that condition
-Listed below are the files for the whole design, use them as context to improve coverage.
-{all_design_content}
+Try to target the coverage holes in the design unit {rand_du}, which is in {rand_du_filename}.
+If the targed coverage holes are inside an if or case statement then try to hit that condition.
+Below is the design unit. See above for the entire design if needed.
+{module}
 
 There are three options for improving line coverage, choose one of these option:
 1. Add another testcase to a previously generated testbench
