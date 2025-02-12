@@ -1,3 +1,4 @@
+from tkinter import W
 from modelchat import ModelChat
 from datetime import datetime
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, PreTrainedModel, PreTrainedTokenizer, PreTrainedTokenizerFast
@@ -141,17 +142,18 @@ class LlamaChat(ModelChat):
         """
         del self.model
 
-    def generate_response(self, conversation_history: list[dict[str, str]]) -> tuple[str, int, float]:
+    def generate_response(self, conversation_history: list[dict[str, str]], num_return_sequences=5) -> tuple[list[str], int, float]:
         """
-        Generate a response from the model given the conversation history.
+        Generate multiple responses from the model given the conversation history.
 
         Args:
             conversation_history (list[dict]): The conversation history as a list of messages.
+            num_return_sequences (int): Number of different responses to generate for the same input.
 
         Returns:
-            tuple[str, int, float]: 
-                - The generated response as a string.
-                - The number of tokens in the response.
+            tuple[list[str], int, float]: 
+                - A list of generated responses.
+                - The total number of tokens in the response batch.
                 - The time taken to generate the response in seconds.
 
         Raises:
@@ -161,99 +163,115 @@ class LlamaChat(ModelChat):
         if not conversation_history:
             raise ValueError("Conversation history is required.")
 
-        # Evaluate new temperature based on temperautre function
+        # Evaluate new temperature based on temperature function
         self.temperature = self.temperature_function(len(conversation_history))
 
-        input_ids = self.tokenizer.apply_chat_template( # type: ignore
+        # Format input using chat template
+        input_ids = self.tokenizer.apply_chat_template(
             conversation_history,
             add_generation_prompt=True,
             return_tensors="pt"
         ).to(self.model.device) # type: ignore
 
+        # End-of-sequence token
         terminators: list[int | list[int]] = [self.tokenizer.convert_tokens_to_ids("<|eot_id|>")]
 
         start_time = time.time()
         try:
             with torch.no_grad():
-                outputs = self.model.generate( # type: ignore
+                outputs = self.model.generate(
                     input_ids, # type: ignore
                     max_new_tokens=self.max_new_tokens,
                     eos_token_id=terminators,
                     do_sample=self.do_sample,
                     temperature=self.temperature if self.do_sample else None,
                     top_p=self.top_p if self.do_sample else None,
+                    num_return_sequences=num_return_sequences  # Generate multiple completions for the same prompt
                 )
 
             elapsed_time = time.time() - start_time
-            response_ids = outputs[0][input_ids.shape[-1]:] # type: ignore
-            response = self.tokenizer.decode(response_ids, skip_special_tokens=True) # type: ignore
-            token_count = len(response_ids) # type: ignore
+
+            # Reshape outputs to extract multiple responses properly
+            response_ids_list = outputs[:, input_ids.shape[-1]:]  # Remove input tokens from generated tokens
+
+            # Decode responses
+            responses = self.tokenizer.batch_decode(response_ids_list, skip_special_tokens=True)
+
+            # Calculate total token count
+            total_tokens = sum(len(response_ids) for response_ids in response_ids_list)
 
         except Exception as e:
             logging.error(f"Error during generation: {e}")
-            response = ""
-            token_count = 0
+            responses = [""] * num_return_sequences  # Return empty responses in case of failure
+            total_tokens = 0
             elapsed_time = self.timeout_seconds
 
         finally:
             torch.cuda.empty_cache()
 
-        return response, token_count, elapsed_time
+        return responses, total_tokens, elapsed_time
     
-    def generate_batch_responses(self, batch_conversations: list[list[dict[str, str]]]) -> list[tuple[str, int, float]]:
+    def generate_batch_responses(self, batch_conversations: list[list[dict[str, str]]], batch_size: int = 5):
 
-        if not batch_conversations:
-            raise ValueError("Batch of conversation histories is required.")
-        
-        input_ids_list = []
-        for conversation_history in batch_conversations:
-            self.temperature = self.temperature_function(len(conversation_history))
-            input_ids = self.tokenizer.apply_chat_template( # type: ignore
-                conversation_history,
-                add_generation_prompt=True,
-                return_tensors="pt"
-            )
-            input_ids_list.append(input_ids)
+        """
+        Generates multiple responses for each input conversation in batch.
 
-        inputs = self.tokenizer.pad(
-            {"input_ids": input_ids_list},
-            padding=True,
-            return_tensors="pt"
-        ).to(self.model.device)
+        Args:
+            model: The LLM model.
+            tokenizer: The tokenizer for the model.
+            conversations (list of list of dict): Batch of conversations, where each conversation is a list of dicts.
+            batch_size (int): Number of responses to generate per conversation.
+            max_new_tokens (int): Max tokens to generate per response.
+            temperature (float): Sampling temperature.
+            top_p (float): Top-p sampling probability.
 
-        terminators: list[int | list[int]] = [
-            self.tokenizer.convert_tokens_to_ids("<|eot_id|>")
+        Returns:
+            tuple:
+                - generated_responses (list of lists): A list where each item is a list of generated responses for each conversation.
+                - total_tokens (int): Total tokens generated across all responses.
+                - total_time (float): Time taken for generation in seconds.
+        """
+
+        # Apply chat template to each conversation
+        formatted_inputs = [
+            self.tokenizer.apply_chat_template(conv, add_generation_prompt=True, return_tensors="pt")
+            for conv in batch_conversations
         ]
 
+        # Pad and create batch input tensors
+        inputs = torch.nn.utils.rnn.pad_sequence(formatted_inputs, batch_first=True, padding_value=self.tokenizer.pad_token_id) # type: ignore
+        inputs = inputs.to(self.model.device)
+
+        # Start timing
         start_time = time.time()
-        try:
-            with torch.no_grad():
-                outputs = self.model.generate( # type: ignore
-                    inputs.input_ids, # type: ignore
-                    max_new_tokens=self.max_new_tokens,
-                    eos_token_id=terminators,
-                    do_sample=self.do_sample,
-                    temperature=self.temperature if self.do_sample else None,
-                    top_p=self.top_p if self.do_sample else None,
-                )
 
-            elapsed_time = time.time() - start_time
+        # Generate responses in batch with num_return_sequences
+        with torch.no_grad():
+            outputs = self.model.generate(
+                inputs,
+                max_new_tokens=self.max_new_tokens,
+                do_sample=True,
+                temperature=self.temperature,
+                top_p=self.top_p,
+                num_return_sequences=batch_size  # Generate 'batch_size' outputs per input conversation
+            )
 
-            responses = []
-            for idx, input_ids in enumerate(inputs["input_ids"]): # type: ignore
-                response_ids = outputs[idx][len(input_ids):] # type: ignore
-                response = self.tokenizer.decode(response_ids, skip_special_tokens=True) # type: ignore
-                token_count = len(response_ids) # type: ignore
-                responses.append((response, token_count, elapsed_time))
+        # Measure time taken
+        total_time = time.time() - start_time
 
-        except Exception as e:
-            logging.error(f"Error during batch generation: {e}")
-            responses = [("", 0, self.timeout_seconds)]
+        # Reshape output tensor to properly match batch_size and input batch
+        num_inputs = len(batch_conversations)
+        outputs = outputs.view(num_inputs, batch_size, -1)  # type: ignore # Shape: (num_inputs, batch_size, sequence_length)
 
-        finally:
-            torch.cuda.empty_cache()
+        # Decode outputs
+        generated_responses = [
+            self.tokenizer.batch_decode(batch_outputs, skip_special_tokens=True) for batch_outputs in outputs
+        ]
 
-        return responses
+        # Calculate total number of tokens generated
+        total_tokens = sum(output.shape[-1] for output in outputs.flatten(start_dim=1))
+
+        return generated_responses, total_tokens, total_time
     
     def log_conversation(self, conversation_update: list[dict[str, str]], log_file: str):
         """
