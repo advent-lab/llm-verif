@@ -259,71 +259,12 @@ Provide the generated testbench in a JSON format as shown below. You should put 
 }
 '''
 
-def design_prompt(design_file: str) -> str:
+def design_prompt(all_design_files: list[str]) -> str:
 
-	with open(design_file, 'r') as f:
-		lines = f.readlines()
+	base: str = "Here is the full design to give you more context about the logic of each module:\n\n"
 
-	design_chunk = ''.join(lines)
+	for file_path in all_design_files:
+		with open(file_path, 'r') as f:
+			base += f"{file_path}:\n{f.read()}\n\n"
 
-	return f'''The test bench that you generated did not meet coverage goals. 
-I will give you some extra context to help. Here is the design for the main design module:
-{design_chunk}
-
-Generate a Verilog testbench named tb_llm for the following design specification.
-The test bench should meet the statement coverage goal of 100%.
-Generate only the Verilog testbench and no additional words.
-Make sure you are ONLY using Verilog syntax and features, and not SystemVerilog such as for loops and asserts.\n
-Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag. Keep the test bench less than 500 lines.\n
-''' + '''Example output:
-{
-	"test bench": "
-		module tb_llm;
-
-			// Clock logic
-
-			initial
-			begin
-				// Generted test cases
-			$finish
-			end
-		endmodule
-	",
-	"comments": " // Any additonal comments here "
-}
-'''
-# def delete_me(xml_path: str) -> list:
-# 	xml_tree = ET.parse(xml_path)
-# 	coverage_list = []
-# 	root = xml_tree.getroot()
-
-# 	total_active = 0
-# 	total_hits = 0
-# 	for child in root[0]:
-# 		coverage_dict = {}
-# 		attrib_list = []
-# 		for cchild in child:
-# 			attrib_list.append(cchild.attrib)
-
-# 		coverage_dict['path'] = child.attrib['path']
-# 		coverage_dict['coverage'] = attrib_list[0]
-# 		coverage_dict['coverage_detail'] = attrib_list[1:]
-		
-# 		total_active = total_active + int(child[0].attrib['active'])
-# 		total_hits = total_hits + int(child[0].attrib['hits'])
-
-# 		coverage_list.append(coverage_dict)	
-# 	return coverage_list
-
-# # Test of m3_promt
-# def main():
-# 	xml_file = "/scratch/asbabbit/mkmif_core_method6_run_4/generations/tb_llm_mkmif_core_02_report.txt"
-# 	environment = Environment('/home/asbabbit/llm_verif_dataset/data_points/mkmif_core')
-# 	coverage_list = delete_me(xml_file)
-# 	prompt = m3_prompt(environment.all_design_file_paths, coverage_list)
-
-# 	with open("delete_me", "w") as file:
-# 		file.write(prompt)
-
-# if __name__ == "__main__":
-# 	main()
+	return base
