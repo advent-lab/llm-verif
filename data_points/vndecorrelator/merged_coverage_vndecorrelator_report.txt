@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<coverage_report questa_version="2023.3" command="coverage report -output /home/ehilaneh/llm_verif_dataset/data_points/vndecorrelator/merged_coverage_vndecorrelator_report.txt -du=* -detail -annotate -code s -xml">
+<code_coverage_report
+lines="1"
+byDU="1">
+<DuData
+du="vndecorrelator">
+<sourceTable files="1">
+<fileMap fn="0" path="/home/ehilaneh/llm_verif_dataset/data_points/vndecorrelator/design/vndecorrelator.v"/>
+</sourceTable>
+<statements active="22" hits="22" percent="100.00"/>
+<stmt fn="0" ln="47" st="1" hits="11"/>
+<stmt fn="0" ln="51" st="1" hits="1"/>
+<stmt fn="0" ln="52" st="1" hits="1"/>
+<stmt fn="0" ln="53" st="1" hits="1"/>
+<stmt fn="0" ln="54" st="1" hits="1"/>
+<stmt fn="0" ln="58" st="1" hits="10"/>
+<stmt fn="0" ln="62" st="1" hits="3"/>
+<stmt fn="0" ln="67" st="1" hits="1"/>
+<stmt fn="0" ln="72" st="1" hits="5"/>
+<stmt fn="0" ln="85" st="1" hits="12"/>
+<stmt fn="0" ln="87" st="1" hits="12"/>
+<stmt fn="0" ln="88" st="1" hits="12"/>
+<stmt fn="0" ln="89" st="1" hits="12"/>
+<stmt fn="0" ln="90" st="1" hits="12"/>
+<stmt fn="0" ln="91" st="1" hits="12"/>
+<stmt fn="0" ln="98" st="1" hits="3"/>
+<stmt fn="0" ln="99" st="1" hits="3"/>
+<stmt fn="0" ln="100" st="1" hits="3"/>
+<stmt fn="0" ln="110" st="1" hits="1"/>
+<stmt fn="0" ln="111" st="1" hits="1"/>
+<stmt fn="0" ln="114" st="1" hits="2"/>
+<stmt fn="0" ln="115" st="1" hits="2"/>
+</DuData>
+</code_coverage_report>
+</coverage_report>
