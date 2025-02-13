@@ -24,6 +24,7 @@ class Record:
             "design",
             "run #",
             "iteration #",
+            "batch #"
             "temperature",
             "top_p",
             "pass",
@@ -68,7 +69,7 @@ class Record:
         self.tokens_generated = 0
         self.generation_time = 0.0
 
-    def update_dataframe(self, coverage: CoverageResponse, temperature: float, top_p: float, run: int, iteration: int, tokens: int, time: float):
+    def update_dataframe(self, coverage: CoverageResponse, temperature: float, top_p: float, run: int, iteration: int, batch_num: int, tokens: int, time: float):
         """
         Update the dataframe with a new record.
 
@@ -88,6 +89,7 @@ class Record:
             "design": self.design_name,
             "run #": run,
             "iteration #": iteration,
+            "batch #": batch_num,
             "temperature": temperature,
             "top_p": top_p,
             "pass": 1 if coverage.success else 0,

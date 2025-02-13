@@ -13,7 +13,7 @@ class DU:
         self.coverage_details = coverage_details
 
 class CoverageResponse:
-    def __init__(self, success: bool, error_code: int, error_message: str = "", coverage_list: list[DU] = [], total_coverage: float = 0):
+    def __init__(self, success: bool = False, error_code: int = -1, error_message: str = "", coverage_list: list[DU] = [], total_coverage: float = 0):
         
         self.success: bool
         self.error_code: int
@@ -23,6 +23,7 @@ class CoverageResponse:
         
         self.success = success
         # Error codes
+        # -1: empty object
         # 0: success -> ignore error message
         # 1: compile error
         # 2: simulation error

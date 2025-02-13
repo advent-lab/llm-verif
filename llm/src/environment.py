@@ -20,6 +20,7 @@ class Environment:
         self.dataset = Dataset(self.dashboard_path)
 
         self.testplan = env_options.testplan
+        self.batch_size = env_options.batch_size
 
         # Create the prompt
         # Read the specification file
@@ -56,7 +57,7 @@ class Environment:
 
         self.design_module_name = self.get_design_name(self.top_design_file_path)
 
-        self.store = FileStore(args.output)
+        self.store = FileStore(env_options.output)
 
     def get_design_name(self, design_path: str) -> str:
         split_filename = os.path.split(design_path)[1].split('.')

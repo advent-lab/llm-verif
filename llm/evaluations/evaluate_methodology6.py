@@ -14,17 +14,17 @@ import argparse
 from src.prompt_templates import m1_prompt, m2_prompts, m3_prompt, design_prompt, error_prompt
 from src.eval_runs_util import Record
 
-def parse_json_response(response: str) -> tuple[str | None, CoverageResponse | None]:
+def parse_json_response(response: str) -> str | CoverageResponse:
     """
     Parse the JSON response from LlamaChat and handle errors.
     """
     parsed_response, status = LlamaChat.convert_json_response_to_dict(response)
     if status == 0:  # Valid JSON
         test_bench_code = parsed_response.get("test bench", "")
-        return test_bench_code, None
+        return test_bench_code
     else:
         error_message = parsed_response.get("error", "JSON parsing error.")
-        return None, CoverageResponse(False, 4, error_message)
+        return CoverageResponse(False, 4, error_message)
 
 
 def evaluate_coverage(
@@ -46,7 +46,7 @@ def evaluate_coverage(
 
 def generate_and_evaluate(
     conversation: list[dict], prompt: str, llama: LlamaChat, environment: Environment, 
-    record: Record, run: int, iteration: int, json: bool = True
+    record: Record, run: int, iteration: int, json: bool = True, batch_size: int = 1
 ) -> CoverageResponse:
     """
     Generate a test bench and evaluate its coverage.
@@ -56,22 +56,36 @@ def generate_and_evaluate(
 
     print(prompt)
     conversation.append({"role": "user", "content": prompt})
-    response, tokens_generated, gen_time = llama.generate_response(conversation)
-    conversation.append({"role": "assistant", "content": response})
-    print(response)
+    responses, tokens_generated, gen_time = llama.generate_response(conversation, num_return_sequences=batch_size)
+    print(responses)
 
     if json:
-        test_bench_code, coverage_error = parse_json_response(response)
-        if coverage_error:
-            record.update_dataframe(coverage_error, llama.temperature, llama.top_p, run, iteration, tokens_generated, gen_time)
-            record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
-            return coverage_error
+        json_responses: list[str | CoverageResponse] = [parse_json_response(response) for response in responses]
         
-        cov = evaluate_coverage(test_bench_code, tb_path, environment, llama, run, iteration)
-        record.update_dataframe(cov, llama.temperature, llama.top_p, run, iteration, tokens_generated, gen_time)
+        for i, response in enumerate(json_responses):
+            if isinstance(response, CoverageResponse):
+                record.update_dataframe(response, llama.temperature, llama.top_p, run, iteration, i, tokens_generated, gen_time)
+                
         record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
-        return cov
-    
+        
+        responses: list[str] = list(filter(lambda x: isinstance(x, str), responses))
+        
+            
+        coverage_responses: list[CoverageResponse] = [evaluate_coverage(test_bench_code, tb_path, environment, llama, run, iteration) for test_bench_code in responses]
+        
+        max_coverage: tuple[float, str, CoverageResponse] = (0, "", CoverageResponse())
+        for i, response in enumerate(coverage_responses):
+            if response.total_coverage > max_coverage[0]:
+                max_coverage = (response.total_coverage, responses[i], response)
+
+        conversation.append({"role": "assistant", "content": max_coverage[1]})
+        
+        for i, response in enumerate(coverage_responses):
+            record.update_dataframe(response, llama.temperature, llama.top_p, run, iteration, i, tokens_generated, gen_time)
+        
+        record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
+        return max_coverage[2]
+        
     return CoverageResponse(True, 0, "", [], 0)
 
 
@@ -113,7 +127,7 @@ def run_conversation(
 
     # Stage 2: Generate test bench
     if cov.success:
-        cov = generate_and_evaluate(conversation, testbench_prompt, llama, environment, record, run_index, iteration)
+        cov = generate_and_evaluate(conversation, testbench_prompt, llama, environment, record, run_index, iteration, batch_size=environment.batch_size)
         if cov.success:
             valid_iterations += 1
             stack_pointer += 2
@@ -142,7 +156,7 @@ def run_conversation(
                 stack_pointer = len(conversation)
 
         prompt = error_prompt(cov.error_code, cov.error_message) if not cov.success else m3_prompt(cov)
-        cov = generate_and_evaluate(conversation, prompt, llama, environment, record, run_index, iteration)
+        cov = generate_and_evaluate(conversation, prompt, llama, environment, record, run_index, iteration, batch_size=environment.batch_size)
         if cov.success and args.remove_polluted_context: 
             conversation.append(conversation[design_prompt_idx])
             conversation.pop(design_prompt_idx)
@@ -213,6 +227,7 @@ def main():
     parser.add_argument('--max_iterations', type=int, default=12, help="Maximum number of iterations for iterative refinement.")
     parser.add_argument('--max_valid_iter', type=int, default=10, help="Maximum number of successful iterations")
     parser.add_argument('-o', '--output', type=str, default="./logs", help="Output directory for log files.")
+    parser.add_argument('-b', "--batch_size", type=int, default=1, help="The number of test benches to generate per query.")
     args = parser.parse_args()
 
     environment = Environment(args)
