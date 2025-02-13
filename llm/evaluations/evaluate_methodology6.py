@@ -220,7 +220,7 @@ def main():
     parser.add_argument('--no_sampling', action='store_true', help="Disable sampling for LLM responses.")
     parser.add_argument('-t', '--temperature', type=float, default=0.3, help="Sampling temperature.")
     parser.add_argument('--temperature_function', type=str, default="constant", choices=["constant", "logarithmic", "capped_sigmoid"], help="Temperature function.")
-    parser.add_argument('-S', '--seed', type=int, default=None, help="Random seed for reproducibility.")
+    parser.add_argument('-S', '--seed', type=int, required=False, help="Random seed for reproducibility.")
     parser.add_argument('-m', '--merge-coverage', action='store_true', help="Merge coverage reports.")
     parser.add_argument('--testplan', action='store_true', help="Enable generating a test plan before generating any test benches.")
     parser.add_argument('--remove_polluted_context', action='store_true', help='Enable the removal of polluted content from the conversation history')
