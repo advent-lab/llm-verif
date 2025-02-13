@@ -1,5 +1,4 @@
 from tkinter import W
-from modelchat import ModelChat
 from datetime import datetime
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, PreTrainedModel, PreTrainedTokenizer, PreTrainedTokenizerFast
 from accelerate import infer_auto_device_map
