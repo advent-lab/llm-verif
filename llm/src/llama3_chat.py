@@ -355,7 +355,7 @@ class LlamaChat(ModelChat):
 
 
     # TODO: Create call to QuestaSim to get coverage
-    def get_coverage(self, generated_response: str, tb_path: str, data_point: dict[str, str | list[str]] | None, storage: FileStore = None) -> CoverageResponse:
+    def get_coverage(self, generated_response: str, tb_path: str, data_point: dict[str, str | list[str]] | None, storage: FileStore = None, batch: int = 0) -> CoverageResponse:
         if not generated_response:
             return CoverageResponse(False, 4, "Empty test bench (JSON Decode Error)")
 
@@ -366,7 +366,7 @@ class LlamaChat(ModelChat):
 
         # Run QuestaSim to get coverage
         # env = Environment(questa_dir)
-        log_name = tb_path.split('.')[0]
+        log_name = tb_path.split('.')[0] + "_" + str(batch)
         coverage_response = self.simulator.run_sim(tb_path=tb_path, data_point=data_point, log_name=log_name)
 
         # Move test bench file to storage
@@ -422,7 +422,7 @@ class LlamaChat(ModelChat):
         return conversation
 
 
-    def parallel_get_coverage(self, responses: str, test_benches: list[str], data_points: list[dict]) -> list[CoverageResponse]:
+    def parallel_get_coverage(self, responses: str, test_benches: list[str], data_points: list[dict], store: FileStore = None) -> list[CoverageResponse]:
         """
         Run coverage simulations in parallel for multiple test benches.
 
@@ -435,8 +435,8 @@ class LlamaChat(ModelChat):
         """
         with ThreadPoolExecutor() as executor:
             futures = [
-                executor.submit(self.get_coverage, response, tb, dp)
-                for response, tb, dp in zip(responses, test_benches, data_points)
+                executor.submit(self.get_coverage, t[0], t[1], t[2], store, i)
+                for i, t in enumerate(zip(responses, test_benches, data_points))
             ]
             return [future.result() for future in futures]
 

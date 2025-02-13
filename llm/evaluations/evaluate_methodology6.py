@@ -28,7 +28,7 @@ def parse_json_response(response: str) -> str | CoverageResponse:
 
 
 def evaluate_coverage(
-    test_bench_code: str | None, tb_path: str, environment: Environment, llama: LlamaChat, run: int, iteration: int
+    test_bench_code: str | None, tb_path: str, environment: Environment, llama: LlamaChat, run: int, iteration: int, batch: int
 ) -> CoverageResponse:
     """
     Evaluate the coverage for a generated test bench.
@@ -38,7 +38,7 @@ def evaluate_coverage(
     
     try:
         data_point = environment.dataset.get_data_point(environment.design_name)
-        cov = llama.get_coverage(test_bench_code, tb_path, data_point, environment.store)
+        cov = llama.get_coverage(test_bench_code, tb_path, data_point, environment.store, batch)
         return cov
     except KeyError as e:
         return CoverageResponse(False, 4, f"Key error: {e}")
@@ -71,7 +71,7 @@ def generate_and_evaluate(
         responses: list[str] = list(filter(lambda x: isinstance(x, str), responses))
         
             
-        coverage_responses: list[CoverageResponse] = [evaluate_coverage(test_bench_code, tb_path, environment, llama, run, iteration) for test_bench_code in responses]
+        coverage_responses: list[CoverageResponse] = [evaluate_coverage(test_bench_code, tb_path, environment, llama, run, iteration, i) for i, test_bench_code in enumerate(responses)]
         
         max_coverage: tuple[float, str, CoverageResponse] = (0, "", CoverageResponse())
         for i, response in enumerate(coverage_responses):
