@@ -114,13 +114,15 @@ def run_conversation(
     iteration = 0
     if environment.testplan:
         testplan_prompt, testbench_prompt = m2_prompts(environment.design_specification, environment.module_header)
-    
+        print(testplan_prompt)
+        print(testbench_prompt)
         # Stage 1: Generate verification plan
         cov = generate_and_evaluate(conversation, testplan_prompt, llama, environment, record, run_index, iteration, json=False)
         iteration += 1
         stack_pointer += 2
     else:
         testbench_prompt = m1_prompt(environment.design_specification, environment.module_header)
+        print(testbench_prompt)
     
     print("Length of conversation: ", len(conversation))
     print("Stack pointer: ", stack_pointer)
@@ -151,15 +153,18 @@ def run_conversation(
                 conversation = conversation[:(stack_pointer+1)] + [conversation[len(conversation) - 1]]
             valid_iterations += 1
             conversation.append({"role": "user", "content": design_prompt(environment.all_design_file_paths)})
+            print(conversation[-1])
             design_prompt_idx = len(conversation) - 1
             if args.remove_polluted_context: 
                 stack_pointer = len(conversation)
 
         prompt = error_prompt(cov.error_code, cov.error_message) if not cov.success else m3_prompt(cov)
+        print(prompt)
         cov = generate_and_evaluate(conversation, prompt, llama, environment, record, run_index, iteration, batch_size=environment.batch_size)
         if cov.success and args.remove_polluted_context: 
             conversation.append(conversation[design_prompt_idx])
             conversation.pop(design_prompt_idx)
+            design_prompt_idx = len(conversation) - 1
             conversation = conversation[:(stack_pointer+1)] + [conversation[len(conversation) - 1]]
             stack_pointer = len(conversation)
             valid_iterations += 1
