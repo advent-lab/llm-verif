@@ -24,7 +24,7 @@ class Record:
             "design",
             "run #",
             "iteration #",
-            "batch #"
+            "batch #",
             "temperature",
             "top_p",
             "pass",
