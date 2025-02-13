@@ -52,7 +52,6 @@ python evaluations/evaluate_methodology6.py \
 	-d $REPO_DIR/data_points/$DATA_POINT \
 	-g $NUM_RUNS \
 	-c /packages/apps/fpga/Questa/questa_fe/bin \
-	--no_sampling \
 	-m \
 	--testplan \
 	--remove_polluted_context \
@@ -67,7 +66,6 @@ python evaluations/evaluate_methodology6.py \
 	-d $REPO_DIR/data_points/$DATA_POINT \
 	-g $NUM_RUNS \
 	-c /packages/apps/fpga/Questa/questa_fe/bin \
-	--no_sampling \
 	-m \
 	--testplan \
 	--remove_polluted_context \
