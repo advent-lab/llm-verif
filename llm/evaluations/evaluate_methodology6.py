@@ -95,7 +95,7 @@ def generate_and_evaluate(
             
             max_coverage: tuple[float, str, CoverageResponse] = (0, "", CoverageResponse())
             for i, response in enumerate(coverage_responses):
-                if response.total_coverage > max_coverage[0]:
+                if response.total_coverage >= max_coverage[0]:
                     max_coverage = (response.total_coverage, successful_responses[i], response)
 
             conversation.append({"role": "assistant", "content": max_coverage[1]})

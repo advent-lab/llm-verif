@@ -50,12 +50,12 @@ python evaluations/evaluate_methodology6.py \
 	-d $REPO_DIR/data_points/$DATA_POINT \
 	-g $NUM_RUNS \
 	-c /packages/apps/fpga/Questa/questa_fe/bin \
-	--no_sampling  \
 	-m \
 	--testplan \
 	--remove_polluted_context \
 	--max_iterations 20 \
 	--max_valid_iter 10 \
+	-b 5 \
 	2>&1 | tee ${DATA_POINT}_w_testplan_$RUN.log
 
 cd /scratch/$USER/${DATA_POINT}_wo_testplan_$RUN
@@ -64,11 +64,11 @@ python evaluations/evaluate_methodology6.py \
 	-d $REPO_DIR/data_points/$DATA_POINT \
 	-g $NUM_RUNS \
 	-c /packages/apps/fpga/Questa/questa_fe/bin \
-	--no_sampling \
 	-m \
 	--remove_polluted_context \
 	--max_iterations 20 \
 	--max_valid_iter 10 \
+	-b 5 \
 	2>&1 | tee ${DATA_POINT}_wo_testplan_$RUN.log
 
 
