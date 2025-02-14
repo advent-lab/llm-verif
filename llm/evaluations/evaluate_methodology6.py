@@ -60,12 +60,12 @@ def generate_and_evaluate(
         print(f"{message['role'].capitalize()}: {message['content']}\n")
     print("-" * 80)
 
-    input("🔄 Press Enter to continue to the next iteration...")
 
     print(prompt)
     conversation.append({"role": "user", "content": prompt})
     responses, tokens_generated, gen_time = llama.generate_response(conversation, num_return_sequences=batch_size)
     print(responses)
+    print(f"Tokens / second: {tokens_generated / gen_time}\n")
 
     selected: CoverageResponse = CoverageResponse()
     if json:
