@@ -112,10 +112,10 @@ class LlamaChat(ModelChat):
         compute_dtype = getattr(torch, "float16")
 
         bnb_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=compute_dtype,
-            bnb_4bit_use_double_quant=False,
+            load_in_8bit=True,
+            bnb_8bit_quant_type="nf4",
+            bnb_8bit_compute_dtype=compute_dtype,
+            bnb_8bit_use_double_quant=False,
         )
 
         tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(model_id) # type: ignore
