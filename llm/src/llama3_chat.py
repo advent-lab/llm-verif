@@ -391,7 +391,7 @@ class LlamaChat(ModelChat):
         
         formatted_conversation = LlamaChat.format_conversations(conversation)
 
-        current_token_count = len(self.llm.tokenizer.encode(formatted_conversation))
+        current_token_count = len(self.llm.encode(formatted_conversation))
         print(f"Current token count: {current_token_count}")
         max_token_count = context_window - self.max_new_tokens
 
@@ -401,7 +401,7 @@ class LlamaChat(ModelChat):
             # Preserve the system message (index 0)
             conversation.pop(1)
             formatted_conversation = LlamaChat.format_conversations(conversation)
-            current_token_count = len(self.llm.tokenizer.encode(formatted_conversation))
+            current_token_count = len(self.llm.encode(formatted_conversation))
 
         if current_token_count > max_token_count:
             logging.warning("Conversation could not be fully limited within token limits.")
