@@ -52,13 +52,22 @@ def generate_and_evaluate(
     Generate a test bench and evaluate its coverage.
     """
 
-    tb_path = f'{environment.design_dir}/tb_llm_{environment.design_name}_{run}_{iteration}.v'
+    # 📢 Print Full Conversation Before Running Each Iteration
+    print("\n" + "=" * 80)
+    print(f"📢 ITERATION {iteration} (Run {run})")
+    print("-" * 80)
+    for message in conversation:
+        print(f"{message['role'].capitalize()}: {message['content']}\n")
+    print("-" * 80)
+
+    input("🔄 Press Enter to continue to the next iteration...")
 
     print(prompt)
     conversation.append({"role": "user", "content": prompt})
     responses, tokens_generated, gen_time = llama.generate_response(conversation, num_return_sequences=batch_size)
     print(responses)
 
+    selected: CoverageResponse = CoverageResponse()
     if json:
         json_responses: list[str | CoverageResponse] = [parse_json_response(response) for response in responses]
         
@@ -68,23 +77,43 @@ def generate_and_evaluate(
                 
         record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
         
-        responses: list[str] = list(filter(lambda x: isinstance(x, str), responses))
-        
-            
-        coverage_responses: list[CoverageResponse] = [evaluate_coverage(test_bench_code, tb_path, environment, llama, run, iteration, i) for i, test_bench_code in enumerate(responses)]
-        
-        max_coverage: tuple[float, str, CoverageResponse] = (0, "", CoverageResponse())
-        for i, response in enumerate(coverage_responses):
-            if response.total_coverage > max_coverage[0]:
-                max_coverage = (response.total_coverage, responses[i], response)
+        successful_responses: list[str] = list(filter(lambda x: isinstance(x, str), responses))
 
-        conversation.append({"role": "assistant", "content": max_coverage[1]})
+        # If successful responses isn't empty, find the best one
+        if len(successful_responses) != 0:
+            
+            tb_paths = [
+                f'{environment.design_dir}/tb_llm_{environment.design_name}_{run}_{iteration}_{i}.v' 
+                for i in range(len(successful_responses))
+            ]
         
-        for i, response in enumerate(coverage_responses):
-            record.update_dataframe(response, llama.temperature, llama.top_p, run, iteration, i, tokens_generated, gen_time)
+            coverage_responses: list[CoverageResponse] = [
+                evaluate_coverage(test_bench_code, tb_path, environment, llama, run, iteration, i)
+                for i, (test_bench_code, tb_path) in enumerate(zip(successful_responses, tb_paths))
+            ]
+
+            
+            max_coverage: tuple[float, str, CoverageResponse] = (0, "", CoverageResponse())
+            for i, response in enumerate(coverage_responses):
+                if response.total_coverage > max_coverage[0]:
+                    max_coverage = (response.total_coverage, successful_responses[i], response)
+
+            conversation.append({"role": "assistant", "content": max_coverage[1]})
+            
+            for i, response in enumerate(coverage_responses):
+                record.update_dataframe(response, llama.temperature, llama.top_p, run, iteration, i, tokens_generated, gen_time)
         
+            selected = max_coverage[2]
+        else: # If responses is empty, pick a bad response
+            bad_response = responses[0] if isinstance(responses[0], CoverageResponse) else CoverageResponse(False, 4, "Unexpected JSON Error.")
+            conversation.append({
+                "role": "assistant", 
+                "content": bad_response
+            })
+            selected = bad_response 
+            
         record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
-        return max_coverage[2]
+        return selected
         
     return CoverageResponse(True, 0, "", [], 0)
 
@@ -182,13 +211,15 @@ def run_conversation(
             # Check FileStore for UCDB files
             if environment.store:
                 stored_ucdb_files = [
-                    os.path.join(environment.store.storage_path, f"tb_llm_{environment.design_name}_{run_index}_{i}.ucdb")
+                    os.path.join(environment.store.storage_path, f"tb_llm_{environment.design_name}_{run_index}_{i}_{j}.ucdb")
                     for i in range(iteration)
+                    for j in range(environment.batch_size)
                 ]
             else:
                 stored_ucdb_files = [
-                    f"{args.design}/tb_llm_{environment.design_name}_{run_index}_{i}.ucdb"
+                    f"{args.design}/tb_llm_{environment.design_name}_{run_index}_{i}_{j}.ucdb"
                     for i in range(iteration)
+                    for j in range(environment.batch_size)
                 ]
 
             # Filter for existing UCDB files
@@ -257,15 +288,17 @@ def main():
             # Check FileStore for UCDB files
             if environment.store:
                 stored_ucdb_files = [
-                    os.path.join(environment.store.storage_path, f"tb_llm_{environment.design_name}_{i}_{j}.ucdb")
+                    os.path.join(environment.store.storage_path, f"tb_llm_{environment.design_name}_{i}_{j}_{k}.ucdb")
                     for i in range(args.generations)
                     for j in range(args.max_iterations)
+                    for k in range(args.batch_size)
                 ]
             else:
                 stored_ucdb_files = [
-                    f"{args.design}/tb_llm_{environment.design_name}_{i}_{j}.ucdb"
+                    f"{args.design}/tb_llm_{environment.design_name}_{i}_{j}_{k}.ucdb"
                     for i in range(args.generations)
                     for j in range(args.max_iterations)
+                    for k in range(args.batch_size)
                 ]
 
             # Filter for existing UCDB files
