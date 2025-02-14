@@ -1,4 +1,5 @@
 from datetime import datetime
+from urllib import response
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, PreTrainedModel, PreTrainedTokenizer, PreTrainedTokenizerFast
 from accelerate import infer_auto_device_map
 import torch
@@ -12,6 +13,7 @@ from math import exp, log10
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Union
+from vLLM import LLM, SamplingParams
 
 logging.basicConfig(level=logging.INFO)
 
@@ -69,7 +71,7 @@ class LlamaChat(ModelChat):
 
         self.simulator = simulator
         if not skip_load:
-            self.model, self.tokenizer = self.load_model(seed=seed)
+            self.llm = self.load_model(seed=seed)
         self.do_sample = do_sample
 
         if temperature_function == "constant":
@@ -85,7 +87,7 @@ class LlamaChat(ModelChat):
         self.max_new_tokens = max_new_tokens
         self.timeout_seconds = timeout_seconds
 
-    def load_model(self, seed: Union[int, None] = None) -> tuple[PreTrainedModel, PreTrainedTokenizer]:
+    def load_model(self, seed: Union[int, None] = None):
         """
         Load the Llama model and tokenizer with quantization settings.
 
@@ -109,36 +111,32 @@ class LlamaChat(ModelChat):
         os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache/"
 
         model_id = "meta-llama/Meta-Llama-3.1-70B-Instruct"
-        compute_dtype = getattr(torch, "float16")
 
-        bnb_config = BitsAndBytesConfig(
-            load_in_8bit=True,
-            bnb_8bit_quant_type="nf4",
-            bnb_8bit_compute_dtype=compute_dtype,
-            bnb_8bit_use_double_quant=False,
-        )
+        num_gpus = torch.cuda.device_count()
 
-        tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(model_id) # type: ignore
-        tokenizer.add_special_tokens({"pad_token": "[PAD]"})
-        model: PreTrainedModel = AutoModelForCausalLM.from_pretrained( # type: ignore
-            model_id,
-            quantization_config=bnb_config,
-            torch_dtype=torch.bfloat16,
-            device_map="auto",
-        )
+        if num_gpus == 0:
+            raise RuntimeError("No GPUs available.")
 
-        # Save device map for debugging
-        device_map = infer_auto_device_map(model) # type: ignore
-        with open("./device_map.json", 'w+') as j:
-            json.dump(device_map, j)
+        # Load vLLM model
+        llm = LLM(model=model_id, tensor_parallel_size=num_gpus)
 
-        return model, tokenizer # type: ignore
+        return llm
 
     def unload_model(self):
         """
         Unload the Llama model and tokenizer to free up memory.
         """
         del self.model
+
+    @staticmethod
+    def format_conversations(conversation: list[dict[str, str]]) -> str:
+        formatted_messages = []
+        for message in conversation:
+            role = message['role'].capitalize()
+            content = message["content"]
+            formatted_messages.append(f"{role}: {content}")
+
+        return "\n\n".join(formatted_messages)
 
     def generate_response(self, conversation_history: list[dict[str, str]], num_return_sequences=5) -> tuple[list[str], int, float]:
         """
@@ -164,48 +162,29 @@ class LlamaChat(ModelChat):
         # Evaluate new temperature based on temperature function
         self.temperature = self.temperature_function(len(conversation_history))
 
-        # Format input using chat template
-        input_ids = self.tokenizer.apply_chat_template(
-            conversation_history,
-            add_generation_prompt=True,
-            return_tensors="pt"
-        ).to(self.model.device) # type: ignore
+        formatted_conversation = LlamaChat.format_conversations(conversation_history)
 
-        # End-of-sequence token
-        terminators: list[int | list[int]] = [self.tokenizer.convert_tokens_to_ids("<|eot_id|>")]
+        sampling_params = SamplingParams(
+            temperature=self.temperature if self.do_sample else None,
+            top_p=self.top_p if self.do_sample else None,
+            max_tokens=self.max_new_tokens,
+            n=num_return_sequences
+        )
 
         start_time = time.time()
         try:
-            with torch.no_grad():
-                outputs = self.model.generate(
-                    input_ids, # type: ignore
-                    max_new_tokens=self.max_new_tokens,
-                    eos_token_id=terminators,
-                    do_sample=self.do_sample,
-                    temperature=self.temperature if self.do_sample else None,
-                    top_p=self.top_p if self.do_sample else None,
-                    num_return_sequences=num_return_sequences  # Generate multiple completions for the same prompt
-                )
-
+            output = self.llm.generate(formatted_conversation, sampling_params)
             elapsed_time = time.time() - start_time
 
-            # Reshape outputs to extract multiple responses properly
-            response_ids_list = outputs[:, input_ids.shape[-1]:]  # Remove input tokens from generated tokens
+            responses = [completion.text for completion in output[0].outputs]
 
-            # Decode responses
-            responses = self.tokenizer.batch_decode(response_ids_list, skip_special_tokens=True)
-
-            # Calculate total token count
-            total_tokens = sum(len(response_ids) for response_ids in response_ids_list)
+            total_tokens = sum(len(response.split()) for response in responses)
 
         except Exception as e:
             logging.error(f"Error during generation: {e}")
-            responses = [""] * num_return_sequences  # Return empty responses in case of failure
+            responses = [""] * num_return_sequences
             total_tokens = 0
             elapsed_time = self.timeout_seconds
-
-        finally:
-            torch.cuda.empty_cache()
 
         return responses, total_tokens, elapsed_time
     
