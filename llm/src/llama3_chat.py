@@ -13,7 +13,7 @@ from math import exp, log10
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Union
-from vLLM import LLM, SamplingParams
+from vllm import LLM, SamplingParams
 
 logging.basicConfig(level=logging.INFO)
 
@@ -118,7 +118,12 @@ class LlamaChat(ModelChat):
             raise RuntimeError("No GPUs available.")
 
         # Load vLLM model
-        llm = LLM(model=model_id, tensor_parallel_size=num_gpus)
+        llm = LLM(
+            model=model_id, 
+            tensor_parallel_size=num_gpus,
+            gpu_memory_utilization=0.98,
+            max_model_len=65536
+        )
 
         return llm
 
@@ -362,7 +367,7 @@ class LlamaChat(ModelChat):
     def get_merge_coverage(self, run: int):
         self.simulator.merge_coverage()
 
-    def limit_conversation(self, conversation: list[dict[str, str]], context_window: int = 128000) -> list[dict]:
+    def limit_conversation(self, conversation: list[dict[str, str]], context_window: int = 65536) -> list[dict]:
         """
         Limit the conversation memory to ensure it stays within token limits.
 
