@@ -77,7 +77,7 @@ def generate_and_evaluate(
                 
         record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
         
-        successful_responses: list[str] = list(filter(lambda x: isinstance(x, str), responses))
+        successful_responses: list[str] = list(filter(lambda x: isinstance(x, str), json_responses)) # type: ignore
 
         # If successful responses isn't empty, find the best one
         if len(successful_responses) != 0:
@@ -105,10 +105,10 @@ def generate_and_evaluate(
         
             selected = max_coverage[2]
         else: # If responses is empty, pick a bad response
-            bad_response = responses[0] if isinstance(responses[0], CoverageResponse) else CoverageResponse(False, 4, "Unexpected JSON Error.")
+            bad_response = json_responses[0] if isinstance(json_responses[0], CoverageResponse) else CoverageResponse(False, 4, "Unexpected JSON Error.")
             conversation.append({
                 "role": "assistant", 
-                "content": bad_response
+                "content": bad_response.error_message
             })
             selected = bad_response 
             
