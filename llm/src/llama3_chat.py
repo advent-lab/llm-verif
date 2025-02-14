@@ -383,8 +383,10 @@ class LlamaChat(ModelChat):
         if len(conversation) == 1:
             logging.warning("Conversation contains only the system prompt; no truncation needed.")
             return conversation
+        
+        formatted_conversation = LlamaChat.format_conversations(conversation)
 
-        current_token_count = sum(len(self.tokenizer.encode(msg["content"])) for msg in conversation)
+        current_token_count = len(self.llm.tokenizer.encode(formatted_conversation))
         print(f"Current token count: {current_token_count}")
         max_token_count = context_window - self.max_new_tokens
 
@@ -393,7 +395,8 @@ class LlamaChat(ModelChat):
             print(f"Trimming conversation to fit within token limits: {current_token_count} > {max_token_count}")
             # Preserve the system message (index 0)
             conversation.pop(1)
-            current_token_count = sum(len(self.tokenizer.encode(msg["content"])) for msg in conversation)
+            formatted_conversation = LlamaChat.format_conversations(conversation)
+            current_token_count = len(self.llm.tokenizer.encode(formatted_conversation))
 
         if current_token_count > max_token_count:
             logging.warning("Conversation could not be fully limited within token limits.")
