@@ -53,6 +53,7 @@ python evaluations/evaluate_methodology6.py \
 	-m \
 	--testplan \
 	--remove_polluted_context \
+	--temperature_function "logarithmic" \
 	--max_iterations 20 \
 	--max_valid_iter 10 \
 	-b 5 \
@@ -66,6 +67,7 @@ python evaluations/evaluate_methodology6.py \
 	-c /packages/apps/fpga/Questa/questa_fe/bin \
 	-m \
 	--remove_polluted_context \
+	--temperature_function "logarithmic" \
 	--max_iterations 20 \
 	--max_valid_iter 10 \
 	-b 5 \
