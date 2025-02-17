@@ -52,9 +52,9 @@ def generate_and_evaluate(
     Generate a test bench and evaluate its coverage.
     """
 
-    # 📢 Print Full Conversation Before Running Each Iteration
+    # Print Full Conversation Before Running Each Iteration
     print("\n" + "=" * 80)
-    print(f"📢 ITERATION {iteration} (Run {run})")
+    print(f"ITERATION {iteration} (Run {run})")
     print("-" * 80)
     for message in conversation:
         print(f"{message['role'].capitalize()}: {message['content']}\n")
@@ -179,25 +179,24 @@ def run_conversation(
         if cov.error_code == 0 and first_success:
             first_success = False
             if args.remove_polluted_context:
-                conversation = conversation[:(stack_pointer+1)] + [conversation[len(conversation) - 1]]
+                conversation = conversation[:(stack_pointer+1)] + [conversation[-1]]
             valid_iterations += 1
             conversation.append({"role": "user", "content": design_prompt(environment.all_design_file_paths)})
             print(conversation[-1])
             design_prompt_idx = len(conversation) - 1
             if args.remove_polluted_context: 
-                stack_pointer = len(conversation)
+                stack_pointer = len(conversation) - 1
 
         prompt = error_prompt(cov.error_code, cov.error_message) if not cov.success else m3_prompt(cov)
         print(prompt)
         cov = generate_and_evaluate(conversation, prompt, llama, environment, record, run_index, iteration, batch_size=environment.batch_size)
         if cov.success and args.remove_polluted_context: 
-            conversation.append(conversation[design_prompt_idx])
-            conversation.pop(design_prompt_idx)
-            design_prompt_idx = len(conversation) - 1
-            conversation = conversation[:(stack_pointer+1)] + [conversation[len(conversation) - 1]]
-            stack_pointer = len(conversation)
-            valid_iterations += 1
-        conversation = llama.limit_conversation(conversation)
+            conversation.insert(stack_pointer - 1, conversation[design_prompt_idx])
+            conversation = conversation[stack_pointer + 1:len(conversation) - 1]
+
+        # Call limit_conversation and update indices accordingly
+        conversation, stack_pointer, design_prompt_idx = llama.limit_conversation(conversation, stack_pointer=stack_pointer, design_prompt_idx=design_prompt_idx)
+
         iteration += 1
         print("Length of conversation: ", len(conversation))
         print("Stack pointer: ", stack_pointer)

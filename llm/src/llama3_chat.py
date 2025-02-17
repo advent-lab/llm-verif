@@ -9,6 +9,8 @@ from src.modelchat import ModelChat
 from src.storage import FileStore
 import time
 from src.simulator import Simulator, CoverageResponse
+from src.environment import Environment
+from src.prompt_templates import design_prompt
 from math import exp, log10
 import logging
 from concurrent.futures import ThreadPoolExecutor
@@ -44,7 +46,7 @@ class LlamaChat(ModelChat):
         timeout_seconds (int): Timeout for text generation in seconds.
     """
 
-    def __init__(self, simulator: Simulator | None, do_sample: bool, temperature_function: str = "constant",
+    def __init__(self, simulator: Simulator | None, environment: Environment, do_sample: bool, temperature_function: str = "constant",
             temperature: float = 0.3, top_p: float = 0.7, max_new_tokens: int = 4098, timeout_seconds: int = 1000, seed: Union[int, None] = None, skip_load: bool = False):
         """
         Initialize the LlamaChat class.
@@ -60,6 +62,7 @@ class LlamaChat(ModelChat):
             skip_load (bool): FOR TESTING ONLY. For faster testing, set this argument to true to skip loading the model
         """
         self.simulator: Simulator | Any
+        self.simulator: Environment | Any
         self.model: PreTrainedModel | Any
         self.tokenizer: PreTrainedTokenizer | Any
         self.do_sample: bool
@@ -374,47 +377,55 @@ class LlamaChat(ModelChat):
     def get_merge_coverage(self, run: int):
         self.simulator.merge_coverage()
 
-    def limit_conversation(self, conversation: list[dict[str, str]], context_window: int = 65536) -> list[dict]:
+    def limit_conversation(self, conversation, context_window=128000, stack_pointer=None, design_prompt_idx=None):
         """
-        Limit the conversation memory to ensure it stays within token limits.
+        Trims the conversation while maintaining key indices.
 
         Args:
-            conversation (list[dict]): The conversation history.
+            conversation (list[dict]): Conversation history.
+            context_window (int): Max token limit.
+            stack_pointer (int | None): Index of last valid user message.
+            design_prompt_idx (int | None): Index of design prompt message.
 
         Returns:
-            list[dict]: The truncated conversation history.
-
-        Raises:
-            ValueError: If the conversation is empty or improperly formatted.
+            tuple: (trimmed_conversation, updated_stack_pointer, updated_design_prompt_idx)
         """
+
         if not conversation or not isinstance(conversation, list):
-            logging.error("Empty or invalid conversation passed to limit_conversation.")
-            raise ValueError("Conversation must be a non-empty list of messages.")
-        
-        # Ensure the system prompt is always retained
-        if len(conversation) == 1:
-            logging.warning("Conversation contains only the system prompt; no truncation needed.")
-            return conversation
-        
-        formatted_conversation = LlamaChat.format_conversations(conversation)
+            print("Error: Conversation must be a non-empty list of messages.")
+            return conversation, stack_pointer, design_prompt_idx
 
-        current_token_count = len(self.llm.get_tokenizer().encode(formatted_conversation))
-        print(f"Current token count: {current_token_count}")
-        max_token_count = context_window - self.max_new_tokens
+        # Calculate current token count
+        current_token_count = sum(len(llama.tokenizer.encode(msg["content"])) for msg in conversation)
+        max_token_count = context_window - llama.max_new_tokens
 
-        # Trim conversation until within token limits
-        while current_token_count > max_token_count and len(conversation) > 1:
-            print(f"Trimming conversation to fit within token limits: {current_token_count} > {max_token_count}")
-            # Preserve the system message (index 0)
-            conversation.pop(1)
-            formatted_conversation = LlamaChat.format_conversations(conversation)
-            current_token_count = len(self.llm.get_tokenizer().encode(formatted_conversation))
+        # Trim conversation while keeping key messages
+        while current_token_count > max_token_count and len(conversation) > 2:
+            removed_message = conversation.pop(1)  # Remove from front (preserve system message)
 
-        if current_token_count > max_token_count:
-            logging.warning("Conversation could not be fully limited within token limits.")
+            # Adjust pointers
+            if stack_pointer is not None and stack_pointer > 1:
+                stack_pointer -= 1
+            if design_prompt_idx is not None and design_prompt_idx > 1:
+                design_prompt_idx -= 1
 
-        return conversation
+            # Recalculate token count after removal
+            current_token_count = sum(len(llama.tokenizer.encode(msg["content"])) for msg in conversation)
 
+        # Handle missing stack pointer
+        if stack_pointer is None or stack_pointer < 0:
+            # Find the first remaining user message
+            stack_pointer = next((i for i, msg in enumerate(conversation) if msg["role"] == "user"), None)
+
+        # Handle missing design prompt
+        if design_prompt_idx is None or design_prompt_idx < 0:
+            if stack_pointer is not None:
+                print("Warning: Design prompt was lost! Re-inserting before stack pointer.")
+                conversation.insert(stack_pointer, {"role": "user", "content": design_prompt(self.environment.all_design_file_paths)})
+                design_prompt_idx = stack_pointer  # Now design prompt is at this index
+                stack_pointer += 1  # Adjust stack pointer to stay after design prompt
+
+        return conversation, stack_pointer, design_prompt_idx
 
     def parallel_get_coverage(self, responses: str, test_benches: list[str], data_points: list[dict], store: FileStore = None) -> list[CoverageResponse]:
         """
