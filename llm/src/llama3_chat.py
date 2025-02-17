@@ -62,7 +62,7 @@ class LlamaChat(ModelChat):
             skip_load (bool): FOR TESTING ONLY. For faster testing, set this argument to true to skip loading the model
         """
         self.simulator: Simulator | Any
-        self.simulator: Environment | Any
+        self.environment: Environment | Any = environment
         self.model: PreTrainedModel | Any
         self.tokenizer: PreTrainedTokenizer | Any
         self.do_sample: bool
@@ -74,7 +74,7 @@ class LlamaChat(ModelChat):
 
         self.simulator = simulator
         if not skip_load:
-            self.llm = self.load_model(seed=seed)
+            self.llm, self.tokenizer = self.load_model(seed=seed)
         self.do_sample = do_sample
 
         if temperature_function == "constant":
@@ -135,7 +135,7 @@ class LlamaChat(ModelChat):
             max_model_len=65536
         )
 
-        return llm
+        return llm, llm.get_tokenizer()
 
     def unload_model(self):
         """
@@ -396,8 +396,8 @@ class LlamaChat(ModelChat):
             return conversation, stack_pointer, design_prompt_idx
 
         # Calculate current token count
-        current_token_count = sum(len(llama.tokenizer.encode(msg["content"])) for msg in conversation)
-        max_token_count = context_window - llama.max_new_tokens
+        current_token_count = sum(len(self.tokenizer.encode(msg["content"])) for msg in conversation)
+        max_token_count = context_window - self.max_new_tokens
 
         # Trim conversation while keeping key messages
         while current_token_count > max_token_count and len(conversation) > 2:
@@ -410,7 +410,7 @@ class LlamaChat(ModelChat):
                 design_prompt_idx -= 1
 
             # Recalculate token count after removal
-            current_token_count = sum(len(llama.tokenizer.encode(msg["content"])) for msg in conversation)
+            current_token_count = sum(len(self.tokenizer.encode(msg["content"])) for msg in conversation)
 
         # Handle missing stack pointer
         if stack_pointer is None or stack_pointer < 0:

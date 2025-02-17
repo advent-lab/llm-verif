@@ -269,7 +269,7 @@ def main():
     record = Record(environment.design_name, "RUN", include_merge_coverage=args.merge_coverage)
 
     llama = LlamaChat(
-        QuestaSim(args.compiler), do_sample=not args.no_sampling,
+        QuestaSim(args.compiler), environemnt, do_sample=not args.no_sampling,
         temperature_function=args.temperature_function, temperature=args.temperature,
         top_p=0.7, max_new_tokens=4098, timeout_seconds=1000, seed=args.seed
     )

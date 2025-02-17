@@ -2,7 +2,7 @@
 
 #SBATCH -N 1            # number of nodes
 #SBATCH -c 32            # number of cores 
-#SBATCH -t 0-24:00:00
+#SBATCH -t 0-04:00:00
 #SBATCH -G a100:2
 #SBATCH -p general      # partition 
 #SBATCH -q public       # QOS
