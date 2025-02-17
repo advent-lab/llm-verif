@@ -110,7 +110,14 @@ class LlamaChat(ModelChat):
 
         os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache/"
 
-        model_id = "meta-llama/Meta-Llama-3.1-70B-Instruct"
+        # Base model cache directory
+        cache_dir = Path(f"/scratch/{os.environ['USER']}/.cache/huggingface/hub/models--meta-llama--Meta-Llama-3.1-70B-Instruct/snapshots")
+
+        # Get the most recent snapshot directory
+        latest_snapshot = sorted(cache_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True)[0]
+
+        # Set model_id
+        model_id = str(latest_snapshot)
 
         num_gpus = torch.cuda.device_count()
 
@@ -391,7 +398,7 @@ class LlamaChat(ModelChat):
         
         formatted_conversation = LlamaChat.format_conversations(conversation)
 
-        current_token_count = len(self.llm.encode(formatted_conversation))
+        current_token_count = len(self.llm.get_tokenizer().encode(formatted_conversation))
         print(f"Current token count: {current_token_count}")
         max_token_count = context_window - self.max_new_tokens
 
@@ -401,7 +408,7 @@ class LlamaChat(ModelChat):
             # Preserve the system message (index 0)
             conversation.pop(1)
             formatted_conversation = LlamaChat.format_conversations(conversation)
-            current_token_count = len(self.llm.encode(formatted_conversation))
+            current_token_count = len(self.llm.get_tokenizer().encode(formatted_conversation))
 
         if current_token_count > max_token_count:
             logging.warning("Conversation could not be fully limited within token limits.")
