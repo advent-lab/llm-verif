@@ -193,6 +193,8 @@ def run_conversation(
         if cov.success and args.remove_polluted_context: 
             conversation.insert(stack_pointer - 1, conversation[design_prompt_idx])
             conversation = conversation[stack_pointer + 1:len(conversation) - 1]
+            stack_pointer = len(conversation) - 1
+            design_prompt_idx = stack_pointer - 1
 
         # Call limit_conversation and update indices accordingly
         conversation, stack_pointer, design_prompt_idx = llama.limit_conversation(conversation, stack_pointer=stack_pointer, design_prompt_idx=design_prompt_idx)
