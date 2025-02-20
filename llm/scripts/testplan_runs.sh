@@ -53,10 +53,10 @@ python evaluations/evaluate_methodology6.py \
 	-m \
 	--testplan \
 	--remove_polluted_context \
-	--temperature_function "logarithmic" \
+	--temperature_function "constant" \
 	--max_iterations 20 \
 	--max_valid_iter 10 \
-	-b 5 \
+	# -b 5 \
 	2>&1 | tee ${DATA_POINT}_w_testplan_$RUN.log
 
 cd /scratch/$USER/${DATA_POINT}_wo_testplan_$RUN
@@ -67,10 +67,10 @@ python evaluations/evaluate_methodology6.py \
 	-c /packages/apps/fpga/Questa/questa_fe/bin \
 	-m \
 	--remove_polluted_context \
-	--temperature_function "logarithmic" \
+	--temperature_function "constant" \
 	--max_iterations 20 \
 	--max_valid_iter 10 \
-	-b 5 \
+	# -b 5 \
 	2>&1 | tee ${DATA_POINT}_wo_testplan_$RUN.log
 
 
