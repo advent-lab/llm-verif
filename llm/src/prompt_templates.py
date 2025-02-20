@@ -7,7 +7,7 @@ from typing import Any
 from src.questasim import CoverageResponse
 import os
 import pathlib
-from random import randint
+import random
 from src.environment import Environment
 # from environment import Environment
 
@@ -226,10 +226,9 @@ def m3_prompt(coverage: CoverageResponse) -> str:
 	if not missed_lines:
 		return "No missed lines left to fix"
 
-	#TODO: There maybe accessing to null lists for lines key if file not used in coverage report
 	# Select random file and line where there is a miss
-	rand_du = random.choice(list(missed_lines.keys()))  # Ensures the key exists
-        rand_du_filepath: str = missed_lines[rand_du]["path"] # type: ignore
+	rand_du: str = random.choice(list(missed_lines.keys()))  # Ensures the key exists
+	rand_du_filepath: str = missed_lines[rand_du]["path"] # type: ignore
 	rand_du_filename: str = os.path.split(rand_du_filepath)[1] # type: ignore
 
 	with open(rand_du_filepath, 'r') as f:

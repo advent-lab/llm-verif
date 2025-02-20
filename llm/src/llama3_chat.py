@@ -15,7 +15,7 @@ from math import exp, log10
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Union
-from vllm import LLM, SamplingParams
+from vllm import LLM, SamplingParams 
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
@@ -378,7 +378,7 @@ class LlamaChat(ModelChat):
     def get_merge_coverage(self, run: int):
         self.simulator.merge_coverage()
 
-    def limit_conversation(self, conversation, context_window=128000, stack_pointer=None, design_prompt_idx=None):
+    def limit_conversation(self, conversation, context_window=128000, stack_pointer: int = -1, design_prompt_idx: int = -1):
         """
         Trims the conversation while maintaining key indices.
 
@@ -405,22 +405,22 @@ class LlamaChat(ModelChat):
             removed_message = conversation.pop(1)  # Remove from front (preserve system message)
 
             # Adjust pointers
-            if stack_pointer is not None and stack_pointer > 1:
+            if stack_pointer > 1:
                 stack_pointer -= 1
-            if design_prompt_idx is not None and design_prompt_idx > 1:
+            if design_prompt_idx > 1:
                 design_prompt_idx -= 1
 
             # Recalculate token count after removal
             current_token_count = sum(len(self.tokenizer.encode(msg["content"])) for msg in conversation)
 
         # Handle missing stack pointer
-        if stack_pointer is None or stack_pointer < 0:
+        if stack_pointer < 0:
             # Find the first remaining user message
-            stack_pointer = next((i for i, msg in enumerate(conversation) if msg["role"] == "user"), None)
+            stack_pointer = next((i for i, msg in enumerate(conversation) if msg["role"] == "user"), -1)
 
         # Handle missing design prompt
-        if design_prompt_idx is None or design_prompt_idx < 0:
-            if stack_pointer is not None:
+        if design_prompt_idx < 0:
+            if stack_pointer >= 0:
                 print("Warning: Design prompt was lost! Re-inserting before stack pointer.")
                 conversation.insert(stack_pointer, {"role": "user", "content": design_prompt(self.environment.all_design_file_paths)})
                 design_prompt_idx = stack_pointer  # Now design prompt is at this index
