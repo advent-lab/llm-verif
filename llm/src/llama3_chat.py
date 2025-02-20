@@ -16,6 +16,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Union
 from vllm import LLM, SamplingParams
+from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 

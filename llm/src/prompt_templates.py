@@ -212,7 +212,6 @@ def m3_prompt(coverage: CoverageResponse) -> str:
 
 	formatted_coverage_report = ""
 	missed_lines = {}
-	uncovered_dus = []
 	for inst in coverage.coverage_list:
 		design_unit = inst.du
 		for stmt in inst.coverage_details:
@@ -222,7 +221,6 @@ def m3_prompt(coverage: CoverageResponse) -> str:
 					missed_lines[design_unit] = {"path": inst.path, "lines": []}
 				missed_lines[design_unit]["lines"].append(line) # type: ignore
 
-		uncovered_dus.append(design_unit)
 		formatted_coverage_report += f"File: {os.path.split(inst.path)[1]}\tDesign Unit: {design_unit}\tActive: {inst.coverage['active']}\tHits: {inst.coverage['hits']}\tPercent: {inst.coverage['percent']}\n"
 
 	if not missed_lines:
@@ -230,8 +228,8 @@ def m3_prompt(coverage: CoverageResponse) -> str:
 
 	#TODO: There maybe accessing to null lists for lines key if file not used in coverage report
 	# Select random file and line where there is a miss
-	rand_du = uncovered_dus[randint(0, len(uncovered_dus) - 1)]
-	rand_du_filepath: str = missed_lines[rand_du]["path"] # type: ignore
+	rand_du = random.choice(list(missed_lines.keys()))  # Ensures the key exists
+        rand_du_filepath: str = missed_lines[rand_du]["path"] # type: ignore
 	rand_du_filename: str = os.path.split(rand_du_filepath)[1] # type: ignore
 
 	with open(rand_du_filepath, 'r') as f:
