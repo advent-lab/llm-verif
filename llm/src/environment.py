@@ -9,7 +9,7 @@ from src.storage import FileStore
 import os
 import re
 from argparse import Namespace
-from datetime import datetime
+import time
 
 class Environment:
 
@@ -18,7 +18,7 @@ class Environment:
         self.design_name = os.path.split(self.design_dir)[1]
         self.design_dir_path = Path(self.design_dir)
         self.dashboard_path = f'{str(self.design_dir_path.parents[1])}/dashboard.json'
-        self.csv_path = f"{self.design_name}_evaluation6_{datetime.now().strftime("%Y%m%d_%H%M%S")}"
+        self.csv_path = f"{self.design_name}_evaluation6_{time.strftime("%Y%m%d_%H%M%S")}"
 
         self.dataset = Dataset(self.dashboard_path)
 
