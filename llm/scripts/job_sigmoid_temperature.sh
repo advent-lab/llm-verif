@@ -46,12 +46,10 @@ python /scratch/$USER/temperature_runs/evaluations/evaluate_methodology6.py \
     -g $NUM_RUNS \
     -c /packages/apps/fpga/Questa/questa_fe/bin \
     -m \
-	# --testplan \
-	--remove_polluted_context \
-	--temperature_function "capped_sigmoid" \
-	--max_iterations 20 \
-	--max_valid_iter 10 \
-	# -b 5 \
+    --remove_polluted_context \
+    --temperature_function "capped_sigmoid" \
+    --max_iterations 20 \
+    --max_valid_iter 10 \
     -o /scratch/$USER/temperature_runs/${DATA_POINT}_sigmoid \
     2>&1 | tee /scratch/$USER/temperature_runs/${DATA_POINT}_sigmoid/${DATA_POINT}_sigmoid_$RUN.log
     
