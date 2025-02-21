@@ -75,7 +75,7 @@ def generate_and_evaluate(
             if isinstance(response, CoverageResponse):
                 record.update_dataframe(response, llama.temperature, llama.top_p, run, iteration, i, tokens_generated, gen_time)
                 
-        record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
+        record.write_to_csv(f'./{environment.csv_path}')
         
         successful_responses: list[str] = list(filter(lambda x: isinstance(x, str), json_responses)) # type: ignore
 
@@ -112,7 +112,7 @@ def generate_and_evaluate(
             })
             selected = bad_response 
             
-        record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
+        record.write_to_csv(f'./{environment.csv_path}')
         return selected
         
     return CoverageResponse(True, 0, "", [], 0)
@@ -246,7 +246,7 @@ def run_conversation(
     
     # Final Write to CSV
     record.update_run_average_total_coverage(run_id=run_index)
-    record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
+    record.write_to_csv(f'./{environment.csv_path}')
 
 
 def main():
@@ -324,7 +324,7 @@ def main():
             logging.error(f"Failed to generate merged coverage: {e}")
     
     # Final Write to CSV
-    record.write_to_csv(f'./{environment.design_name}_methodology6.csv')
+    record.write_to_csv(f'./{environment.csv_path}')
 
 
 if __name__ == "__main__":
