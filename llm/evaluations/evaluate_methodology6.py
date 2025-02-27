@@ -244,6 +244,7 @@ def run_conversation(
             logging.error(f"Failed to generate merged coverage: {e}")
     
     # Final Write to CSV
+    record.update_run_max_coverage(run_index)
     record.update_run_average_total_coverage(run_id=run_index)
     record.write_to_csv(f'./{environment.csv_path}')
 
