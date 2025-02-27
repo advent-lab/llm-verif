@@ -267,7 +267,7 @@ def main():
     args = parser.parse_args()
 
     environment = Environment(args)
-    record = Record(environment.design_name, "RUN", include_merge_coverage=args.merge_coverage)
+    record = Record(environment.design_name, temp_func=args.temperature_function, testplan=args.testplan, batch_size=args.batch_size, remove_polluted_context=args.remove_polluted_context, run_type="RUN", include_merge_coverage=args.merge_coverage)
 
     llama = LlamaChat(
         QuestaSim(args.compiler), environment, do_sample=not args.no_sampling,

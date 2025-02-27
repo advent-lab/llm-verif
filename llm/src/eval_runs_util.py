@@ -6,22 +6,34 @@ from src.evaluation import pass_at_k
 from src.questasim import CoverageResponse
 
 class Record:
-    def __init__(self, design_name: str, run_type: str = "RUN", include_merge_coverage: bool = False):
+    def __init__(self, design_name: str, temp_func: str, testplan: bool, batch_size: int, remove_polluted_context: bool, run_type: str = "RUN", include_merge_coverage: bool = False):
         """
         Initialize the Record object.
 
         Args:
             design_name (str): Name of the design being evaluated.
+            temp_func (string): The type of temperature function
+            testplan (bool): Indicates whether this run features a testplan
+            batch_size (int): The batch size (best of 5)
+            remove_polluted_context: Whether or not polluted context is being removed 
             run_type (str): Type of run ("RUN" or "EVAL").
             include_merge_coverage (bool): Whether to include merge coverage columns in the dataframe.
         """
         self.run_type = run_type
         self.design_name = design_name
         self.include_merge_coverage = include_merge_coverage
+        self.temp_func = temp_func
+        self.testplan = testplan
+        self.batch_size = batch_size
+        self.remove_polluted_context = remove_polluted_context
 
         # Base columns for the dataframe
         base_columns = [
             "design",
+            "temperature func",
+            "testplan",
+            "b5",
+            "remove polluted contxt",
             "run #",
             "iteration #",
             "batch #",
@@ -87,6 +99,10 @@ class Record:
 
         data = {
             "design": self.design_name,
+            "temperature func": self.temp_func,
+            "testplan": 1 if self.testplan == True else 0,
+            "b5": 1 if self.batch_size > 1 else 0,
+            "remove polluted contxt": 1 if self.remove_polluted_context == True else 0,
             "run #": run,
             "iteration #": iteration,
             "batch #": batch_num,
