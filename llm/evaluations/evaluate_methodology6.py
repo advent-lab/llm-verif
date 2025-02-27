@@ -206,8 +206,7 @@ def run_conversation(
     # Merged Coverage Logic
     if args.merge_coverage:
         try:
-            merged_ucdb_path = f"{args.design}/merged_coverage_{environment.design_name}_{run_index}.ucdb"
-            log_name = f"{args.design}/merged_coverage_{environment.design_name}_{run_index}"
+            log_name = f"{environment.store.storage_path}/merged_coverage_{environment.design_name}_{run_index}"
 
             # Check FileStore for UCDB files
             if environment.store:
@@ -283,8 +282,7 @@ def main():
 
     if args.merge_coverage:
         try:
-            merged_ucdb_path = f"{args.design}/merged_coverage_{environment.design_name}.ucdb"
-            log_name = f"{args.design}/merged_coverage_{environment.design_name}"
+            log_name = f"{environment.store.storage_path}/merged_coverage_{environment.design_name}"
 
             # Check FileStore for UCDB files
             if environment.store:
