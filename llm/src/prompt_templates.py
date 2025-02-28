@@ -32,7 +32,7 @@ Please declare signals before using them. When instantiating the DUT, the signal
 			initial
 			begin
 				// Generted test cases
-			$finish
+			$finish;
 			end
 		endmodule
 	",
@@ -75,7 +75,7 @@ Example output:
 			initial
 			begin
 				// Generted test cases
-			$finish
+			$finish;
 			end
 		endmodule
 	",
@@ -98,7 +98,7 @@ Example output:
 			initial
 			begin
 				// Generted test cases
-			$finish
+			$finish;
 			end
 		endmodule
 	",
@@ -123,7 +123,7 @@ Please declare signals before using them. When instantiating the DUT, the signal
 			initial
 			begin
 				// Generted test cases
-			$finish
+			$finish;
 			end
 		endmodule
 	",
@@ -143,7 +143,7 @@ Please declare signals before using them. When instantiating the DUT, the signal
 			initial
 			begin
 				// Generted test cases
-			$finish
+			$finish;
 			end
 		endmodule
 	",
@@ -163,7 +163,7 @@ Please declare signals before using them. When instantiating the DUT, the signal
 			initial
 			begin
 				// Generted test cases
-			$finish
+			$finish;
 			end
 		endmodule
 	",
@@ -183,7 +183,7 @@ Please declare signals before using them. When instantiating the DUT, the signal
 			initial
 			begin
 				// Generted test cases
-			$finish
+			$finish;
 			end
 		endmodule
 	",
@@ -282,7 +282,7 @@ Please declare signals before using them. When instantiating the DUT, the signal
 			initial
 			begin
 				// Generted test cases
-			$finish
+			$finish;
 			end
 		endmodule
 	",
