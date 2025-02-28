@@ -119,21 +119,6 @@ class Record:
             "generation time": self.generation_time,
         }
 
-        if coverage.total_coverage > self.max_cov:
-            self.max_cov = coverage.total_coverage
-
-        if self.run_type == "RUN":
-            data.update({
-                "max total coverage": self.max_cov,
-                "average total coverage": self.avg_total_coverage,
-            })
-
-            if self.include_merge_coverage:
-                data.update({
-                    "run merged coverage": None,  # Placeholder
-                    "cross run merged coverage": None,  # Placeholder
-                })
-
         self.df = pd.concat([self.df, pd.DataFrame([data])], ignore_index=True)
 
         print(self.df)
@@ -171,6 +156,15 @@ class Record:
             self.df["average total coverage"] = average_coverage
 
             print(self.df)
+
+    def update_run_max_coverage(self, run_id: int):
+        if self.run_type == "RUN":
+            run = self.df[self.df["run #"] == run_id]
+
+            statement_coverage = run["statement coverage"].values
+            max_coverage = np.max(np.array(statement_coverage, dtype=float))
+
+            self.df.loc[self.df["run #"] == run_id, "max total coverage"] = max_coverage
 
     def write_to_csv(self, filename: str):
         """

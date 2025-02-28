@@ -187,7 +187,7 @@ def run_conversation(
             if args.remove_polluted_context: 
                 stack_pointer = len(conversation) - 1
 
-        prompt = error_prompt(cov.error_code, cov.error_message) if not cov.success else m3_prompt(cov)
+        prompt = error_prompt(cov.error_code, cov.error_message) if not cov.success else m3_prompt(cov, environment.design_module_name)
         print(prompt)
         cov = generate_and_evaluate(conversation, prompt, llama, environment, record, run_index, iteration, batch_size=environment.batch_size)
         if cov.success and args.remove_polluted_context: 
@@ -235,6 +235,9 @@ def run_conversation(
                 coverage_dbs=coverage_dbs,
                 log_name=log_name,
             )
+            
+            environment.store.move(f"{log_name}.ucdb")
+            environment.store.move(f"{log_name}_report.txt")
             logging.info("Merged coverage generated successfully.")
             # Parse merged coverage
             merged_coverage, total_coverage = QuestaSim.parse_coverage_report(f"{log_name}_report.txt")
@@ -244,6 +247,7 @@ def run_conversation(
             logging.error(f"Failed to generate merged coverage: {e}")
     
     # Final Write to CSV
+    record.update_run_max_coverage(run_index)
     record.update_run_average_total_coverage(run_id=run_index)
     record.write_to_csv(f'./{environment.csv_path}')
 
@@ -313,6 +317,9 @@ def main():
                 coverage_dbs=coverage_dbs,
                 log_name=log_name,
             )
+
+            environment.store.move(f"{log_name}.ucdb")
+            environment.store.move(f"{log_name}_report.txt")
             logging.info("Merged coverage generated successfully.")
             # Parse merged coverage
             merged_coverage, total_coverage = QuestaSim.parse_coverage_report(f"{log_name}_report.txt")

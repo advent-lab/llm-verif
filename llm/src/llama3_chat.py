@@ -361,7 +361,7 @@ class LlamaChat(ModelChat):
 
         # Run QuestaSim to get coverage
         # env = Environment(questa_dir)
-        log_name = tb_path.split('.')[0] + "_" + str(batch)
+        log_name = tb_path.split('.')[0] 
         coverage_response = self.simulator.run_sim(tb_path=tb_path, data_point=data_point, log_name=log_name)
 
         # Move test bench file to storage
