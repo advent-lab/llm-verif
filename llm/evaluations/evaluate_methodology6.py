@@ -1,4 +1,5 @@
 import logging
+from nt import environ
 import os
 import sys
 from pathlib import Path
@@ -235,6 +236,9 @@ def run_conversation(
                 coverage_dbs=coverage_dbs,
                 log_name=log_name,
             )
+            
+            environment.store.move(f"{log_name}.ucdb")
+            environment.store.move(f"{log_name}_report.txt")
             logging.info("Merged coverage generated successfully.")
             # Parse merged coverage
             merged_coverage, total_coverage = QuestaSim.parse_coverage_report(f"{log_name}_report.txt")
@@ -315,6 +319,9 @@ def main():
                 coverage_dbs=coverage_dbs,
                 log_name=log_name,
             )
+
+            environment.store.move(f"{log_name}.ucdb")
+            environment.store.move(f"{log_name}_report.txt")
             logging.info("Merged coverage generated successfully.")
             # Parse merged coverage
             merged_coverage, total_coverage = QuestaSim.parse_coverage_report(f"{log_name}_report.txt")
