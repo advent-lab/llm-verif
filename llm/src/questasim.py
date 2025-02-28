@@ -156,41 +156,45 @@ class QuestaSim(Simulator):
         Returns:
             Tuple[List[dict], float]: List of coverage details and total coverage percentage.
         """
-        xml_tree = ET.parse(report_path)
-        root = xml_tree.getroot()
+        try:
+            xml_tree = ET.parse(report_path)
+            root = xml_tree.getroot()
 
-        coverage_list = []
-        total_active = 0
-        total_hits = 0
+            coverage_list = []
+            total_active = 0
+            total_hits = 0
 
-        for du_data in root.findall('.//DuData'):
-            du_name = du_data.get('du')
-            file_map = du_data.find('.//fileMap')
-            file_path = file_map.get('path') if file_map is not None else "unknown"
+            for du_data in root.findall('.//DuData'):
+                du_name = du_data.get('du')
+                file_map = du_data.find('.//fileMap')
+                file_path = file_map.get('path') if file_map is not None else "unknown"
 
-            statements = du_data.find('statements')
-            active =  int(statements.get('active', 0)) if statements is not None else 0
-            hits = int(statements.get('hits', 0)) if statements is not None else 0
-            percent = float(statements.get('percent', 0.0)) if statements is not None else 0
-            
-            details = du_data.findall('.//stmt')
+                statements = du_data.find('statements')
+                active =  int(statements.get('active', 0)) if statements is not None else 0
+                hits = int(statements.get('hits', 0)) if statements is not None else 0
+                percent = float(statements.get('percent', 0.0)) if statements is not None else 0
+                
+                details = du_data.findall('.//stmt')
 
-            total_active += active 
-            total_hits += hits
+                total_active += active 
+                total_hits += hits
 
-            coverage_list.append(DU(
-                path=str(file_path),
-                du=str(du_name),
-                coverage={
-                    'active': active,
-                    'hits': hits,
-                    'percent': percent
-                },
-                coverage_details=details
-            ))
+                coverage_list.append(DU(
+                    path=str(file_path),
+                    du=str(du_name),
+                    coverage={
+                        'active': active,
+                        'hits': hits,
+                        'percent': percent
+                    },
+                    coverage_details=details
+                ))
 
-        total_coverage = (total_hits / total_active) * 100.0 if total_active > 0 else 0.0
-        return coverage_list, total_coverage
+            total_coverage = (total_hits / total_active) * 100.0 if total_active > 0 else 0.0
+            return coverage_list, total_coverage
+        except ET.ParseError as e:
+            print(f"XML Parse Error: {e}")
+            return [], 0
 
     def run_sim(self, tb_path: str, data_point: dict[str, str | list[str]] | None, log_name: str) -> CoverageResponse:
         """
