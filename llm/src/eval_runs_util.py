@@ -175,7 +175,7 @@ class Record:
             statement_coverage = run["statement coverage"].values
             max_coverage = np.max(np.array(statement_coverage, dtype=float))
 
-            self.df.loc[self.df["run #"] == run_id, "max coverage"] = max_coverage
+            self.df.loc[self.df["run #"] == run_id, "max total coverage"] = max_coverage
 
     def write_to_csv(self, filename: str):
         """
