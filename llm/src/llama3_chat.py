@@ -342,11 +342,11 @@ class LlamaChat(ModelChat):
 
         except json.JSONDecodeError as e:
             logging.error(f"JSONDecodeError: {e}. Response: {generated_response}")
-            return {"error": "Malformed JSON content"}, 2
+            return {"error": f"Malformed JSON content\n\n{generated_response}"}, 2
 
         except Exception as e:
             logging.error(f"Unexpected error during JSON parsing: {e}")
-            return {"error": "Unexpected error"}, 3
+            return {"error": f"Unexpected error\n\n{generated_response}"}, 3
 
 
     # TODO: Create call to QuestaSim to get coverage

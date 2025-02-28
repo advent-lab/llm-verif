@@ -22,7 +22,7 @@ Design Specification:\n{design_specification}\n
 Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag. Keep the test bench less than 500 lines.\n
 Here are some additional guidelines for the test bench: \n
 Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n
-''' + '''Example output:
+''' + '''Example response:
 {
 	"test bench": "
 		module tb_llm;
@@ -65,7 +65,7 @@ Design specification:\n{design_specification}
 Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag. Keep the test bench less than 500 lines.
 Here are some additional guidelines for the test bench: \n
 Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n
-Example output:
+Example response:
 {
 	"test bench": "
 		module tb_llm;
@@ -88,7 +88,7 @@ def m3_prompt_wo_coverage() -> str:
 	return '''The generated testbench did not meet coverage goals. Adjust the test bench to increase the coverage by adding more stimulus or exploring more possible edge cases. Make sure you are exercising the full range of inputs for each port. Make sure you are explicitly exploring error cases. You are able to reset the design under test if needed. Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n
 Here are some additional guidelines for the test bench: \n
 Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n
-Example output:
+Example response:
 {
 	"test bench": "
 		module tb_llm;
@@ -113,7 +113,7 @@ def error_prompt(error_code: int, error_message: str) -> str:
 	if error_code == 1:
 		return f'''The generated test bench failed to compile. Use the following error message to fix the errors. Use the same JSON format for the new testbench. Error Message:\n{error_message}\nProvide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n
 Here are some additional guidelines for the test bench: \n
-Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n''' + '''Example output:
+Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n''' + '''Example response:
 {
 	"test bench": "
 		module tb_llm;
@@ -133,7 +133,7 @@ Please declare signals before using them. When instantiating the DUT, the signal
 	elif error_code == 2:
 		return f'''The generated test bench failed to simulate. Use the following error message to fix the errors Use the same JSON format for the new testbench. Error Message:\n{error_message}\nProvide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n
 Here are some additional guidelines for the test bench: \n
-Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n''' + '''Example output:
+Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n''' + '''Example response:
 {
 	"test bench": "
 		module tb_llm;
@@ -153,7 +153,7 @@ Please declare signals before using them. When instantiating the DUT, the signal
 	elif error_code == 3:
 		return f'''The generated test bench took to long to simulate and timed out. Try to shorten the testbench. Use the same JSON format for the new testbench.Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n
 Here are some additional guidelines for the test bench: \n
-Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n''' + '''Example output:
+Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n''' + '''Example response:
 {
 	"test bench": "
 		module tb_llm;
@@ -173,7 +173,7 @@ Please declare signals before using them. When instantiating the DUT, the signal
 	elif error_code == 4:
 		return f'''You failed to generate a test bench. You either generated a terminating token too early, ran past the token limit, or took too long to generate. Try generating a shorter test bench with higher quality tests. Use the same JSON format for the new testbench. Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Keep the test bench less than 500 lines.\n
 Here are some additional guidelines for the test bench: \n
-Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n''' + '''Example output:
+Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n''' + '''Example response:
 {
 	"test bench": "
 		module tb_llm;
@@ -200,8 +200,30 @@ def m3_prompt(coverage: CoverageResponse, top_design_module: str) -> str:
 
 	if coverage.error_code != 0:
 		return error_prompt(coverage.error_code, coverage.error_message)
+	
+	if coverage.total_coverage <= 0:
+		return '''You may have generated an empty test bench because there was no code coverage of the design.
+		Please remember to format your response properly. We want you to put the test bench you think will achieve the most covergage
+		inside of the JSON. Please see the format below again for reference:
+		Example response:
+		{
+			"test bench": "
+				module tb_llm;
 
-	formatted_coverage_report = ""
+					// Clock logic
+
+					initial
+					begin
+						// Generted test cases
+					$finish;
+					end
+				endmodule
+			",
+			"comments": " // Any additonal comments here "
+		}
+		'''
+
+	formatted_coverage_report = f"Total Design Coverage: {coverage.total_coverage}\n"
 	missed_lines = {}
 
 	for inst in coverage.coverage_list:
@@ -275,7 +297,7 @@ Make sure you are ONLY using Verilog syntax and features, and not SystemVerilog 
 Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag. Keep the test bench less than 500 lines.\n
 Here are some additional guidelines for the test bench: \n
 Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n
-''' + '''Example output:
+''' + '''Example response:
 {
 	"test bench": "
 		module tb_llm;
