@@ -188,7 +188,7 @@ def run_conversation(
             if args.remove_polluted_context: 
                 stack_pointer = len(conversation) - 1
 
-        prompt = error_prompt(cov.error_code, cov.error_message) if not cov.success else m3_prompt(cov)
+        prompt = error_prompt(cov.error_code, cov.error_message) if not cov.success else m3_prompt(cov, environment.design_module_name)
         print(prompt)
         cov = generate_and_evaluate(conversation, prompt, llama, environment, record, run_index, iteration, batch_size=environment.batch_size)
         if cov.success and args.remove_polluted_context: 
