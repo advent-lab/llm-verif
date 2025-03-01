@@ -46,6 +46,7 @@ python /scratch/$USER/temperature_runs/evaluations/evaluate_methodology6.py \
     -g $NUM_RUNS \
     -c /packages/apps/fpga/Questa/questa_fe/bin \
     -m \
+    --id "sigmoid enbaled" \
     --remove_polluted_context \
     --temperature_function "capped_sigmoid" \
     --max_iterations 20 \

@@ -53,7 +53,7 @@ python evaluations/evaluate_methodology6.py \
 	-g $NUM_RUNS \
 	-c /packages/apps/fpga/Questa/questa_fe/bin \
 	-m \
-	# --testplan \
+	--id "batch enabled" \
 	--remove_polluted_context \
 	--temperature_function "constant" \
 	--max_iterations 20 \
@@ -68,7 +68,7 @@ python evaluations/evaluate_methodology6.py \
 	-g $NUM_RUNS \
 	-c /packages/apps/fpga/Questa/questa_fe/bin \
 	-m \
-	# --testplan \
+	--id "batch disabled" \
 	--remove_polluted_context \
 	--temperature_function "constant" \
 	--max_iterations 20 \
