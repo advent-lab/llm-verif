@@ -2,11 +2,12 @@
 
 import numpy as np
 import pandas as pd
+import time
 from src.evaluation import pass_at_k
 from src.questasim import CoverageResponse
 
 class Record:
-    def __init__(self, design_name: str, temp_func: str, testplan: bool, batch_size: int, remove_polluted_context: bool, run_type: str = "RUN", include_merge_coverage: bool = False):
+    def __init__(self, design_name: str, identifier: str, temp_func: str, testplan: bool, batch_size: int, remove_polluted_context: bool, run_type: str = "RUN", include_merge_coverage: bool = False):
         """
         Initialize the Record object.
 
@@ -26,10 +27,16 @@ class Record:
         self.testplan = testplan
         self.batch_size = batch_size
         self.remove_polluted_context = remove_polluted_context
+        self.identifier = identifier
+        self.date = time.strftime("%Y/%m/%d")
+        self.start_time = time.strftime("%H:%M:%S")
 
         # Base columns for the dataframe
         base_columns = [
             "design",
+            "date",
+            "start time of run",
+            "ID",
             "temperature func",
             "testplan",
             "b5",
@@ -99,6 +106,9 @@ class Record:
 
         data = {
             "design": self.design_name,
+            "date": self.date,
+            "start time of run": self.start_time,
+            "ID": self.identifier,
             "temperature func": self.temp_func,
             "testplan": 1 if self.testplan == True else 0,
             "b5": 1 if self.batch_size > 1 else 0,
@@ -124,6 +134,7 @@ class Record:
         print(self.df)
 
     def reset_run(self):
+        self.start_time = time.strftime("%H:%M:%S")
         self.total_fail = 0
         self.total_pass = 0
         self.max_cov = 0

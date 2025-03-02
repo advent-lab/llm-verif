@@ -268,10 +268,11 @@ def main():
     parser.add_argument('--max_valid_iter', type=int, default=10, help="Maximum number of successful iterations")
     parser.add_argument('-o', '--output', type=str, default="./logs", help="Output directory for log files.")
     parser.add_argument('-b', "--batch_size", type=int, default=1, help="The number of test benches to generate per query.")
+    parser.add_argument('--id', type=str, required=True, help="User specified identifier")
     args = parser.parse_args()
 
     environment = Environment(args)
-    record = Record(environment.design_name, temp_func=args.temperature_function, testplan=args.testplan, batch_size=args.batch_size, remove_polluted_context=args.remove_polluted_context, run_type="RUN", include_merge_coverage=args.merge_coverage)
+    record = Record(environment.design_name, identifier=args.id, temp_func=args.temperature_function, testplan=args.testplan, batch_size=args.batch_size, remove_polluted_context=args.remove_polluted_context, run_type="RUN", include_merge_coverage=args.merge_coverage)
 
     llama = LlamaChat(
         QuestaSim(args.compiler), environment, do_sample=not args.no_sampling,
