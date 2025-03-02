@@ -131,6 +131,9 @@ class Record:
 
         self.df = pd.concat([self.df, pd.DataFrame([data])], ignore_index=True)
 
+        if coverage.total_coverage >= self.max_cov:
+            self.max_cov = coverage.total_coverage
+
         print(self.df)
 
     def reset_run(self):
