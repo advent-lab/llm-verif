@@ -176,33 +176,48 @@ def run_conversation(
             #stack_pointer = len(conversation) + 1 # add 1 to account for the m3_prompt that will be added to the conversation history
             #has_all_files = True
 
+        # The stack pointer should point to the last user message
+        # Design prompt should always point to the design prompt
         if cov.error_code == 0 and first_success:
             first_success = False
             if args.remove_polluted_context:
+                # Cancat up to the stack pointer and most recent test bench
                 conversation = conversation[:(stack_pointer+1)] + [conversation[-1]]
             valid_iterations += 1
             if not environment.no_design_prompt:
+                # Add design prompt to end of conversation
                 conversation.append({"role": "user", "content": design_prompt(environment.all_design_file_paths)})
                 print(conversation[-1])
                 design_prompt_idx = len(conversation) - 1
             if args.remove_polluted_context: 
-                stack_pointer = len(conversation) - 1
+                # If we added the design prompt, then the most recent user message is the design prompt
+                if environment.no_design_prompt:
+                    stack_pointer = len(conversation) - 1
+                # If we didn't, then it's the message before the last test bench
+                else:
+                    stack_pointer = len(conversation) - 2
 
         prompt = error_prompt(cov.error_code, cov.error_message) if not cov.success else m3_prompt(cov, environment.design_module_name)
         print(prompt)
+        
+        # This call adds 2 prompts to the conversation: the next user promtp and the response
         cov = generate_and_evaluate(conversation, prompt, llama, environment, record, run_index, iteration, batch_size=environment.batch_size)
         
+        # If we are removing polluted context:
+        # slice the conversation from beginning up to the stack pointer + the latest response
+        if cov.success and args.remove_polluted_context: 
+            conversation = conversation[:(stack_pointer + 1)] + [conversation[len(conversation) - 1]]
+            stack_pointer = len(conversation) - 2
+
+        # If we are using the design prompt, we should insert it to the end of the conversation
+        # Then pop it from its last position
+        # Then we should update the design pointer and stack pointer 
         if not environment.no_design_prompt:
             conversation.insert(len(conversation) - 1, conversation[design_prompt_idx])
             conversation.pop(design_prompt_idx)
             stack_pointer = len(conversation) - 1
             design_prompt_idx = stack_pointer
         
-        if cov.success and args.remove_polluted_context: 
-            conversation = conversation[stack_pointer + 1:len(conversation) - 1]
-            stack_pointer = len(conversation) - 2
-            design_prompt_idx = stack_pointer - 3
-
         # Call limit_conversation and update indices accordingly
         conversation, stack_pointer, design_prompt_idx = llama.limit_conversation(conversation, stack_pointer=stack_pointer, design_prompt_idx=design_prompt_idx)
 
