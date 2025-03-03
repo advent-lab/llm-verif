@@ -19,6 +19,7 @@ class Environment:
         self.design_dir_path = Path(self.design_dir)
         self.dashboard_path = f'{str(self.design_dir_path.parents[1])}/dashboard.json'
         self.csv_path = f"{self.design_name}_evaluation6_{time.strftime('%Y%m%d_%H%M%S')}.csv"
+        self.no_design_prompt = env_options.no_design_prompt_pointer
 
         self.dataset = Dataset(self.dashboard_path)
 

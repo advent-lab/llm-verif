@@ -181,20 +181,27 @@ def run_conversation(
             if args.remove_polluted_context:
                 conversation = conversation[:(stack_pointer+1)] + [conversation[-1]]
             valid_iterations += 1
-            conversation.append({"role": "user", "content": design_prompt(environment.all_design_file_paths)})
-            print(conversation[-1])
-            design_prompt_idx = len(conversation) - 1
+            if not environment.no_design_prompt:
+                conversation.append({"role": "user", "content": design_prompt(environment.all_design_file_paths)})
+                print(conversation[-1])
+                design_prompt_idx = len(conversation) - 1
             if args.remove_polluted_context: 
                 stack_pointer = len(conversation) - 1
 
         prompt = error_prompt(cov.error_code, cov.error_message) if not cov.success else m3_prompt(cov, environment.design_module_name)
         print(prompt)
         cov = generate_and_evaluate(conversation, prompt, llama, environment, record, run_index, iteration, batch_size=environment.batch_size)
-        if cov.success and args.remove_polluted_context: 
-            conversation.insert(stack_pointer - 1, conversation[design_prompt_idx])
-            conversation = conversation[stack_pointer + 1:len(conversation) - 1]
+        
+        if not environment.no_design_prompt:
+            conversation.insert(len(conversation) - 1, conversation[design_prompt_idx])
+            conversation.pop(design_prompt_idx)
             stack_pointer = len(conversation) - 1
-            design_prompt_idx = stack_pointer - 1
+            design_prompt_idx = stack_pointer
+        
+        if cov.success and args.remove_polluted_context: 
+            conversation = conversation[stack_pointer + 1:len(conversation) - 1]
+            stack_pointer = len(conversation) - 2
+            design_prompt_idx = stack_pointer - 3
 
         # Call limit_conversation and update indices accordingly
         conversation, stack_pointer, design_prompt_idx = llama.limit_conversation(conversation, stack_pointer=stack_pointer, design_prompt_idx=design_prompt_idx)
@@ -269,6 +276,7 @@ def main():
     parser.add_argument('-o', '--output', type=str, default="./logs", help="Output directory for log files.")
     parser.add_argument('-b', "--batch_size", type=int, default=1, help="The number of test benches to generate per query.")
     parser.add_argument('--id', type=str, required=True, help="User specified identifier")
+    parser.add_argument('--no_design_prompt_pointer', action='store_true', required=False, help="Disable the design prompt.")
     args = parser.parse_args()
 
     environment = Environment(args)
