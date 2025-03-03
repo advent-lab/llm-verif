@@ -20,11 +20,11 @@ RUN=$4
 
 #Load required software
 #Change to the directory of our script
-rm -rf $REPO_DIR/llm/venv /scratch/$USER/temperature_runs/${DATA_POINT}_constant
+rm -rf $REPO_DIR/llm/venv /scratch/$USER/temperature_runs/${DATA_POINT}_constant_temperature
 
 mkdir /scratch/$USER/temperature_runs/
 
-mkdir /scratch/$USER/temperature_runs/${DATA_POINT}_constant
+mkdir /scratch/$USER/temperature_runs/${DATA_POINT}_constant_temperature
 
 cp -rf $REPO_DIR/llm/evaluations $REPO_DIR/llm/src \
     $REPO_DIR/llm/build_llm_venv.sh \
@@ -48,12 +48,10 @@ python /scratch/$USER/temperature_runs/evaluations/evaluate_methodology6.py \
     -g $NUM_RUNS \
     -c /packages/apps/fpga/Questa/questa_fe/bin \
     -m \
-    --id "baseline" \
-    --remove_polluted_context \
     --temperature_function "constant" \
     --max_iterations 20 \
     --max_valid_iter 10 \
-    -o /scratch/$USER/temperature_runs/${DATA_POINT}_constant \
-    2>&1 | tee /scratch/$USER/temperature_runs/${DATA_POINT}_constant/${DATA_POINT}_constant_$RUN.log
+    -o /scratch/$USER/temperature_runs/${DATA_POINT}_constant_temperature \
+    2>&1 | tee /scratch/$USER/temperature_runs/${DATA_POINT}_constant_temperature/${DATA_POINT}_constant_temperature_$RUN.log
     
 deactivate

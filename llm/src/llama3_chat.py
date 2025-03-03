@@ -115,7 +115,7 @@ class LlamaChat(ModelChat):
         os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache/"
 
         # Base model cache directory
-        cache_dir = Path(f"/scratch/{os.environ['USER']}/.cache/huggingface/hub/models--meta-llama--Meta-Llama-3.1-70B-Instruct/snapshots")
+        cache_dir = Path(f"/scratch/{os.environ['USER']}/.cache/huggingface/hub/models--meta-llama--Llama-3.3-70B-Instruct/snapshots")
 
         # Get the most recent snapshot directory
         latest_snapshot = sorted(cache_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True)[0]
