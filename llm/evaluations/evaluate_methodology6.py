@@ -135,7 +135,7 @@ def run_conversation(
     top_p = 0.7
     cov = CoverageResponse(True, 0, "")
     conversation = [{"role": "system", "content": "You are a verification assistant."}]
-    stack_pointer = 1
+    stack_pointer = 0
     print("Length of conversation: ", len(conversation))
     print("Stack pointer: ", stack_pointer)
     
@@ -148,7 +148,7 @@ def run_conversation(
         # Stage 1: Generate verification plan
         cov = generate_and_evaluate(conversation, testplan_prompt, llama, environment, record, run_index, iteration, json=False)
         iteration += 1
-        stack_pointer += 2
+        stack_pointer = len(conversation) - 2
     else:
         testbench_prompt = m1_prompt(environment.design_specification, environment.module_header)
         print(testbench_prompt)
@@ -161,7 +161,7 @@ def run_conversation(
         cov = generate_and_evaluate(conversation, testbench_prompt, llama, environment, record, run_index, iteration, batch_size=environment.batch_size)
         if cov.success:
             valid_iterations += 1
-            stack_pointer += 2
+            stack_pointer = len(conversation) - 2
 
     print("Length of conversation: ", len(conversation))
     print("Stack pointer: ", stack_pointer)    
