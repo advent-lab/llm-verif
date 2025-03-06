@@ -132,7 +132,7 @@ class LlamaChat(ModelChat):
         llm = LLM(
             model=model_id, 
             tensor_parallel_size=num_gpus,
-            gpu_memory_utilization=0.95,
+            gpu_memory_utilization=0.98,
             max_model_len=32766
         )
 
