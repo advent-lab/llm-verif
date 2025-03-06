@@ -132,8 +132,8 @@ class LlamaChat(ModelChat):
         llm = LLM(
             model=model_id, 
             tensor_parallel_size=num_gpus,
-            gpu_memory_utilization=0.98,
-            max_model_len=65536
+            gpu_memory_utilization=0.95,
+            max_model_len=32766
         )
 
         return llm, llm.get_tokenizer()
@@ -378,7 +378,7 @@ class LlamaChat(ModelChat):
     def get_merge_coverage(self, run: int):
         self.simulator.merge_coverage()
 
-    def limit_conversation(self, conversation, context_window=128000, stack_pointer: int = -1, design_prompt_idx: int = -1):
+    def limit_conversation(self, conversation, context_window=32766, stack_pointer: int = -1, design_prompt_idx: int = -1):
         """
         Trims the conversation while maintaining key indices.
 
