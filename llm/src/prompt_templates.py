@@ -57,12 +57,14 @@ Design specification:\n{design_specification}
 def m2_prompts(design_specification: str, module_header: str) -> tuple[str, str]:
     p1 = f'''We are going to use a 2 stage process to generate a Verilog test bench for a Verilog design. 
 Right now we are in the first stage. 
-Generate a verification plan with test scenarios that will achieve full statement coverage of design described by the following design specification and module header.
+Generate a verification plan in which you should create a list of features based on the specification. For each feature, identify test scenarios or stimulus that will 
+achieve full statement coverage of the design described by the following design specification and module header.
 Module header:\n{module_header}\n
 Design specification:\n{design_specification}
 '''
     p2 = '''Now we are in the second stage of the verification process. Generate a Verilog testbench for the module using the module header, specification, and verification plan.
-Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag. Please ensure that there are no unescaped double quotes inside the Verilog code. Keep the test bench less than 500 lines. Ensure that there is only one testbench within the JSON formatted output.
+Use the test scenarios or stimulus you identified in the verification plan to maximize the coverage of the design.
+Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag. Keep the test bench less than 500 lines.
 Here are some additional guidelines for the test bench: \n
 Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n
 Example response:
