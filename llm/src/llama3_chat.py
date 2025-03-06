@@ -326,13 +326,16 @@ class LlamaChat(ModelChat):
 
         # Attempt to extract JSON-like content
         try:
-            # Find the first and last JSON curly braces
+            # Find the first JSON curly brace
             first_pos = generated_response.find('{')
             if first_pos != -1:
                 generated_response = generated_response[first_pos:]
             
-            last_pos = generated_response.rfind('}')
-            if last_pos != -1:
+            comments_pos = generated_response.find('"comments":')
+            
+            # Find the first JSON curly brace after comments tag
+            last_pos = generated_response.find('}', comments_pos)
+            if last_pos != -1 and comments_pos != -1:
                 generated_response = generated_response[:last_pos + 1]
 
             # Parse JSON
