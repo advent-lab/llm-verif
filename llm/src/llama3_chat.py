@@ -65,8 +65,8 @@ class LlamaChat(ModelChat):
         """
         self.simulator: Simulator | Any
         self.environment: Environment | Any = environment
-        self.model: PreTrainedModel | Any
-        self.tokenizer: PreTrainedTokenizer | Any
+        self.model: Any
+        self.tokenizer: Any
         self.do_sample: bool
         self.temperature_function: Callable[[int], float]
         self.temperature: float
@@ -342,12 +342,15 @@ class LlamaChat(ModelChat):
             # TODO: Escape all non-terminal double quotes
             pattern = r'{\s*"test bench":\s*"(.*?)",\s*"comments":\s*"(.*?)"\s*}'
             matches = re.match(pattern, generated_response, re.DOTALL)
-            parsed_response = matches.group(1)
+            if matches:
+                parsed_response = matches.group(1)
+            else:
+                raise RuntimeError(f"Could not parse the response:\n{generated_response}")
 
             # Parse JSON
             #decoder = json.JSONDecoder(strict=False)
             #parsed_response = decoder.raw_decode(generated_response)
-            return parsed_response, 0
+            return {"test bench": parsed_response}, 0
 
         except json.JSONDecodeError as e:
             logging.error(f"JSONDecodeError: {e}. Response: {generated_response}")
