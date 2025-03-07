@@ -1,7 +1,7 @@
 from datetime import datetime
 from urllib import response
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, PreTrainedModel, PreTrainedTokenizer, PreTrainedTokenizerFast
-from accelerate import infer_auto_device_map
+# from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, PreTrainedModel, PreTrainedTokenizer, PreTrainedTokenizerFast
+# from accelerate import infer_auto_device_map
 import torch
 import os
 import json
@@ -17,6 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Union
 from vllm import LLM, SamplingParams 
 from pathlib import Path
+import re
 
 logging.basicConfig(level=logging.INFO)
 
@@ -338,10 +339,14 @@ class LlamaChat(ModelChat):
             if last_pos != -1 and comments_pos != -1:
                 generated_response = generated_response[:last_pos + 1]
 
+            # TODO: Escape all non-terminal double quotes
+            matches = re.match(r"{\s*\"test bench\":\s*\"(.*)\",\s*\"comments\":\s*\"(.*)\"\s*}", generated_response)
+            parsed_response = matches.group(1)
+
             # Parse JSON
-            decoder = json.JSONDecoder(strict=False)
-            parsed_response = decoder.raw_decode(generated_response)
-            return parsed_response[0], 0
+            #decoder = json.JSONDecoder(strict=False)
+            #parsed_response = decoder.raw_decode(generated_response)
+            return parsed_response, 0
 
         except json.JSONDecodeError as e:
             logging.error(f"JSONDecodeError: {e}. Response: {generated_response}")
