@@ -340,7 +340,8 @@ class LlamaChat(ModelChat):
                 generated_response = generated_response[:last_pos + 1]
 
             # TODO: Escape all non-terminal double quotes
-            matches = re.match(r"{\s*\"test bench\":\s*\"(.*)\",\s*\"comments\":\s*\"(.*)\"\s*}", generated_response)
+            pattern = r'{\s*"test bench":\s*"(.*?)",\s*"comments":\s*"(.*?)"\s*}'
+            matches = re.match(pattern, generated_response, re.DOTALL)
             parsed_response = matches.group(1)
 
             # Parse JSON
