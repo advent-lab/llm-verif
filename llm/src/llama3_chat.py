@@ -116,8 +116,9 @@ class LlamaChat(ModelChat):
         os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache/"
 
         # Base model cache directory
-        cache_dir = Path(f"/scratch/{os.environ['USER']}/.cache/huggingface/hub/models--meta-llama--Llama-3.3-70B-Instruct/snapshots")
 
+        # cache_dir = Path(f"/scratch/{os.environ['USER']}/.cache/huggingface/hub/models--meta-llama--Llama-3.3-70B-Instruct/snapshots")
+        cache_dir = Path(f"/scratch/{os.environ['USER']}/.cache/models--unsloth--Llama-3.3-70B-Instruct-bnb-4bit/snapshots")
         # Get the most recent snapshot directory
         latest_snapshot = sorted(cache_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True)[0]
 
@@ -131,8 +132,11 @@ class LlamaChat(ModelChat):
 
         # Load vLLM model
         llm = LLM(
-            model=model_id, 
-            tensor_parallel_size=num_gpus,
+            model=model_id,
+            quantization="bitsandbytes",
+            load_format="bitsandbytes",
+            #tensor_parallel_size=num_gpus,
+            pipeline_parallel_size=num_gpus,
             gpu_memory_utilization=0.98,
             max_model_len=32766
         )

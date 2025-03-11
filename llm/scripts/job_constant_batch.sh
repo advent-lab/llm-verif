@@ -2,7 +2,7 @@
 
 #SBATCH -N 1            # number of nodes
 #SBATCH -c 32            # number of cores 
-#SBATCH -t 0-10:00:00
+#SBATCH -t 0-08:00:00
 #SBATCH -G a100:2
 #SBATCH -C a100_80
 #SBATCH -p general      # partition 
@@ -24,7 +24,7 @@ rm -rf $REPO_DIR/llm/venv /scratch/$USER/temperature_runs/${DATA_POINT}_constant
 
 mkdir /scratch/$USER/temperature_runs/
 
-mkdir /scratch/$USER/temperature_runs/${DATA_POINT}_constant_batch
+mkdir /scratch/$USER/temperature_runs/${DATA_POINT}_constant_batch_$RUN
 
 cp -rf $REPO_DIR/llm/evaluations $REPO_DIR/llm/src \
     $REPO_DIR/llm/build_llm_venv.sh \
@@ -53,7 +53,7 @@ python /scratch/$USER/temperature_runs/evaluations/evaluate_methodology6.py \
     --max_iterations 20 \
     --max_valid_iter 10 \
     -b 5 \
-    -o /scratch/$USER/temperature_runs/${DATA_POINT}_constant_batch \
-    2>&1 | tee /scratch/$USER/temperature_runs/${DATA_POINT}_constant_batch/${DATA_POINT}_constant_batch_$RUN.log
+    -o /scratch/$USER/temperature_runs/${DATA_POINT}_constant_batch_$RUN \
+    2>&1 | tee /scratch/$USER/temperature_runs/${DATA_POINT}_constant_batch_$RUN/${DATA_POINT}_constant_batch_$RUN.log
     
 deactivate

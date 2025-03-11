@@ -2,10 +2,10 @@
 
 #SBATCH -N 1            # number of nodes
 #SBATCH -c 32            # number of cores 
-#SBATCH -t 0-10:00:00
-#SBATCH -G a100:2
+#SBATCH -t 0-04:00:00
+#SBATCH -G a100:4
 #SBATCH -C a100_80
-#SBATCH -p general      # partition 
+#SBATCH -p htc      # partition 
 #SBATCH -q public       # QOS
 #SBATCH -o slurm.%j.out # file to save job's STDOUT (%j = JobId)
 #SBATCH -e slurm.%j.err # file to save job's STDERR (%j = JobId)
@@ -24,7 +24,7 @@ rm -rf $REPO_DIR/llm/venv /scratch/$USER/temperature_runs/${DATA_POINT}_constant
 
 mkdir /scratch/$USER/temperature_runs/
 
-mkdir /scratch/$USER/temperature_runs/${DATA_POINT}_constant_temperature
+mkdir /scratch/$USER/temperature_runs/${DATA_POINT}_constant_temperature_$RUN
 
 cp -rf $REPO_DIR/llm/evaluations $REPO_DIR/llm/src \
     $REPO_DIR/llm/build_llm_venv.sh \
@@ -47,11 +47,12 @@ python /scratch/$USER/temperature_runs/evaluations/evaluate_methodology6.py \
     -d $REPO_DIR/data_points/$DATA_POINT \
     -g $NUM_RUNS \
     -c /packages/apps/fpga/Questa/questa_fe/bin \
+    --id "baseline" \
     -m \
     --temperature_function "constant" \
     --max_iterations 20 \
     --max_valid_iter 10 \
-    -o /scratch/$USER/temperature_runs/${DATA_POINT}_constant_temperature \
-    2>&1 | tee /scratch/$USER/temperature_runs/${DATA_POINT}_constant_temperature/${DATA_POINT}_constant_temperature_$RUN.log
+    -o /scratch/$USER/temperature_runs/${DATA_POINT}_constant_temperature_$RUN \
+    2>&1 | tee /scratch/$USER/temperature_runs/${DATA_POINT}_constant_temperature_$RUN/${DATA_POINT}_constant_temperature_$RUN.log
     
 deactivate
