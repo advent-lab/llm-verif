@@ -13,6 +13,7 @@ from src.llama3_chat import LlamaChat
 import argparse
 from src.prompt_templates import m1_prompt, m2_prompts, m3_prompt, design_prompt, error_prompt
 from src.eval_runs_util import Record
+import torch
 
 def parse_json_response(response: str) -> str | CoverageResponse:
     """
@@ -67,6 +68,9 @@ def generate_and_evaluate(
     print(responses)
     print(f"Tokens / second: {tokens_generated / gen_time}\n")
 
+    # Try to empty cuda cache to regulate memory
+    torch.cuda.empty_cache()
+
     selected: CoverageResponse = CoverageResponse()
     if json:
         json_responses: list[str | CoverageResponse] = [parse_json_response(response) for response in responses]
@@ -114,7 +118,7 @@ def generate_and_evaluate(
             
         record.write_to_csv(f'./{environment.csv_path}')
         return selected
-        
+
     return CoverageResponse(True, 0, "", [], 0)
 
 
