@@ -159,7 +159,7 @@ class LlamaChat(ModelChat):
 
         return "\n\n".join(formatted_messages)
 
-    def generate_response(self, conversation_history: list[dict[str, str]], num_return_sequences=5) -> tuple[list[str], int, float]:
+    def generate_response(self, conversation_history: list[dict[str, str]], num_return_sequences=2) -> tuple[list[str], int, float]:
         """
         Generate multiple responses from the model given the conversation history.
 

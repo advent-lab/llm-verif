@@ -2,10 +2,10 @@
 
 #SBATCH -N 1            # number of nodes
 #SBATCH -c 32            # number of cores 
-#SBATCH -t 0-04:00:00
-#SBATCH -G a100:4
+#SBATCH -t 0-08:00:00
+#SBATCH -G a100:1
 #SBATCH -C a100_80
-#SBATCH -p htc      # partition 
+#SBATCH -p general      # partition 
 #SBATCH -q public       # QOS
 #SBATCH -o slurm.%j.out # file to save job's STDOUT (%j = JobId)
 #SBATCH -e slurm.%j.err # file to save job's STDERR (%j = JobId)
