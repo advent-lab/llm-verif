@@ -40,6 +40,8 @@ source /home/$USER/llm_venv/bin/activate
 
 module load bittware/questa-23.4
 export LM_LICENSE_FILE=27006@en4228283l.scai.dhcp.asu.edu
+export NCCL_P2P_DISABLE=0
+export NCCL_P2P_LEVEL=NVL
 
 cd /scratch/$USER/temperature_runs
 
