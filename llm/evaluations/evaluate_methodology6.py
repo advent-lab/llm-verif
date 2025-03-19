@@ -292,6 +292,8 @@ def main():
     parser.add_argument('-b', "--batch_size", type=int, default=1, help="The number of test benches to generate per query.")
     parser.add_argument('--id', type=str, required=True, help="User specified identifier")
     parser.add_argument('--no_design_prompt_pointer', action='store_true', required=False, help="Disable the design prompt.")
+    parser.add_argument("-q", "--quantize", action="store_true", required=False, help="Enable quantization.")
+    parser.add_argument("--model", type=str, required=True)
     args = parser.parse_args()
 
     environment = Environment(args)

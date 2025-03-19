@@ -114,11 +114,11 @@ class LlamaChat(ModelChat):
             # np.random.seed(seed)
 
         os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache/"
-
+        os.environ['HF_HOME'] = f"/scratch/{os.environ['USER']}/.cache/"
         # Base model cache directory
 
-        # cache_dir = Path(f"/scratch/{os.environ['USER']}/.cache/huggingface/hub/models--meta-llama--Llama-3.3-70B-Instruct/snapshots")
-        cache_dir = Path(f"/scratch/{os.environ['USER']}/.cache/models--unsloth--Llama-3.3-70B-Instruct-bnb-4bit/snapshots")
+        cache_dir = Path(f"/scratch/{os.environ['USER']}/.cache/{self.environment.model_id}/snapshots")
+        
         # Get the most recent snapshot directory
         latest_snapshot = sorted(cache_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True)[0]
 
@@ -130,16 +130,26 @@ class LlamaChat(ModelChat):
         if num_gpus == 0:
             raise RuntimeError("No GPUs available.")
 
-        # Load vLLM model
-        llm = LLM(
-            model=model_id,
-            quantization="bitsandbytes",
-            load_format="bitsandbytes",
-            #tensor_parallel_size=num_gpus,
-            pipeline_parallel_size=num_gpus,
-            gpu_memory_utilization=0.98,
-            max_model_len=32766
-        )
+        llm = None
+
+        if self.environment.quantized:
+            # Load vLLM model
+            llm = LLM(
+                model=model_id,
+                quantization="bitsandbytes",
+                load_format="bitsandbytes",
+                #tensor_parallel_size=num_gpus,
+                gpu_memory_utilization=0.98,
+                max_model_len=32766
+            )
+        else:
+             # Load vLLM model
+            llm = LLM(
+                model=model_id,
+                tensor_parallel_size=num_gpus,
+                gpu_memory_utilization=0.98,
+                max_model_len=32766
+            )
 
         return llm, llm.get_tokenizer()
 
