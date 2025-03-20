@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Check if llm_venv exists
-if [ -d "~/llm_venv" ]; then
+if [ -d ~/llm_venv/ ]; then
     echo "llm_venv exists. Syncing with requirements.txt..."
     source ~/llm_venv/bin/activate
     pip install --upgrade pip
@@ -15,7 +15,8 @@ else
     deactivate
     source ~/llm_venv/bin/activate
     pip install --upgrade pip
-    pip install -r requirements.txt
+    pip install pip-tools
+    pip-sync requirements.txt
 fi
 
 echo "Environment setup complete."

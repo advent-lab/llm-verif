@@ -3,7 +3,7 @@
 #SBATCH -N 1            # number of nodes
 #SBATCH -c 32            # number of cores 
 #SBATCH -t 0-10:00:00
-#SBATCH -G a100:1
+#SBATCH -G a100:2
 #SBATCH -C a100_80
 #SBATCH -p general      # partition 
 #SBATCH -q public       # QOS
@@ -48,6 +48,8 @@ python /scratch/$USER/temperature_runs/evaluations/evaluate_methodology6.py \
     -g $NUM_RUNS \
     -c /packages/apps/fpga/Questa/questa_fe/bin \
     --id "baseline" \
+    --model "models--casperhansen--llama-3.3-70b-instruct-awq" \
+    --quantize \
     -m \
     --temperature_function "constant" \
     --max_iterations 20 \

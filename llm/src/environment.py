@@ -22,7 +22,7 @@ class Environment:
         self.no_design_prompt = env_options.no_design_prompt_pointer
 
         self.model_id = env_options.model
-        self.quantized = env_options.quantized
+        self.quantized = env_options.quantize
 
         self.dataset = Dataset(self.dashboard_path)
 

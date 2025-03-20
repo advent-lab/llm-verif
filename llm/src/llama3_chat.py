@@ -22,9 +22,9 @@ import re
 logging.basicConfig(level=logging.INFO)
 
 # Set cache location for model
-if not os.path.isdir(f"/scratch/{os.environ['USER']}/.cache/"):
-    os.mkdir(f"/scratch/{os.environ['USER']}/.cache/")
-os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache/"
+if not os.path.isdir(f"/scratch/{os.environ['USER']}/.cache"):
+    os.mkdir(f"/scratch/{os.environ['USER']}/.cache")
+os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache"
 
 class LlamaChat(ModelChat):
     """
@@ -113,11 +113,11 @@ class LlamaChat(ModelChat):
             torch.cuda.manual_seed_all(seed)
             # np.random.seed(seed)
 
-        os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache/"
-        os.environ['HF_HOME'] = f"/scratch/{os.environ['USER']}/.cache/"
+        os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache"
+        os.environ['HF_HOME'] = f"/scratch/{os.environ['USER']}/.cache"
         # Base model cache directory
 
-        cache_dir = Path(f"/scratch/{os.environ['USER']}/.cache/{self.environment.model_id}/snapshots")
+        cache_dir = Path(f"{os.environ['HF_HOME']}/{self.environment.model_id}/snapshots")
         
         # Get the most recent snapshot directory
         latest_snapshot = sorted(cache_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True)[0]
@@ -136,10 +136,9 @@ class LlamaChat(ModelChat):
             # Load vLLM model
             llm = LLM(
                 model=model_id,
-                quantization="bitsandbytes",
-                load_format="bitsandbytes",
-                #tensor_parallel_size=num_gpus,
-                gpu_memory_utilization=0.98,
+                quantization="AWQ",
+                tensor_parallel_size=num_gpus,
+                gpu_memory_utilization=0.85,
                 max_model_len=32766
             )
         else:
@@ -147,7 +146,7 @@ class LlamaChat(ModelChat):
             llm = LLM(
                 model=model_id,
                 tensor_parallel_size=num_gpus,
-                gpu_memory_utilization=0.98,
+                gpu_memory_utilization=0.85,
                 max_model_len=32766
             )
 
