@@ -117,7 +117,7 @@ class LlamaChat(ModelChat):
         os.environ['HF_HOME'] = f"/scratch/{os.environ['USER']}/.cache"
         # Base model cache directory
 
-        cache_dir = Path(f"{os.environ['HF_HOME']}/{self.environment.model_id}/snapshots")
+        cache_dir = Path(f"/data/grp_aaror112/{self.environment.model_id}/snapshots")
         
         # Get the most recent snapshot directory
         latest_snapshot = sorted(cache_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True)[0]
@@ -403,55 +403,65 @@ class LlamaChat(ModelChat):
     def get_merge_coverage(self, run: int):
         self.simulator.merge_coverage()
 
-    def limit_conversation(self, conversation, context_window=32766, stack_pointer: int = -1, design_prompt_idx: int = -1):
+    def limit_conversation(self, conversation, context_window=128000, stack_pointer: int = -1):
         """
-        Trims the conversation while maintaining key indices.
+        Trims the conversation to fit within the context window and ensures the design prompt is present
+        directly before the last user message if required.
 
         Args:
-            conversation (list[dict]): Conversation history.
-            context_window (int): Max token limit.
-            stack_pointer (int | None): Index of last valid user message.
-            design_prompt_idx (int | None): Index of design prompt message.
+            conversation (list[dict]): The current conversation history.
+            context_window (int): The maximum allowed context window in tokens.
+            stack_pointer (int): Index of the last valid user message before the LLM response.
 
         Returns:
-            tuple: (trimmed_conversation, updated_stack_pointer, updated_design_prompt_idx)
+            tuple: (trimmed_conversation, updated_stack_pointer)
         """
 
-        if not conversation or not isinstance(conversation, list):
-            print("Error: Conversation must be a non-empty list of messages.")
-            return conversation, stack_pointer, design_prompt_idx
+        def find_last_user_idx(convo: list[dict]) -> int:
+            for i in reversed(range(len(convo))):
+                if convo[i]["role"] == "user":
+                    return i
+            return -1
 
-        # Calculate current token count
+        def find_design_prompt_idx(convo: list[dict]) -> int:
+            for i, msg in enumerate(convo):
+                if msg["role"] == "user" and "Here is the full design to give you more context" in msg["content"]:
+                    return i
+            return -1
+
+        # --- Trim conversation if over token limit ---
         current_token_count = sum(len(self.tokenizer.encode(msg["content"])) for msg in conversation)
         max_token_count = context_window - self.max_new_tokens
 
-        # Trim conversation while keeping key messages
         while current_token_count > max_token_count and len(conversation) > 2:
-            removed_message = conversation.pop(1)  # Remove from front (preserve system message)
-
-            # Adjust pointers
+            removed = conversation.pop(1)  # always preserve system prompt (index 0)
             if stack_pointer > 1:
                 stack_pointer -= 1
-            if design_prompt_idx > 1:
-                design_prompt_idx -= 1
-
-            # Recalculate token count after removal
             current_token_count = sum(len(self.tokenizer.encode(msg["content"])) for msg in conversation)
 
-        # Handle missing stack pointer
+        # --- Ensure design prompt appears before the last user message ---
+        if not self.environment.no_design_prompt:
+            design_msg = {"role": "user", "content": design_prompt(self.environment.all_design_file_paths)}
+            last_user_idx = find_last_user_idx(conversation)
+            design_idx = find_design_prompt_idx(conversation)
+
+            if last_user_idx == -1:
+                logging.warning("No user message found after trimming. Skipping design prompt insertion.")
+            elif design_idx == -1:
+                conversation.insert(last_user_idx, design_msg)
+                stack_pointer = last_user_idx
+            elif design_idx != last_user_idx - 1:
+                conversation.pop(design_idx)
+                if design_idx < last_user_idx:
+                    last_user_idx -= 1
+                conversation.insert(last_user_idx, design_msg)
+                stack_pointer = last_user_idx
+
+        # --- Fallback: if stack pointer is lost, recover it ---
         if stack_pointer < 0:
-            # Find the first remaining user message
-            stack_pointer = next((i for i, msg in enumerate(conversation) if msg["role"] == "user"), -1)
+            stack_pointer = find_last_user_idx(conversation)
 
-        # Handle missing design prompt
-        if design_prompt_idx < 0:
-            if stack_pointer >= 0:
-                print("Warning: Design prompt was lost! Re-inserting before stack pointer.")
-                conversation.insert(stack_pointer, {"role": "user", "content": design_prompt(self.environment.all_design_file_paths)})
-                design_prompt_idx = stack_pointer  # Now design prompt is at this index
-                stack_pointer += 1  # Adjust stack pointer to stay after design prompt
-
-        return conversation, stack_pointer, design_prompt_idx
+        return conversation, stack_pointer
 
     def parallel_get_coverage(self, responses: str, test_benches: list[str], data_points: list[dict], store: FileStore = None) -> list[CoverageResponse]:
         """

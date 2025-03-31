@@ -2,9 +2,16 @@ import logging
 import os
 import sys
 from pathlib import Path
+import subprocess
 
 # Add the project root to the PYTHONPATH
 sys.path.append(str(Path(__file__).resolve().parents[1]))
+
+# Run 'module load' command
+subprocess.run("module load bittware/questa-23.4", shell=True, check=True, executable="/bin/bash")
+
+# Set the environment variable
+os.environ["LM_LICENSE_FILE"] = "27006@en4228283l.scai.dhcp.asu.edu"
 
 from src.environment import Environment
 from src.questasim import QuestaSim
@@ -209,14 +216,35 @@ def run_conversation(
             conversation = conversation[:(stack_pointer + 1)] + [conversation[len(conversation) - 1]]
             stack_pointer = len(conversation) - 2
 
-        # If we are using the design prompt, we should insert it to the end of the conversation
-        # Then pop it from its last position
-        # Then we should update the design pointer and stack pointer 
+        def find_last_user_idx(convo: list[dict]) -> int:
+            for i in reversed(range(len(convo))):
+                if convo[i]["role"] == "user":
+                    return i
+            return -1
+
+        def find_design_prompt_idx(convo: list[dict]) -> int:
+            for i, msg in enumerate(convo):
+                if msg["role"] == "user" and "Here is the full design to give you more context" in msg["content"]:
+                    return i
+            return -1
+
         if not environment.no_design_prompt:
-            conversation.insert(len(conversation) - 1, conversation[design_prompt_idx])
-            conversation.pop(design_prompt_idx)
-            stack_pointer = len(conversation) - 1
-            design_prompt_idx = stack_pointer
+            design_msg = {"role": "user", "content": design_prompt(environment.all_design_file_paths)}
+            last_user_idx = find_last_user_idx(conversation)
+            design_idx = find_design_prompt_idx(conversation)
+
+            # If it's missing, insert it before the last user message
+            if design_idx == -1:
+                conversation.insert(last_user_idx, design_msg)
+                stack_pointer = last_user_idx  # since the design prompt is now right before the last user prompt
+
+            # If it exists but not directly before the last user message, move it
+            elif design_idx != last_user_idx - 1:
+                conversation.pop(design_idx)
+                if design_idx < last_user_idx:
+                    last_user_idx -= 1
+                conversation.insert(last_user_idx, design_msg)
+                stack_pointer = last_user_idx
         
         # Call limit_conversation and update indices accordingly
         conversation, stack_pointer, design_prompt_idx = llama.limit_conversation(conversation, stack_pointer=stack_pointer, design_prompt_idx=design_prompt_idx)
