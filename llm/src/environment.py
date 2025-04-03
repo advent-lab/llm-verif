@@ -22,12 +22,14 @@ class Environment:
         self.no_design_prompt = env_options.no_design_prompt_pointer
 
         self.model_id = env_options.model
+        self.tokenizer_id = env_options.tokenizer
         self.quantized = env_options.quantize
 
         self.dataset = Dataset(self.dashboard_path)
 
         self.testplan = env_options.testplan
         self.batch_size = env_options.batch_size
+        self.remove_polluted_context = env_options.remove_polluted_context
 
         # Create the prompt
         # Read the specification file

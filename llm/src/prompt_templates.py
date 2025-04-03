@@ -3,13 +3,53 @@
 # import xml.etree.ElementTree as ET
 
 import re
-from typing import Any
 from src.questasim import CoverageResponse
 import os
-import pathlib
-import random
-from src.environment import Environment
-# from environment import Environment
+
+def system_prompt(design_content: list[str] | None = None):
+
+	design_message = ""
+	if design_content:
+		design_message = design_prompt(design_content)
+
+	return f"""You are an expert Verilog verification assistant. You have expertise in writing high quality, high code coverage test bench for a wide variety of digital hardware designs.
+
+Directions:
+
+When generating a verification plan or test plan, You should generate a verification plan with test scenarios that will achieve full statement coverage of the design.
+Your verification plan should cover as many valid and invalid sets of stimulus as possible to ensure you can reach the maximum coverage possible.
+
+When generating a test bench:
+There are three options for improving line coverage, choose one of these option:
+1. Add another testcase to a previously generated testbench
+2. Modify a testcase from a previously generated testbench
+3. Generate a completely new testbench without previous generations as context
+
+It is important to ensure that a generated test case is novel and does not duplicate existing patterns. Modify input sequences and edge cases where possible.
+
+The test bench should meet the statement coverage goal of 100%.
+Generate only the Verilog testbench and no additional words.
+Make sure you are ONLY using Verilog syntax and features, and not SystemVerilog such as for loops and asserts.\n
+Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag. Keep the test bench less than 500 lines. Ensure that there is only one testbench within the JSON formatted output.\n
+Here are some additional guidelines for the test bench: \n
+Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n
+""" + '''Example response:
+{
+	"test bench": "
+		module tb_llm;
+
+			// Clock logic
+
+			initial
+			begin
+				// Generted test cases
+			$finish;
+			end
+		endmodule
+	",
+	"comments": " // Any additonal comments here "
+}
+''' + f"\n{design_message}"
 
 # This function returns the initial prompt used for generating a test bench
 def m1_prompt(design_specification: str, module_header: str) -> str:

@@ -13,13 +13,15 @@ subprocess.run("module load bittware/questa-23.4", shell=True, check=True, execu
 # Set the environment variable
 os.environ["LM_LICENSE_FILE"] = "27006@en4228283l.scai.dhcp.asu.edu"
 
+from transformers import AutoTokenizer
 from src.environment import Environment
 from src.questasim import QuestaSim
 from src.simulator import CoverageResponse
 from src.llama3_chat import LlamaChat
 import argparse
-from src.prompt_templates import m1_prompt, m2_prompts, m3_prompt, design_prompt, error_prompt
+import src.prompt_templates as prompt_templates
 from src.eval_runs_util import Record
+from src.conversation_manager import ConversationManager
 
 def parse_json_response(response: str) -> str | CoverageResponse:
     """
@@ -52,24 +54,16 @@ def evaluate_coverage(
 
 
 def generate_and_evaluate(
-    conversation: list[dict], prompt: str, llama: LlamaChat, environment: Environment, 
-    record: Record, run: int, iteration: int, json: bool = True, batch_size: int = 1
+    conversation: ConversationManager, prompt: str, llama: LlamaChat, environment: Environment, 
+    record: Record, run: int, iteration: int, json: bool = True, batch_size: int = 1,
+    set_stack_pointer: bool = False
 ) -> CoverageResponse:
     """
     Generate a test bench and evaluate its coverage.
     """
 
-    # Print Full Conversation Before Running Each Iteration
-    print("\n" + "=" * 80)
-    print(f"ITERATION {iteration} (Run {run})")
-    print("-" * 80)
-    for message in conversation:
-        print(f"{message['role'].capitalize()}: {message['content']}\n")
-    print("-" * 80)
-
-
     print(prompt)
-    conversation.append({"role": "user", "content": prompt})
+    conversation.append_user_message(prompt, update_stack_pointer=set_stack_pointer)
     responses, tokens_generated, gen_time = llama.generate_response(conversation, num_return_sequences=batch_size)
     print(responses)
     print(f"Tokens / second: {tokens_generated / gen_time}\n")
@@ -105,7 +99,7 @@ def generate_and_evaluate(
                 if response.total_coverage >= max_coverage[0]:
                     max_coverage = (response.total_coverage, successful_responses[i], response)
 
-            conversation.append({"role": "assistant", "content": max_coverage[1]})
+            conversation.append_assistant_message(max_coverage[1], slice=(True and environment.remove_polluted_context))
             
             for i, response in enumerate(coverage_responses):
                 record.update_dataframe(response, llama.temperature, llama.top_p, run, iteration, i, tokens_generated, gen_time)
@@ -113,10 +107,9 @@ def generate_and_evaluate(
             selected = max_coverage[2]
         else: # If responses is empty, pick a bad response
             bad_response = json_responses[0] if isinstance(json_responses[0], CoverageResponse) else CoverageResponse(False, 4, "Unexpected JSON Error.")
-            conversation.append({
-                "role": "assistant", 
-                "content": bad_response.error_message
-            })
+            
+            conversation.append_assistant_message(bad_response.error_message, slice=False)
+
             selected = bad_response 
             
         record.write_to_csv(f'./{environment.csv_path}')
@@ -141,117 +134,65 @@ def run_conversation(
     temperature = args.temperature
     top_p = 0.7
     cov = CoverageResponse(True, 0, "")
-    conversation = [{"role": "system", "content": "You are a verification assistant."}]
-    stack_pointer = 0
-    print("Length of conversation: ", len(conversation))
-    print("Stack pointer: ", stack_pointer)
+    
+    tokenizer = AutoTokenizer.from_pretrained(environment.tokenizer_id, use_fast=False)
+    conversation = ConversationManager(tokenizer, prompt_templates.system_prompt())
+
+    print("Length of conversation: ", conversation.length())
+    print("Stack pointer: ", conversation.stack_pointer)
     
     valid_iterations = 0  
     iteration = 0
     if environment.testplan:
-        testplan_prompt, testbench_prompt = m2_prompts(environment.design_specification, environment.module_header)
+        testplan_prompt, testbench_prompt = prompt_templates.m2_prompts(environment.design_specification, environment.module_header)
         print(testplan_prompt)
         print(testbench_prompt)
         # Stage 1: Generate verification plan
         cov = generate_and_evaluate(conversation, testplan_prompt, llama, environment, record, run_index, iteration, json=False)
         iteration += 1
-        stack_pointer = len(conversation) - 2
     else:
-        testbench_prompt = m1_prompt(environment.design_specification, environment.module_header)
+        testbench_prompt = prompt_templates.m1_prompt(environment.design_specification, environment.module_header)
         print(testbench_prompt)
     
-    print("Length of conversation: ", len(conversation))
-    print("Stack pointer: ", stack_pointer)
+    print("Length of conversation: ", conversation.length())
+    print("Stack pointer: ", conversation.stack_pointer)
 
     # Stage 2: Generate test bench
     if cov.success:
         cov = generate_and_evaluate(conversation, testbench_prompt, llama, environment, record, run_index, iteration, batch_size=environment.batch_size)
         if cov.success:
             valid_iterations += 1
-            stack_pointer = len(conversation) - 2
 
-    print("Length of conversation: ", len(conversation))
-    print("Stack pointer: ", stack_pointer)    
+    print("Length of conversation: ", conversation.length())
+    print("Stack pointer: ", conversation.stack_pointer)    
 
     # Iterative Refinement
     iteration += 1
     first_success = True
-    design_prompt_idx = 0
     while record.max_cov < 100 and iteration <= args.max_iterations and valid_iterations < args.max_valid_iter:
         #if cov.success and not has_all_files:
-            #conversation = conversation[:(stack_pointer+1)] + [conversation[len(conversation) - 1]]
-            #stack_pointer = len(conversation) + 1 # add 1 to account for the m3_prompt that will be added to the conversation history
+            #conversation = conversation[:(stack_pointer+1)] + [conversation[conversation.length() - 1]]
+            #stack_pointer = conversation.length() + 1 # add 1 to account for the m3_prompt that will be added to the conversation history
             #has_all_files = True
 
         # The stack pointer should point to the last user message
         # Design prompt should always point to the design prompt
         if cov.error_code == 0 and first_success:
             first_success = False
-            if args.remove_polluted_context:
-                # Cancat up to the stack pointer and most recent test bench
-                conversation = conversation[:(stack_pointer+1)] + [conversation[-1]]
             valid_iterations += 1
             if not environment.no_design_prompt:
                 # Add design prompt to end of conversation
-                conversation.append({"role": "user", "content": design_prompt(environment.all_design_file_paths)})
-                print(conversation[-1])
-                design_prompt_idx = len(conversation) - 1
-            if args.remove_polluted_context: 
-                # If we added the design prompt, then the most recent user message is the design prompt
-                if environment.no_design_prompt:
-                    stack_pointer = len(conversation) - 1
-                # If we didn't, then it's the message before the last test bench
-                else:
-                    stack_pointer = len(conversation) - 2
-
-        prompt = error_prompt(cov.error_code, cov.error_message) if not cov.success else m3_prompt(cov, environment.design_module_name)
+                conversation.update_system_prompt(prompt_templates.system_prompt(environment.all_design_file_paths))
+                
+        prompt = prompt_templates.error_prompt(cov.error_code, cov.error_message) if not cov.success else prompt_templates.m3_prompt(cov, environment.design_module_name)
         print(prompt)
         
         # This call adds 2 prompts to the conversation: the next user promtp and the response
         cov = generate_and_evaluate(conversation, prompt, llama, environment, record, run_index, iteration, batch_size=environment.batch_size)
-        
-        # If we are removing polluted context:
-        # slice the conversation from beginning up to the stack pointer + the latest response
-        if cov.success and args.remove_polluted_context: 
-            conversation = conversation[:(stack_pointer + 1)] + [conversation[len(conversation) - 1]]
-            stack_pointer = len(conversation) - 2
-
-        def find_last_user_idx(convo: list[dict]) -> int:
-            for i in reversed(range(len(convo))):
-                if convo[i]["role"] == "user":
-                    return i
-            return -1
-
-        def find_design_prompt_idx(convo: list[dict]) -> int:
-            for i, msg in enumerate(convo):
-                if msg["role"] == "user" and "Here is the full design to give you more context" in msg["content"]:
-                    return i
-            return -1
-
-        if not environment.no_design_prompt:
-            design_msg = {"role": "user", "content": design_prompt(environment.all_design_file_paths)}
-            last_user_idx = find_last_user_idx(conversation)
-            design_idx = find_design_prompt_idx(conversation)
-
-            # If it's missing, insert it before the last user message
-            if design_idx == -1:
-                conversation.insert(last_user_idx, design_msg)
-                stack_pointer = last_user_idx  # since the design prompt is now right before the last user prompt
-
-            # If it exists but not directly before the last user message, move it
-            elif design_idx != last_user_idx - 1:
-                conversation.pop(design_idx)
-                if design_idx < last_user_idx:
-                    last_user_idx -= 1
-                conversation.insert(last_user_idx, design_msg)
-                stack_pointer = last_user_idx
-        
-        # Call limit_conversation and update indices accordingly
-        conversation, stack_pointer, design_prompt_idx = llama.limit_conversation(conversation, stack_pointer=stack_pointer, design_prompt_idx=design_prompt_idx)
 
         iteration += 1
-        print("Length of conversation: ", len(conversation))
-        print("Stack pointer: ", stack_pointer)
+        print("Length of conversation: ", conversation.length())
+        print("Stack pointer: ", conversation.stack_pointer)
 
     # Merged Coverage Logic
     if args.merge_coverage:
@@ -322,6 +263,7 @@ def main():
     parser.add_argument('--no_design_prompt_pointer', action='store_true', required=False, help="Disable the design prompt.")
     parser.add_argument("-q", "--quantize", action="store_true", required=False, help="Enable quantization.")
     parser.add_argument("--model", type=str, required=True)
+    parser.add_argument("--tokenizer", type=str, required=False, help="Tokenizer used for ConversationManager")
     args = parser.parse_args()
 
     environment = Environment(args)

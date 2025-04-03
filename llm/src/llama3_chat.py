@@ -11,6 +11,7 @@ import time
 from src.simulator import Simulator, CoverageResponse
 from src.environment import Environment
 from src.prompt_templates import design_prompt
+from src.conversation_manager import ConversationManager
 from math import exp, log10
 import logging
 from concurrent.futures import ThreadPoolExecutor
@@ -18,6 +19,9 @@ from typing import Any, Callable, Union
 from vllm import LLM, SamplingParams 
 from pathlib import Path
 import re
+import torch._dynamo
+
+torch._dynamo.config.suppress_errors = True
 
 logging.basicConfig(level=logging.INFO)
 
@@ -168,7 +172,7 @@ class LlamaChat(ModelChat):
 
         return "\n\n".join(formatted_messages)
 
-    def generate_response(self, conversation_history: list[dict[str, str]], num_return_sequences=2) -> tuple[list[str], int, float]:
+    def generate_response(self, conversation_history: ConversationManager, num_return_sequences=2) -> tuple[list[str], int, float]:
         """
         Generate multiple responses from the model given the conversation history.
 
@@ -190,9 +194,9 @@ class LlamaChat(ModelChat):
             raise ValueError("Conversation history is required.")
 
         # Evaluate new temperature based on temperature function
-        self.temperature = self.temperature_function(len(conversation_history))
+        self.temperature = self.temperature_function(conversation_history.length())
 
-        formatted_conversation = LlamaChat.format_conversations(conversation_history)
+        conversation = conversation_history.get_prompt()
 
         sampling_params = SamplingParams(
             temperature=self.temperature if self.do_sample else None,
@@ -203,7 +207,7 @@ class LlamaChat(ModelChat):
 
         start_time = time.time()
         try:
-            output = self.llm.generate(formatted_conversation, sampling_params)
+            output = self.llm.generate(conversation, sampling_params)
             elapsed_time = time.time() - start_time
 
             responses = [completion.text for completion in output[0].outputs]
