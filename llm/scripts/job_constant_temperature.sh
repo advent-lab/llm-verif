@@ -49,6 +49,7 @@ python /scratch/$USER/temperature_runs/evaluations/evaluate_methodology6.py \
     -c /packages/apps/fpga/Questa/questa_fe/bin \
     --id "baseline" \
     --model "models--casperhansen--llama-3.3-70b-instruct-awq" \
+    --tokenizer "meta-llama/Llama-3.3-70B-Instruct" \
     --quantize \
     -m \
     --temperature_function "constant" \
