@@ -69,9 +69,6 @@ def generate_and_evaluate(
     print(responses)
     print(f"Tokens / second: {tokens_generated / gen_time}\n")
 
-    # Try to empty cuda cache to regulate memory
-    torch.cuda.empty_cache()
-
     selected: CoverageResponse = CoverageResponse()
     if json:
         json_responses: list[str | CoverageResponse] = [parse_json_response(response) for response in responses]
@@ -277,7 +274,7 @@ def main():
     environment = Environment(args)
     record = Record(environment.design_name, identifier=args.id, temp_func=args.temperature_function, testplan=args.testplan, batch_size=args.batch_size, remove_polluted_context=args.remove_polluted_context, run_type="RUN", include_merge_coverage=args.merge_coverage)
 
-    llama = LlamaChat(
+    llama = ChatGPTChat(
         QuestaSim(args.compiler), environment, do_sample=not args.no_sampling,
         temperature_function=args.temperature_function, temperature=args.temperature,
         top_p=0.7, max_new_tokens=4098, timeout_seconds=1000, seed=args.seed

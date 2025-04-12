@@ -8,7 +8,6 @@ accelerate==1.1.0
     # via
     #   -r requirements.in
     #   auto-gptq
-    #   autoawq
     #   peft
 accelerator==2024.9.13
     # via -r requirements.in
@@ -64,8 +63,6 @@ attrs==24.2.0
     #   jsonschema
     #   referencing
 auto-gptq==0.7.1
-    # via -r requirements.in
-autoawq==0.2.7.post2
     # via -r requirements.in
 bitsandbytes==0.45.3
     # via -r requirements.in
@@ -149,7 +146,6 @@ datasets==3.1.0
     # via
     #   -r requirements.in
     #   auto-gptq
-    #   autoawq
     #   optimum
 decorator==5.1.1
     # via
@@ -936,7 +932,6 @@ tiktoken==0.9.0
 tokenizers==0.21.0
     # via
     #   -r requirements.in
-    #   autoawq
     #   transformers
     #   vllm
 torch==2.6.0
@@ -944,7 +939,6 @@ torch==2.6.0
     #   -r requirements.in
     #   accelerate
     #   auto-gptq
-    #   autoawq
     #   bitsandbytes
     #   compressed-tensors
     #   optimum
@@ -990,7 +984,6 @@ transformers==4.48.3
     # via
     #   -r requirements.in
     #   auto-gptq
-    #   autoawq
     #   compressed-tensors
     #   optimum
     #   peft
@@ -1000,7 +993,6 @@ transformers==4.48.3
 triton==3.2.0
     # via
     #   -r requirements.in
-    #   autoawq
     #   torch
 typer==0.15.2
     # via
@@ -1009,7 +1001,6 @@ typer==0.15.2
 typing-extensions==4.12.2
     # via
     #   -r requirements.in
-    #   autoawq
     #   fastapi
     #   huggingface-hub
     #   ipython
@@ -1064,9 +1055,7 @@ websockets==14.2
     #   -r requirements.in
     #   uvicorn
 wheel==0.45.1
-    # via
-    #   -r requirements.in
-    #   pip-tools
+    # via pip-tools
 wrapt==1.17.2
     # via
     #   -r requirements.in
@@ -1091,9 +1080,8 @@ zipp==3.21.0
     # via
     #   -r requirements.in
     #   importlib-metadata
-zstandard==0.23.0
-    # via autoawq
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip
 # setuptools
+autoawq

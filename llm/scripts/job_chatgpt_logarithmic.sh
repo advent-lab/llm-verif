@@ -1,12 +1,10 @@
 #!/bin/bash
 
 #SBATCH -N 1            # number of nodes
-#SBATCH -c 32            # number of cores 
-#SBATCH --mem 64GB
-#SBATCH -t 0-10:00:00
-#SBATCH -G a100:2
-#SBATCH -C a100_80
-#SBATCH -p htc      # partition 
+#SBATCH -c 4            # number of cores 
+#SBATCH --mem 16GB
+#SBATCH -t 0-05:00:00
+#SBATCH -p general      # partition 
 #SBATCH -q public       # QOS
 #SBATCH -o slurm.%j.out # file to save job's STDOUT (%j = JobId)
 #SBATCH -e slurm.%j.err # file to save job's STDERR (%j = JobId)
@@ -21,11 +19,11 @@ RUN=$4
 
 #Load required software
 #Change to the directory of our script
-rm -rf $REPO_DIR/llm/venv /scratch/$USER/temperature_runs/${DATA_POINT}_constant_testplan
+rm -rf $REPO_DIR/llm/venv /scratch/$USER/temperature_runs/${DATA_POINT}_logarithmic_chatgpt
 
 mkdir /scratch/$USER/temperature_runs/
 
-mkdir /scratch/$USER/temperature_runs/${DATA_POINT}_constant_testplan_$RUN
+mkdir /scratch/$USER/temperature_runs/${DATA_POINT}_logarithmic_chatgpt_$RUN
 
 cp -rf $REPO_DIR/llm/evaluations $REPO_DIR/llm/src \
     $REPO_DIR/llm/build_llm_venv.sh \
@@ -44,20 +42,19 @@ export LM_LICENSE_FILE=27006@en4228283l.scai.dhcp.asu.edu
 
 cd /scratch/$USER/temperature_runs
 
-python /scratch/$USER/temperature_runs/evaluations/evaluate_methodology6.py \
+python /scratch/$USER/temperature_runs/evaluations/evaluate_chatgpt-4o.py \
     -d $REPO_DIR/data_points/$DATA_POINT \
     -g $NUM_RUNS \
     -c /packages/apps/fpga/Questa/questa_fe/bin \
-    --id "testplan" \
-    --model "models--casperhansen--llama-3.3-70b-instruct-awq" \
+    --dotenv_path /home/slowe8/Research/llm_verif_dataset/llm/.env \
+    --id "baseline" \
+    --model "gpt-4o" \
     --tokenizer "meta-llama/Llama-3.3-70B-Instruct" \
-    --quantize \
     -m \
-    --testplan \
-    --temperature_function "constant" \
+    --temperature_function "logarithmic" \
     --max_iterations 20 \
     --max_valid_iter 10 \
-    -o /scratch/$USER/temperature_runs/${DATA_POINT}_constant_testplan_$RUN \
-    2>&1 | tee /scratch/$USER/temperature_runs/${DATA_POINT}_constant_testplan_$RUN/${DATA_POINT}_constant_testplan_$RUN.log
+    -o /scratch/$USER/temperature_runs/${DATA_POINT}_logarithmic_chatgpt_$RUN \
+    2>&1 | tee /scratch/$USER/temperature_runs/${DATA_POINT}_logarithmic_chatgpt_$RUN/${DATA_POINT}_logarithmic_chatgpt_$RUN.log
     
 deactivate
