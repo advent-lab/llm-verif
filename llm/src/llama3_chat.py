@@ -67,34 +67,19 @@ class LlamaChat(ModelChat):
             timeout_seconds (int): Timeout for text generation in seconds.
             skip_load (bool): FOR TESTING ONLY. For faster testing, set this argument to true to skip loading the model
         """
-        self.simulator: Simulator | Any
-        self.environment: Environment | Any = environment
-        self.model: Any
-        self.tokenizer: Any
-        self.do_sample: bool
-        self.temperature_function: Callable[[int], float]
-        self.temperature: float
-        self.top_p: float
-        self.max_new_tokens: int
-        self.timeout_seconds: float
-
-        self.simulator = simulator
-        if not skip_load:
-            self.llm, self.tokenizer = self.load_model(seed=seed)
-        self.do_sample = do_sample
-
-        if temperature_function == "constant":
-            self.temperature_function = lambda _: temperature
-        elif temperature_function == "logarithmic":
-            self.temperature_function = LlamaChat.logarithmic_temperature
-        elif temperature_function == "capped_sigmoid":
-            self.temperature_function = LlamaChat.capped_sigmoid_temperature
-        else:
-            raise ValueError(f"Unknown temperature function: {temperature_function}")
-
-        self.top_p = top_p
-        self.max_new_tokens = max_new_tokens
-        self.timeout_seconds = timeout_seconds
+        
+        super().__init__(
+            simulator, 
+            environment, 
+            do_sample, 
+            temperature_function, 
+            temperature, 
+            top_p, 
+            max_new_tokens,
+            timeout_seconds, 
+            seed,
+            skip_load
+        )
 
     def load_model(self, seed: Union[int, None] = None):
         """
@@ -162,16 +147,6 @@ class LlamaChat(ModelChat):
         """
         del self.model
 
-    @staticmethod
-    def format_conversations(conversation: list[dict[str, str]]) -> str:
-        formatted_messages = []
-        for message in conversation:
-            role = message['role'].capitalize()
-            content = message["content"]
-            formatted_messages.append(f"{role}: {content}")
-
-        return "\n\n".join(formatted_messages)
-
     def generate_response(self, conversation_history: ConversationManager, num_return_sequences=2) -> tuple[list[str], int, float]:
         """
         Generate multiple responses from the model given the conversation history.
@@ -221,270 +196,6 @@ class LlamaChat(ModelChat):
             elapsed_time = self.timeout_seconds
 
         return responses, total_tokens, elapsed_time
-    
-    def generate_batch_responses(self, batch_conversations: list[list[dict[str, str]]], batch_size: int = 5):
-
-        """
-        Generates multiple responses for each input conversation in batch.
-
-        Args:
-            model: The LLM model.
-            tokenizer: The tokenizer for the model.
-            conversations (list of list of dict): Batch of conversations, where each conversation is a list of dicts.
-            batch_size (int): Number of responses to generate per conversation.
-            max_new_tokens (int): Max tokens to generate per response.
-            temperature (float): Sampling temperature.
-            top_p (float): Top-p sampling probability.
-
-        Returns:
-            tuple:
-                - generated_responses (list of lists): A list where each item is a list of generated responses for each conversation.
-                - total_tokens (int): Total tokens generated across all responses.
-                - total_time (float): Time taken for generation in seconds.
-        """
-
-        # Apply chat template to each conversation
-        formatted_inputs = [
-            self.tokenizer.apply_chat_template(conv, add_generation_prompt=True, return_tensors="pt")
-            for conv in batch_conversations
-        ]
-
-        # Pad and create batch input tensors
-        inputs = torch.nn.utils.rnn.pad_sequence(formatted_inputs, batch_first=True, padding_value=self.tokenizer.pad_token_id) # type: ignore
-        inputs = inputs.to(self.model.device)
-
-        # Start timing
-        start_time = time.time()
-
-        # Generate responses in batch with num_return_sequences
-        with torch.no_grad():
-            outputs = self.model.generate(
-                inputs,
-                max_new_tokens=self.max_new_tokens,
-                do_sample=True,
-                temperature=self.temperature,
-                top_p=self.top_p,
-                num_return_sequences=batch_size  # Generate 'batch_size' outputs per input conversation
-            )
-
-        # Measure time taken
-        total_time = time.time() - start_time
-
-        # Reshape output tensor to properly match batch_size and input batch
-        num_inputs = len(batch_conversations)
-        outputs = outputs.view(num_inputs, batch_size, -1)  # type: ignore # Shape: (num_inputs, batch_size, sequence_length)
-
-        # Decode outputs
-        generated_responses = [
-            self.tokenizer.batch_decode(batch_outputs, skip_special_tokens=True) for batch_outputs in outputs
-        ]
-
-        # Calculate total number of tokens generated
-        total_tokens = sum(output.shape[-1] for output in outputs.flatten(start_dim=1))
-
-        return generated_responses, total_tokens, total_time
-    
-    def log_conversation(self, conversation_update: list[dict[str, str]], log_file: str):
-        """
-        Log the conversation history to a specified file.
-
-        Args:
-            conversation_update (list[dict]): A list of message dictionaries to log.
-            log_file (str): Path to the log file.
-
-        Returns:
-            None
-        """
-        with open(log_file, 'a') as f:
-            f.write(f"--- Conversation Log: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n")
-            for message in conversation_update:
-                f.write(f"{message['role'].capitalize()}: {message['content']}\n")
-            f.write("\n")
-
-    # Function to collect multi-line input from the user
-    def get_multiline_input(self, prompt: str ="Enter your message (end with 'END' on a new line):"):
-        print(prompt)
-        lines: list[str] = []
-        while True:
-            line = input()
-            if line.strip().upper() == "END":
-                break
-            lines.append(line)
-        return "\n".join(lines)
-
-    @staticmethod
-    def convert_json_response_to_dict(generated_response: str) -> tuple[dict[str, Any], int]:
-        """
-        Extract and parse JSON content from an AI-generated response.
-
-        This method identifies and parses JSON-like content embedded within the model's response.
-        If the response contains invalid JSON or no JSON at all, it attempts to extract the most
-        plausible JSON segment and returns a default structure for errors.
-
-        Args:
-            generated_response (str): The AI-generated response containing JSON-like content.
-
-        Returns:
-            Tuple[Dict[str, Any], int]:
-                - The parsed JSON object as a dictionary.
-                - A status code:
-                    - 0: Successfully parsed JSON.
-                    - 1: Empty response or no JSON found.
-                    - 2: JSON parsing failed.
-                    - 3: Other unexpected errors.
-
-        Notes:
-            - This function is designed for scenarios where the AI response might contain
-              additional non-JSON text before or after the JSON content.
-        """
-        # Handle empty response
-        if not generated_response:
-            logging.error("Empty or invalid response received.")
-            return {"error": "Empty response"}, 1
-
-        # Attempt to extract JSON-like content
-        try:
-            # Find the first JSON curly brace
-            first_pos = generated_response.find('{')
-            if first_pos != -1:
-                generated_response = generated_response[first_pos:]
-            
-            comments_pos = generated_response.find('"comments":')
-            
-            # Find the first JSON curly brace after comments tag
-            last_pos = generated_response.find('}', comments_pos)
-            if last_pos != -1 and comments_pos != -1:
-                generated_response = generated_response[:last_pos + 1]
-
-            # TODO: Escape all non-terminal double quotes
-            pattern = r'{\s*"test bench":\s*"(.*?)",\s*"comments":\s*"(.*?)"\s*}'
-            matches = re.match(pattern, generated_response, re.DOTALL)
-            if matches:
-                parsed_response = matches.group(1)
-            else:
-                raise RuntimeError(f"Could not parse the response:\n{generated_response}")
-
-            # Parse JSON
-            #decoder = json.JSONDecoder(strict=False)
-            #parsed_response = decoder.raw_decode(generated_response)
-            return {"test bench": parsed_response}, 0
-
-        except json.JSONDecodeError as e:
-            logging.error(f"JSONDecodeError: {e}. Response: {generated_response}")
-            return {"error": f"Malformed JSON content\n\n{generated_response}"}, 2
-
-        except Exception as e:
-            logging.error(f"Unexpected error during JSON parsing: {e}")
-            return {"error": f"Unexpected error\n\n{generated_response}"}, 3
-
-
-    # TODO: Create call to QuestaSim to get coverage
-    def get_coverage(self, generated_response: str, tb_path: str, data_point: dict[str, str | list[str]] | None, storage: FileStore = None, batch: int = 0) -> CoverageResponse:
-        if not generated_response:
-            return CoverageResponse(False, 4, "Empty test bench (JSON Decode Error)")
-
-        # Write the generated testbench to a file
-        print(tb_path)
-        with open(tb_path, "w+") as testbench_file:
-            testbench_file.write(generated_response)
-
-        # Run QuestaSim to get coverage
-        # env = Environment(questa_dir)
-        log_name = tb_path.split('.')[0] 
-        coverage_response = self.simulator.run_sim(tb_path=tb_path, data_point=data_point, log_name=log_name)
-
-        # Move test bench file to storage
-        if storage:
-            storage.move(tb_path)
-            storage.move(f'{log_name}_compile.log')
-            storage.move(f'{log_name}_sim.log')
-            storage.move(f'{log_name}.ucdb')
-            storage.move(f'{log_name}_report.txt')
-        
-
-        return coverage_response
-
-    def get_merge_coverage(self, run: int):
-        self.simulator.merge_coverage()
-
-    def limit_conversation(self, conversation, context_window=128000, stack_pointer: int = -1):
-        """
-        Trims the conversation to fit within the context window and ensures the design prompt is present
-        directly before the last user message if required.
-
-        Args:
-            conversation (list[dict]): The current conversation history.
-            context_window (int): The maximum allowed context window in tokens.
-            stack_pointer (int): Index of the last valid user message before the LLM response.
-
-        Returns:
-            tuple: (trimmed_conversation, updated_stack_pointer)
-        """
-
-        def find_last_user_idx(convo: list[dict]) -> int:
-            for i in reversed(range(len(convo))):
-                if convo[i]["role"] == "user":
-                    return i
-            return -1
-
-        def find_design_prompt_idx(convo: list[dict]) -> int:
-            for i, msg in enumerate(convo):
-                if msg["role"] == "user" and "Here is the full design to give you more context" in msg["content"]:
-                    return i
-            return -1
-
-        # --- Trim conversation if over token limit ---
-        current_token_count = sum(len(self.tokenizer.encode(msg["content"])) for msg in conversation)
-        max_token_count = context_window - self.max_new_tokens
-
-        while current_token_count > max_token_count and len(conversation) > 2:
-            removed = conversation.pop(1)  # always preserve system prompt (index 0)
-            if stack_pointer > 1:
-                stack_pointer -= 1
-            current_token_count = sum(len(self.tokenizer.encode(msg["content"])) for msg in conversation)
-
-        # --- Ensure design prompt appears before the last user message ---
-        if not self.environment.no_design_prompt:
-            design_msg = {"role": "user", "content": design_prompt(self.environment.all_design_file_paths)}
-            last_user_idx = find_last_user_idx(conversation)
-            design_idx = find_design_prompt_idx(conversation)
-
-            if last_user_idx == -1:
-                logging.warning("No user message found after trimming. Skipping design prompt insertion.")
-            elif design_idx == -1:
-                conversation.insert(last_user_idx, design_msg)
-                stack_pointer = last_user_idx
-            elif design_idx != last_user_idx - 1:
-                conversation.pop(design_idx)
-                if design_idx < last_user_idx:
-                    last_user_idx -= 1
-                conversation.insert(last_user_idx, design_msg)
-                stack_pointer = last_user_idx
-
-        # --- Fallback: if stack pointer is lost, recover it ---
-        if stack_pointer < 0:
-            stack_pointer = find_last_user_idx(conversation)
-
-        return conversation, stack_pointer
-
-    def parallel_get_coverage(self, responses: str, test_benches: list[str], data_points: list[dict], store: FileStore = None) -> list[CoverageResponse]:
-        """
-        Run coverage simulations in parallel for multiple test benches.
-
-        Args:
-            test_benches (list[str]): List of test bench file paths.
-            data_points (list[dict]): List of data points for each simulation.
-
-        Returns:
-            list[CoverageResponse]: List of coverage responses.
-        """
-        with ThreadPoolExecutor() as executor:
-            futures = [
-                executor.submit(self.get_coverage, t[0], t[1], t[2], store, i)
-                for i, t in enumerate(zip(responses, test_benches, data_points))
-            ]
-            return [future.result() for future in futures]
-
 
     @staticmethod
     def capped_sigmoid_temperature(n: int, T_start: float = 0.2, T_end: float = 0.8, N: int = 9, k: float = 0.9) -> float:

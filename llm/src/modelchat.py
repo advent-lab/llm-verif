@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 from tracemalloc import start
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, PreTrainedModel, PreTrainedTokenizer, PreTrainedTokenizerFast
 from accelerate import infer_auto_device_map
@@ -8,6 +9,7 @@ import json
 from src.storage import FileStore
 import time
 from src.simulator import Simulator, CoverageResponse
+from src.environment import Environment
 from math import exp, log10
 import logging
 from concurrent.futures import ThreadPoolExecutor
@@ -30,7 +32,7 @@ class ModelChat:
         timeout_seconds (int): Timeout for text generation in seconds.
     """
 
-    def __init__(self, simulator: Simulator | None, do_sample: bool, temperature_function: str = "constant",
+    def __init__(self, simulator: Simulator | None, environment: Environment, do_sample: bool, temperature_function: str = "constant",
             temperature: float = 0.3, top_p: float = 0.7, max_new_tokens: int = 4098, timeout_seconds: int = 1000, seed: Union[int, None] = None, skip_load: bool = False):
         """
         Initialize the ModelChat class.
@@ -46,8 +48,9 @@ class ModelChat:
             skip_load (bool): FOR TESTING ONLY. For faster testing, set this argument to true to skip loading the model
         """
         self.simulator: Simulator | Any
-        self.model: PreTrainedModel | Any
-        self.tokenizer: PreTrainedTokenizer | Any
+        self.environment: Environment | Any = environment
+        self.llm: Any
+        self.tokenizer: Any
         self.do_sample: bool
         self.temperature_function: Callable[[int], float]
         self.temperature: float
@@ -57,7 +60,7 @@ class ModelChat:
 
         self.simulator = simulator
         if not skip_load:
-            self.model, self.tokenizer = self.load_model(seed=seed)
+            self.llm, self.tokenizer = self.load_model(seed=seed)
         self.do_sample = do_sample
 
         if temperature_function == "constant":
@@ -114,11 +117,6 @@ class ModelChat:
             ValueError: If the conversation history is empty or invalid.
             Exception: For unexpected errors during text generation.
         """
-    
-    def generate_batch_responses(self, batch_conversations: list[list[dict[str, str]]]):
-        """
-        Generate a batch of responses form the model using a batch of inputs
-        """ 
 
     @staticmethod
     def convert_json_response_to_dict(generated_response: str) -> tuple[dict[str, Any], int]:
@@ -152,90 +150,66 @@ class ModelChat:
 
         # Attempt to extract JSON-like content
         try:
-            # Find the first and last JSON curly braces
+            # Find the first JSON curly brace
             first_pos = generated_response.find('{')
             if first_pos != -1:
                 generated_response = generated_response[first_pos:]
             
-            last_pos = generated_response.rfind('}')
-            if last_pos != -1:
+            comments_pos = generated_response.find('"comments":')
+            
+            # Find the first JSON curly brace after comments tag
+            last_pos = generated_response.find('}', comments_pos)
+            if last_pos != -1 and comments_pos != -1:
                 generated_response = generated_response[:last_pos + 1]
 
+            # TODO: Escape all non-terminal double quotes
+            pattern = r'{\s*"test bench":\s*"(.*?)",\s*"comments":\s*"(.*?)"\s*}'
+            matches = re.match(pattern, generated_response, re.DOTALL)
+            if matches:
+                parsed_response = matches.group(1)
+            else:
+                raise RuntimeError(f"Could not parse the response:\n{generated_response}")
+
             # Parse JSON
-            decoder = json.JSONDecoder(strict=False)
-            parsed_response = decoder.raw_decode(generated_response)
-            return parsed_response[0], 0
+            #decoder = json.JSONDecoder(strict=False)
+            #parsed_response = decoder.raw_decode(generated_response)
+            return {"test bench": parsed_response}, 0
 
         except json.JSONDecodeError as e:
             logging.error(f"JSONDecodeError: {e}. Response: {generated_response}")
-            return {"error": "Malformed JSON content"}, 2
+            return {"error": f"Malformed JSON content\n\n{generated_response}"}, 2
 
         except Exception as e:
             logging.error(f"Unexpected error during JSON parsing: {e}")
-            return {"error": "Unexpected error"}, 3
+            return {"error": f"Unexpected error\n\n{generated_response}"}, 3
 
-    def get_coverage(self, generated_response: str, tb_path: str, data_point: dict[str, str | list[str]] | None, storage: FileStore = None):
-        """
-        Query the simulator to get the code coverage of a given test bench
-        """
-        pass
+    def get_coverage(self, generated_response: str, tb_path: str, data_point: dict[str, str | list[str]] | None, storage: FileStore = None, batch: int = 0) -> CoverageResponse:
+        if not generated_response:
+            return CoverageResponse(False, 4, "Empty test bench (JSON Decode Error)")
+
+        # Write the generated testbench to a file
+        print(tb_path)
+        with open(tb_path, "w+") as testbench_file:
+            testbench_file.write(generated_response)
+
+        # Run QuestaSim to get coverage
+        # env = Environment(questa_dir)
+        log_name = tb_path.split('.')[0] 
+        coverage_response = self.simulator.run_sim(tb_path=tb_path, data_point=data_point, log_name=log_name)
+
+        # Move test bench file to storage
+        if storage:
+            storage.move(tb_path)
+            storage.move(f'{log_name}_compile.log')
+            storage.move(f'{log_name}_sim.log')
+            storage.move(f'{log_name}.ucdb')
+            storage.move(f'{log_name}_report.txt')
+        
+
+        return coverage_response
 
     def get_merge_coverage(self, run: int):
-        """
-        Query the simulator for merge coverage across a run
-        """
-
-    def limit_conversation(self, conversation: list[dict[str, str]], context_window: int = 128000) -> list[dict]:
-        """
-        Limit the conversation memory to ensure it stays within token limits.
-
-        Args:
-            conversation (list[dict]): The conversation history.
-
-        Returns:
-            list[dict]: The truncated conversation history.
-
-        Raises:
-            ValueError: If the conversation is empty or improperly formatted.
-        """
-        if not conversation or not isinstance(conversation, list):
-            logging.error("Empty or invalid conversation passed to limit_conversation.")
-            raise ValueError("Conversation must be a non-empty list of messages.")
-        
-        # Ensure the system prompt is always retained
-        if len(conversation) == 1:
-            logging.warning("Conversation contains only the system prompt; no truncation needed.")
-            return conversation
-
-        current_token_count = sum(len(self.tokenizer.encode(msg["content"])) for msg in conversation)
-        print(f"Current token count: {current_token_count}")
-        max_token_count = context_window - self.max_new_tokens
-
-        # Trim conversation until within token limits
-        while current_token_count > max_token_count and len(conversation) > 1:
-            print(f"Trimming conversation to fit within token limits: {current_token_count} > {max_token_count}")
-            # Preserve the system message (index 0)
-            conversation.pop(1)
-            current_token_count = sum(len(self.tokenizer.encode(msg["content"])) for msg in conversation)
-
-        if current_token_count > max_token_count:
-            logging.warning("Conversation could not be fully limited within token limits.")
-
-        return conversation
-
-
-    def parallel_get_coverage(self, responses: str, test_benches: list[str], data_points: list[dict]):
-        """
-        Run coverage simulations in parallel for multiple test benches.
-
-        Args:
-            test_benches (list[str]): List of test bench file paths.
-            data_points (list[dict]): List of data points for each simulation.
-
-        Returns:
-            list[CoverageResponse]: List of coverage responses.
-        """
-
+        self.simulator.merge_coverage()
 
     @staticmethod
     def capped_sigmoid_temperature(n: int, T_start: float = 0.2, T_end: float = 0.8, N: int = 9, k: float = 0.9) -> float:

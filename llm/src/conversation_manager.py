@@ -3,7 +3,7 @@ from transformers import PreTrainedTokenizerBase
 class ConversationManager:
 
     def __init__(self, tokenizer: PreTrainedTokenizerBase, system_prompt: str, max_input_tokens: int = 30000):
-        self.tokenizer = tokenizer
+        self.tokenizer: PreTrainedTokenizerBase = tokenizer
         self.max_input_tokens = max_input_tokens
         self.conversation = [{"role": "system", "content": system_prompt}]
         self.stack_pointer = 1
@@ -54,6 +54,11 @@ class ConversationManager:
     def get_prompt(self):
         prompt = self._build_prompt()
         return self._prune_to_fit(prompt)
+    
+    def get_messages(self):
+        _ = self._prune_to_fit(self._build_prompt())
+
+        return self.conversation
     
     def _set_stack_pointer(self):
         self.stack_pointer = len(self.conversation) - 1

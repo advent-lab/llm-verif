@@ -21,6 +21,8 @@ class Environment:
         self.csv_path = f"{self.design_name}_evaluation6_{time.strftime('%Y%m%d_%H%M%S')}.csv"
         self.no_design_prompt = env_options.no_design_prompt_pointer
 
+        self.dotenv_path = env_options.dotenv_path
+
         self.model_id = env_options.model
         self.tokenizer_id = env_options.tokenizer
         self.quantized = env_options.quantize
