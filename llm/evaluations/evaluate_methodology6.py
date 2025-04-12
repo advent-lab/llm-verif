@@ -18,7 +18,6 @@ from src.environment import Environment
 from src.questasim import QuestaSim
 from src.simulator import CoverageResponse
 from src.llama3_chat import LlamaChat
-from src.chatgpt_chat import ChatGPTChat
 import argparse
 import src.prompt_templates as prompt_templates
 from src.eval_runs_util import Record
@@ -68,9 +67,6 @@ def generate_and_evaluate(
     responses, tokens_generated, gen_time = llama.generate_response(conversation, num_return_sequences=1 if not json else batch_size)
     print(responses)
     print(f"Tokens / second: {tokens_generated / gen_time}\n")
-
-    # Try to empty cuda cache to regulate memory
-    torch.cuda.empty_cache()
 
     selected: CoverageResponse = CoverageResponse()
     if json:
