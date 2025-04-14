@@ -1,0 +1,13 @@
+This is a floating point multiplier design. It multiplies two IEEE floating point 32-bit numbers.
+
+The design is pipelined. There are 5 stages. So, a result is available after 5 cycles of it the inputs being applied.
+
+The design also generates flags, which are used to denote errors or exceptions generated during the computation.
+
+Here's the interface:
+Input clk -> Clock signal
+Input rst -> Reset signal
+Input a -> First IEEE 32-bit floating point number
+Input b -> Second IEEE 32-bit floating point number
+Output result -> The result IEEE 32-bit floating point number
+Output flags -> 5 bit flags signal

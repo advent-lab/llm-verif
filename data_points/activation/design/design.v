@@ -1,0 +1,427 @@
+`timescale 1ns/1ns
+`define VCS
+`define MATMUL_SIZE_8 
+`define MORE_TESTS
+`define DESIGN_SIZE_8
+`define SIMULATION
+`define layer_test
+
+`define DWIDTH 8
+`define AWIDTH 11
+`define MEM_SIZE 2048
+
+`ifdef MATMUL_SIZE_4
+`define MAT_MUL_SIZE 4
+`define MASK_WIDTH 4
+`define LOG2_MAT_MUL_SIZE 2
+`endif
+
+`ifdef MATMUL_SIZE_8
+`define MAT_MUL_SIZE 8
+`define MASK_WIDTH 8
+`define LOG2_MAT_MUL_SIZE 3
+`endif
+
+`ifdef MATMUL_SIZE_16
+`define MAT_MUL_SIZE 16
+`define MASK_WIDTH 16
+`define LOG2_MAT_MUL_SIZE 4
+`endif
+
+`ifdef MATMUL_SIZE_32
+`define MAT_MUL_SIZE 32
+`define MASK_WIDTH 32
+`define LOG2_MAT_MUL_SIZE 5
+`endif
+
+`ifdef DESIGN_SIZE_4
+`define DESIGN_SIZE 4
+`define LOG2_DESIGN_SIZE 2
+`endif
+
+`ifdef DESIGN_SIZE_8
+`define DESIGN_SIZE 8
+`define LOG2_DESIGN_SIZE 3
+`endif
+
+`ifdef DESIGN_SIZE_16
+`define DESIGN_SIZE 16
+`define LOG2_DESIGN_SIZE 4
+`endif
+
+`ifdef DESIGN_SIZE_32
+`define DESIGN_SIZE 32
+`define LOG2_DESIGN_SIZE 5
+`endif
+
+`define BB_MAT_MUL_SIZE `MAT_MUL_SIZE
+`define NUM_CYCLES_IN_MAC 3
+`define MEM_ACCESS_LATENCY 1
+`define REG_DATAWIDTH 32
+`define REG_ADDRWIDTH 8
+`define ADDR_STRIDE_WIDTH 8
+`define MAX_BITS_POOL 3
+
+////////////////////////////////////////////////////////////////////////////////
+// THIS FILE WAS AUTOMATICALLY GENERATED FROM generate_activation.v.mako
+// DO NOT EDIT
+////////////////////////////////////////////////////////////////////////////////
+module activation(
+    input activation_type,  //Identify which activation function to apply, 1 = tanh, 0 = relu
+    input enable_activation, //Enables the activation unit by making this signal 1. If the activation block is not enabled, the input data is just forwarded to the input as-is.
+    input enable_pool, // Set this to 0
+    input in_data_available, //Indicates that the input data on the inp_data* signals is ready to be consumed by the unit.
+    input [`DWIDTH-1:0] inp_data0,  //First element of input data (8-bits)
+    input [`DWIDTH-1:0] inp_data1,  //Second element of input data (8-bits)
+    input [`DWIDTH-1:0] inp_data2,  //Third element of input data (8-bits)
+    input [`DWIDTH-1:0] inp_data3,  //Fourth element of input data (8-bits)
+    input [`DWIDTH-1:0] inp_data4,  //Fifth element of input data (8-bits)
+    input [`DWIDTH-1:0] inp_data5,  //Sixth element of input data (8-bits)
+    input [`DWIDTH-1:0] inp_data6,  //Seventh element of input data (8-bits)
+    input [`DWIDTH-1:0] inp_data7,  //Eighth element of input data (8-bits)
+    output [`DWIDTH-1:0] out_data0,  //First element of output data (8-bits)
+    output [`DWIDTH-1:0] out_data1,  //Second element of output data (8-bits)
+    output [`DWIDTH-1:0] out_data2,  //Third element of output data (8-bits)
+    output [`DWIDTH-1:0] out_data3,  //Fourth element of output data (8-bits)
+    output [`DWIDTH-1:0] out_data4,  //Fifth element of output data (8-bits)
+    output [`DWIDTH-1:0] out_data5,  //Sixth element of output data (8-bits)
+    output [`DWIDTH-1:0] out_data6,  //Seventh element of output data (8-bits)
+    output [`DWIDTH-1:0] out_data7,  //Eighth element of output data (8-bits)
+    output out_data_available,  //Indicates that the output data on the out_data* signals are ready to be used outside the unit.
+    input [`MASK_WIDTH-1:0] validity_mask, //Functionality not implemented currently
+    output reg done_activation,  //Asserts when the activation unit is done
+    input clk,  //Clock
+    input reset  //Reset
+);
+
+reg in_data_available1;
+reg in_data_available2;
+reg in_data_available3;
+reg in_data_available4;
+reg in_data_available5;
+reg in_data_available6;
+reg in_data_available7;
+
+always @(posedge clk) begin
+    in_data_available1 <= in_data_available;
+	in_data_available2 <= in_data_available1;
+	in_data_available3 <= in_data_available2;
+	in_data_available4 <= in_data_available3;
+	in_data_available5 <= in_data_available4;
+	in_data_available6 <= in_data_available5;
+	in_data_available7 <= in_data_available6;
+end
+
+wire out_data_available_internal;
+assign out_data_available   = enable_pool? enable_activation ? out_data_available_internal : in_data_available : in_data_available2;
+
+
+wire out_data_available_final;
+reg [`DWIDTH-1:0] act_count;
+//reg done_activation;
+reg [`DWIDTH-1:0] done_activation_count;
+
+always @(posedge clk) begin
+	if (reset) begin
+		done_activation <= 0;
+      done_activation_count <= 0;
+		act_count <= 0;
+	end
+   else if (done_activation_count == `MAT_MUL_SIZE)
+      done_activation <= 0;
+	else if (act_count == 4) begin
+		done_activation <= 1;
+      done_activation_count <= done_activation_count + 1;
+	end
+	else if (out_data_available_final == 1) begin
+		act_count <= act_count + 1;
+	end
+end
+
+sub_activation activation0(
+    .activation_type(activation_type),
+    .enable_activation(enable_activation),
+    .in_data_available(in_data_available),
+    .inp_data(inp_data0),
+    .out_data(out_data0),
+    .out_data_available(out_data_available_internal),
+    .validity_mask(validity_mask[0]),
+    .clk(clk),
+    .reset(reset)
+);
+
+wire out_data_available_NC1;
+sub_activation activation1(
+    .activation_type(activation_type),
+    .enable_activation(enable_activation),
+    .in_data_available(in_data_available1),
+    .inp_data(inp_data1),
+    .out_data(out_data1),
+    .out_data_available(out_data_available_NC1),
+    .validity_mask(validity_mask[1]),
+    .clk(clk),
+    .reset(reset)
+);    
+
+wire out_data_available_NC2;
+sub_activation activation2(
+    .activation_type(activation_type),
+    .enable_activation(enable_activation),
+    .in_data_available(in_data_available2),
+    .inp_data(inp_data2),
+    .out_data(out_data2),
+    .out_data_available(out_data_available_NC2),
+    .validity_mask(validity_mask[2]),
+    .clk(clk),
+    .reset(reset)
+);    
+
+wire out_data_available_NC3;
+sub_activation activation3(
+    .activation_type(activation_type),
+    .enable_activation(enable_activation),
+    .in_data_available(in_data_available3),
+    .inp_data(inp_data3),
+    .out_data(out_data3),
+    .out_data_available(out_data_available_NC3),
+    .validity_mask(validity_mask[3]),
+    .clk(clk),
+    .reset(reset)
+);    
+
+wire out_data_available_NC4;
+sub_activation activation4(
+    .activation_type(activation_type),
+    .enable_activation(enable_activation),
+    .in_data_available(in_data_available4),
+    .inp_data(inp_data4),
+    .out_data(out_data4),
+    .out_data_available(out_data_available_NC4),
+    .validity_mask(validity_mask[4]),
+    .clk(clk),
+    .reset(reset)
+);    
+
+wire out_data_available_NC5;
+sub_activation activation5(
+    .activation_type(activation_type),
+    .enable_activation(enable_activation),
+    .in_data_available(in_data_available5),
+    .inp_data(inp_data5),
+    .out_data(out_data5),
+    .out_data_available(out_data_available_NC5),
+    .validity_mask(validity_mask[5]),
+    .clk(clk),
+    .reset(reset)
+);    
+
+wire out_data_available_NC6;
+sub_activation activation6(
+    .activation_type(activation_type),
+    .enable_activation(enable_activation),
+    .in_data_available(in_data_available6),
+    .inp_data(inp_data6),
+    .out_data(out_data6),
+    .out_data_available(out_data_available_NC6),
+    .validity_mask(validity_mask[6]),
+    .clk(clk),
+    .reset(reset)
+);    
+
+sub_activation activation7(
+  .activation_type(activation_type),
+  .enable_activation(enable_activation),
+  .in_data_available(in_data_available7),
+  .inp_data(inp_data7),
+  .out_data(out_data7),
+  .out_data_available(out_data_available_final),
+  .validity_mask(validity_mask[7]),
+  .clk(clk),
+  .reset(reset)
+);
+
+endmodule
+
+module sub_activation(
+    input activation_type,
+    input enable_activation,
+    input in_data_available,
+    input [`DWIDTH-1:0] inp_data,
+    output [`DWIDTH-1:0] out_data,
+    output out_data_available,
+    input validity_mask,
+    input clk,
+    input reset
+);
+
+reg  out_data_available_internal;
+reg [`DWIDTH-1:0] out_data_internal;
+reg [`DWIDTH-1:0] slope_applied_data_internal;
+reg [`DWIDTH-1:0] intercept_applied_data_internal;
+reg [`DWIDTH-1:0] relu_applied_data_internal;
+
+reg [31:0] cycle_count;
+reg activation_in_progress;
+
+reg [3:0] address;
+reg [`DWIDTH-1:0] data_slope;
+reg [`DWIDTH-1:0] data_intercept;
+reg [`DWIDTH-1:0] data_intercept_delayed;
+
+// If the activation block is not enabled, just forward the input data
+assign out_data             = enable_activation ? out_data_internal : inp_data;
+assign out_data_available   = enable_activation ? out_data_available_internal : in_data_available;
+
+always @(posedge clk) begin
+   if (reset || ~enable_activation) begin
+      slope_applied_data_internal     <= 0;
+      intercept_applied_data_internal <= 0; 
+      relu_applied_data_internal      <= 0; 
+      data_intercept_delayed      <= 0;
+      out_data_available_internal <= 0;
+      cycle_count                 <= 0;
+      activation_in_progress      <= 0;      
+   end 
+   else if(in_data_available || activation_in_progress) begin
+      cycle_count <= cycle_count + 1;
+      if(activation_type==1'b1) begin // tanH
+        slope_applied_data_internal <= data_slope * inp_data;
+        data_intercept_delayed <= data_intercept;
+        intercept_applied_data_internal <= slope_applied_data_internal + data_intercept_delayed;
+      end else begin // ReLU
+        relu_applied_data_internal <= (inp_data)? {`DWIDTH{1'b0}} : inp_data;
+      end 
+      
+      //TANH needs 1 extra cycle
+      if (activation_type==1'b1) begin
+         if (cycle_count==2) begin
+            out_data_available_internal <= 1;
+         end
+      end else begin
+         if (cycle_count==1) begin
+           out_data_available_internal <= 1;
+         end
+      end
+
+      //TANH needs 1 extra cycle
+      if (activation_type==1'b1) begin
+        if(cycle_count==2) begin
+           activation_in_progress <= 0;
+        end
+        else begin
+           activation_in_progress <= 1;
+        end
+      end else begin
+        if(cycle_count==1) begin
+           activation_in_progress <= 0;
+        end
+        else begin
+           activation_in_progress <= 1;
+        end
+      end
+   end   
+   else begin
+      slope_applied_data_internal     <= 0;
+      intercept_applied_data_internal <= 0; 
+      relu_applied_data_internal      <= 0; 
+      data_intercept_delayed      <= 0;
+      out_data_available_internal <= 0;
+      cycle_count                 <= 0;
+      activation_in_progress      <= 0;
+   end
+end
+
+always @ (posedge clk) begin
+   if (activation_type == 1'b1)
+      out_data_internal <= intercept_applied_data_internal;
+   else
+      out_data_internal <= relu_applied_data_internal;
+end
+
+//Our equation of tanh is Y=AX+B
+//A is the slope and B is the intercept.
+//We store A in one LUT and B in another.
+//LUT for the slope
+always @(address) begin
+    case (address)
+      4'b0000: data_slope = 8'd0;
+      4'b0001: data_slope = 8'd0;
+      4'b0010: data_slope = 8'd2;
+      4'b0011: data_slope = 8'd3;
+      4'b0100: data_slope = 8'd4;
+      4'b0101: data_slope = 8'd0;
+      4'b0110: data_slope = 8'd4;
+      4'b0111: data_slope = 8'd3;
+      4'b1000: data_slope = 8'd2;
+      4'b1001: data_slope = 8'd0;
+      4'b1010: data_slope = 8'd0;
+      default: data_slope = 8'd0;
+    endcase  
+end
+
+//LUT for the intercept
+always @(address) begin
+    case (address)
+      4'b0000: data_intercept = 8'd127;
+      4'b0001: data_intercept = 8'd99;
+      4'b0010: data_intercept = 8'd46;
+      4'b0011: data_intercept = 8'd18;
+      4'b0100: data_intercept = 8'd0;
+      4'b0101: data_intercept = 8'd0;
+      4'b0110: data_intercept = 8'd0;
+      4'b0111: data_intercept = -8'd18;
+      4'b1000: data_intercept = -8'd46;
+      4'b1001: data_intercept = -8'd99;
+      4'b1010: data_intercept = -8'd127;
+      default: data_intercept = 8'd0;
+    endcase  
+end
+
+//Logic to find address
+always @(inp_data) begin
+        if((inp_data)>=90) begin
+           address = 4'b0000;
+        end
+        else if ((inp_data)>=39 && (inp_data)<90) begin
+           address = 4'b0001;
+        end
+        else if ((inp_data)>=28 && (inp_data)<39) begin
+           address = 4'b0010;
+        end
+        else if ((inp_data)>=16 && (inp_data)<28) begin
+           address = 4'b0011;
+        end
+        else if ((inp_data)>=1 && (inp_data)<16) begin
+           address = 4'b0100;
+        end
+        else if ((inp_data)==0) begin
+           address = 4'b0101;
+        end
+        else if ((inp_data)>-16 && (inp_data)<=-1) begin
+           address = 4'b0110;
+        end
+        else if ((inp_data)>-28 && (inp_data)<=-16) begin
+           address = 4'b0111;
+        end
+        else if ((inp_data)>-39 && (inp_data)<=-28) begin
+           address = 4'b1000;
+        end
+        else if ((inp_data)>-90 && (inp_data)<=-39) begin
+           address = 4'b1001;
+        end
+        else if ((inp_data)<=-90) begin
+           address = 4'b1010;
+        end
+        else begin
+           address = 4'b0101;
+        end
+end
+
+//Adding a dummy signal to use validity_mask input, to make ODIN happy
+//TODO: Need to correctly use validity_mask
+wire [`MASK_WIDTH-1:0] dummy;
+assign dummy = validity_mask;
+
+
+endmodule
+

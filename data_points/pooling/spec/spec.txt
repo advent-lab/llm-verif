@@ -1,0 +1,11 @@
+This is an pooling unit. It functionality is to reduce the size of the input.
+Two pooling types are supported - max and average.
+Max pooling finds the maximum value in the pooling window size. Average pooling finds the average of the elements in the pooling window size.
+The pooling unit design has a parallelism of 8. That is, there are 8 sub pooling units within this unit.
+8 data element streams are applied at inputs, and 8 data element streams are generated at the outputs.
+Each data element is 8-bit wide.
+This unit interacts with an external block called the accumulator. The data to be pooled is read from the accumulator.
+The pooling unit sends out addresses to the accumulator unit indicating where to read the data from. The accumulator sends the data that goes as an input to the pooling unit.
+The pooling unit can be enabled or disabled. If disabled, the input is directly sent to the output.
+The pooling unit has handshake signals at its interface to indicate when the input data is available and when the output data is available.
+The matrix size and the filter size is configurable in this pooling unit.

@@ -1,0 +1,26 @@
+This is a 4x4 matrix multiplier design. The design takes in two 4x4 (16 element) matrices. And produces a 4x4 (16 element) matrix. The precision of each element is 16 bits. The data format is integer (not floating point).
+
+The design consists of 3 main components: 
+	1. A data loader unit - to write inputs into the design
+	2. A core matrix multiplication unit
+	3. A data unloader unit - to read outputs from the design
+
+The data loader unit contains memory blocks in which the matrices are stored.  There are 2 memory blocks - one for each matrix. Only 16 elements of each memory (contiguous addresses) have useful data. The memories are initialized with 16 elements each in parallel from the external interface. After initialization is done, these matrices are read in parallel and the elements are fed to the core matrix multiplication unit.
+
+The elements are located on address 0 through 15 of each memory.
+
+The core matrix multiplication unit is a systolic matrix multiplier. It has a data setup logic which aligns the data properly as expected by the processing elements. There are 16 processing elements, each of which has a multiply-accumulate unit. The outputs are fed into the data unloader unit.
+
+The data unloader unit allows unloading each result element one by one. Elements read out by the unloader can be observed on the external interface.
+
+The design has the following interface:
+  input clk -> Clock signal
+  input reset -> Reset signal
+  input we1 -> Write enable signal for the first memory (containing the first matrix)
+  input we2 -> Write enable signal for the first memory (containing the first matrix)
+  input enable_writing_to_mem -> This signal needs to asserted to write into the memories in the design
+  input data_pi -> This is the signal that will contain a 16-bit data to be written into a memory
+  input addr_pi -> This is the signal that will contain the 5-bit address of the memory to write the data to
+  output out_sel -> This 5-bit signal can be used to select a particular output data that we want to observe
+  output data_out -> This 32-bit signal contains the output data selected
+  output done_mat_mul -> This is asserted by the design when the core matrix multiplication unit has finished computing the matrix multiplication. When this is 1, the results can be observed on the data_out signal using the out_sel signal.

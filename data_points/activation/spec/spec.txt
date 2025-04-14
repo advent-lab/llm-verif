@@ -1,0 +1,8 @@
+This is an activation unit. It applies an activation function to the inputs.
+Two activation types are supported - tanh and relu.
+The activation unit design has a parallelism of 8. That is, there are 8 sub activation units within this unit.
+8 data elements can be applied at inputs, and 8 data elements are generated at the outputs.
+Each data element is 8-bit wide.
+The activation unit can be enabled or disabled. If disabled, the input is directly sent to the output.
+The activation unit has handshake signals at its interface to indicate when the input data is available and when the output data is available.
+
