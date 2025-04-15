@@ -1,9 +1,9 @@
 #!/bin/bash
 
-DESIGNS=("sha1_top" "cryptech_uart" "chacha_top")
+DESIGNS=("activation" "mkmif_top" "pooling" "simple_mat_mul" "stop_watch" "TrafficLightController_Main" "verilog-divider")
 ITER=(0 1 2)
 
-#"vndecorrelator" "cryptech_uart" "fifo" "trng_top" 
+# "sha1_top" "cryptech_uart" "chacha_top" "vndecorrelator" "fifo" "trng_top" 
 
 for DESIGN in "${DESIGNS[@]}"; do
 	for RUN in ${ITER[@]}; do
