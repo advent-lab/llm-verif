@@ -71,7 +71,7 @@ class ConversationManager:
         # Most recent message must be an assistant message
         assert self.conversation[-1]["role"] == "assistant", "Most recent message must be an assistant message to slice the conversation."
 
-        self.conversation = self.conversation[:self.stack_pointer + 1] + self.conversation[-1]
+        self.conversation = self.conversation[:self.stack_pointer + 1] + [self.conversation[-1]]
 
         self.stack_pointer = len(self.conversation) - 2
     

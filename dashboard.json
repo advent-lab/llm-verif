@@ -1,4 +1,92 @@
 {
+    "activation": {
+        "verif": [],
+        "verif_context": [],
+        "design": [
+            "$(BASE_DIR)/activation/design/design.v"
+        ],
+        "design_context": [],
+        "spec": [
+            "$(BASE_DIR)/activation/spec/spec.txt"
+        ],
+        "makefile": [
+            "$(BASE_DIR)/activation/questa/Makefile"
+        ]
+    },
+    "float_adder": {
+        "verif": [],
+        "verif_context": [],
+        "design": [
+            "$(BASE_DIR)/float_adder/design/FPAddSub.v"
+        ],
+        "design_context": [
+            "$(BASE_DIR)/float_adder/design_context/FPAddSub_AlignModule.v",
+            "$(BASE_DIR)/float_adder/design_context/FPAddSub_AlignShift1.v",
+            "$(BASE_DIR)/float_adder/design_context/FPAddSub_AlignShift2.v",
+            "$(BASE_DIR)/float_adder/design_context/FPAddSub_ExceptionModule.v",
+            "$(BASE_DIR)/float_adder/design_context/FPAddSub_ExecutionModule.v",
+            "$(BASE_DIR)/float_adder/design_context/FPAddSub_NormalizeModule.v",
+            "$(BASE_DIR)/float_adder/design_context/FPAddSub_NormalizeShift1.v",
+            "$(BASE_DIR)/float_adder/design_context/FPAddSub_NormalizeShift2.v",
+            "$(BASE_DIR)/float_adder/design_context/FPAddSub_PrealignModule.v",
+            "$(BASE_DIR)/float_adder/design_context/FPAddSub_RoundModule.v"
+        ],
+        "spec": [
+            "$(BASE_DIR)/float_adder/spec/spec.txt"
+        ],
+        "makefile": [
+            "$(BASE_DIR)/float_adder/questa/Makefile"
+        ]
+    },
+    "float_multiplier": {
+        "verif": [],
+        "verif_context": [],
+        "design": [
+            "$(BASE_DIR)/float_multiplier/design/FPMult.v"
+        ],
+        "design_context": [
+            "$(BASE_DIR)/float_multiplier/design_context/FPMult_ESExecuteModule.v",
+            "$(BASE_DIR)/float_multiplier/design_context/FPMult_ExceptionModule.v",
+            "$(BASE_DIR)/float_multiplier/design_context/FPMult_ExecuteModule.v",
+            "$(BASE_DIR)/float_multiplier/design_context/FPMult_NormalizeModule.v",
+            "$(BASE_DIR)/float_multiplier/design_context/FPMult_PrepModule.v",
+            "$(BASE_DIR)/float_multiplier/design_context/FPMult_RoundModule.v"
+        ],
+        "spec": [
+            "$(BASE_DIR)/float_multiplier/spec/spec.txt"
+        ],
+        "makefile": [
+            "$(BASE_DIR)/float_multiplier/questa/Makefile"
+        ]
+    },
+    "pooling": {
+        "verif": [],
+        "verif_context": [],
+        "design": [
+            "$(BASE_DIR)/pooling/design/design.v"
+        ],
+        "design_context": [],
+        "spec": [
+            "$(BASE_DIR)/pooling/spec/spec.txt"
+        ],
+        "makefile": [
+            "$(BASE_DIR)/pooling/questa/Makefile"
+        ]
+    },
+    "simple_mat_mul": {
+        "verif": [],
+        "verif_context": [],
+        "design": [
+            "$(BASE_DIR)/simple_mat_mul/design/design.v"
+        ],
+        "design_context": [],
+        "spec": [
+            "$(BASE_DIR)/simple_mat_mul/spec/spec.txt"
+        ],
+        "makefile": [
+            "$(BASE_DIR)/simple_mat_mul/questa/Makefile"
+        ]
+    },
     "lab4-fitbit_tracker":{
         "verif": [],
         "verif_context": [],
