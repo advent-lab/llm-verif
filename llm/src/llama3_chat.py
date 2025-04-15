@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.INFO)
 # Set cache location for model
 if not os.path.isdir(f"/scratch/{os.environ['USER']}/.cache"):
     os.mkdir(f"/scratch/{os.environ['USER']}/.cache")
-os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache"
+os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/slowe8/.cache"
 
 class LlamaChat(ModelChat):
     """
@@ -102,8 +102,8 @@ class LlamaChat(ModelChat):
             torch.cuda.manual_seed_all(seed)
             # np.random.seed(seed)
 
-        os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/{os.environ['USER']}/.cache"
-        os.environ['HF_HOME'] = f"/scratch/{os.environ['USER']}/.cache"
+        os.environ['HUGGINGFACE_HUB_CACHE'] = f"/scratch/slowe8/.cache"
+        os.environ['HF_HOME'] = f"/scratch/slowe8/.cache"
         # Base model cache directory
 
         cache_dir = Path(f"/data/grp_aaror112/{self.environment.model_id}/snapshots")
