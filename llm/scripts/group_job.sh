@@ -3,7 +3,7 @@
 #SBATCH -N 1            # number of nodes
 #SBATCH -c 32            # number of cores 
 #SBATCH --mem 64GB
-#SBATCH -t 0-06:00:00
+#SBATCH -t 0-04:00:00
 #SBATCH -G a100:2
 #SBATCH -C a100_80
 #SBATCH -p general      # partition 
