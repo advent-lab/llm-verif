@@ -6,13 +6,15 @@ import faiss
 from sentence_transformers import SentenceTransformer
 
 class VectorStore:
-    def __init__(self, directory):
+    def __init__(self, directory, chunk_size=256, chunk_overlap=32):
         print("Initializing VectorStore...")
         self.directory = directory
         self.model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
         self.all_chunks = []
         self.file_paths = []
         self.index = None
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
 
     def extract_text_from_pdf(self, pdf_path):
         text = ""
@@ -41,30 +43,48 @@ class VectorStore:
         with open(file_path, 'r', encoding='utf-8') as f:
             return f.read()
 
+    def chunk_text(self, text):
+        # Simple whitespace tokenizer for chunking
+        tokens = text.split()
+        chunks = []
+        start = 0
+        while start < len(tokens):
+            end = min(start + self.chunk_size, len(tokens))
+            chunk = " ".join(tokens[start:end])
+            chunks.append(chunk)
+            if end == len(tokens):
+                break
+            start += self.chunk_size - self.chunk_overlap
+        return chunks
+
     def chunk_files(self):
         for root, _, files in os.walk(self.directory):
             for filename in files:
                 file_path = os.path.join(root, filename)
                 if filename.lower().endswith('.pdf'):
                     text = self.extract_text_from_pdf(file_path)
-                    self.all_chunks.append(text)
-                    self.file_paths.append(file_path)
+                    for chunk in self.chunk_text(text):
+                        self.all_chunks.append(chunk)
+                        self.file_paths.append(file_path)
 
                     tables = self.extract_tables_from_pdf(file_path)
                     for table in tables:
                         table_str = "\n".join(["\t".join(map(str, row)) for row in table])
-                        self.all_chunks.append(f"Table:\n{table_str}")
-                        self.file_paths.append(file_path)
+                        for chunk in self.chunk_text(f"Table:\n{table_str}"):
+                            self.all_chunks.append(chunk)
+                            self.file_paths.append(file_path)
 
                     captions = self.extract_graphics_captions(file_path)
                     for caption in captions:
-                        self.all_chunks.append(caption)
-                        self.file_paths.append(file_path)
+                        for chunk in self.chunk_text(caption):
+                            self.all_chunks.append(chunk)
+                            self.file_paths.append(file_path)
 
                 elif filename.lower().endswith('.md') or filename.lower().endswith('.txt'):
                     text = self.read_text_file(file_path)
-                    self.all_chunks.append(text)
-                    self.file_paths.append(file_path)
+                    for chunk in self.chunk_text(text):
+                        self.all_chunks.append(chunk)
+                        self.file_paths.append(file_path)
 
     def create_index(self):
         if not self.all_chunks:
