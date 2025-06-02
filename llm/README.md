@@ -21,6 +21,33 @@ This project leverages large language models (LLMs) to automatically generate Ve
 │   ├── dashboard.py               # Loads design metadata and specification from dashboard.json
 │   ├── storage.py                 # Manages testbench and log storage
 │   └── __init__.py
+
+├── build_llm_venv.sh                 # Python environment build script
+├── evaluations                      
+│   ├── evaluate_chatgpt-4o.py        # Script for running a chatgpt-4o eval
+│   └── evaluate_methodology6.py      # Script for running a Llama3.3 eval
+├── README.md
+├── requirements.in
+├── requirements.txt
+├── scripts/                          # Scripts for running various configurations/jobs
+├── src
+│   ├── chatgpt_chat.py               # Extension of ModelChat for ChatGPT-4o
+│   ├── conversation_manager.py       # Class used for controlling the conversation flow
+│   ├── dashboard.py                  # Loads designs and their data from the dataset
+│   ├── environment.py                # Stores environment data
+│   ├── eval_runs_util.py             # Utils for evaluation runs (now mainly data management)
+│   ├── evaluation.py                 # Util function for evaluating metrics (deprecating soon)
+│   ├── __init__.py                   
+│   ├── llama3_chat.py                # Extension of ModelChat for Llama3.3
+│   ├── modelchat.py                  # Base class for models
+│   ├── ollama_chat.py                # Extension of ModelChat
+│   ├── prompt_templates.py           # Templates for prompts used during conversations
+│   ├── quantize_llama3.3.py          # Script for quantization
+│   ├── questasim.py                  # Extention of Simulator for QuestaSim (needs refactor)
+│   ├── simulator.py                  # Base class for integrating simulators
+│   ├── storage.py                    # Stores conversation artifacts
+│   └── vector_store.py               
+└── tests/                            # Tests for framework
 ```
 
 ---
@@ -51,16 +78,6 @@ Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
-
-Requirements include:
-- `transformers`
-- `vllm`
-- `torch`
-- `pandas`, `numpy`
-- QuestaSim (for simulation and coverage)
-
-Ensure QuestaSim is accessible and its path is provided at runtime.
-
 ---
 
 ### 3. 🧪 Running Evaluation
@@ -69,13 +86,13 @@ Run the main evaluation script:
 
 ```bash
 python evaluate_methodology6.py \
-    --design ./designs/chacha_top \
+    --design /path/to/design \
     --compiler /path/to/questasim \
     --generations 5 \
     --testplan \
     --merge-coverage \
     --temperature 0.3 \
-    --temperature_function logarithmic \
+    --temperature_function "logarithmic" \
     --batch_size 3 \
     --max_iterations 12 \
     --max_valid_iter 8 \
@@ -85,23 +102,31 @@ python evaluate_methodology6.py \
 #### Arguments:
 | Argument | Description |
 |----------|-------------|
-| `--design` | Path to the design directory |
-| `--compiler` | Path to QuestaSim installation |
-| `--generations` | Number of independent testbench generation runs |
+| `--design, -d` | Path to the design directory |
+| `--compiler, -c` | Path to QuestaSim installation |
+| `--generations, -g` | Number of independent testbench generation runs |
 | `--testplan` | Enable 2-stage generation: verification plan then testbench |
-| `--merge-coverage` | Merge UCDBs into final report |
-| `--temperature` | Sampling temperature |
+| `--merge-coverage, -m` | Merge UCDBs into final report |
+| `--temperature, -t` | Sampling temperature |
 | `--temperature_function` | One of: `constant`, `logarithmic`, `capped_sigmoid` |
-| `--batch_size` | Number of testbenches generated per prompt |
-| `--output` | Directory to store logs and testbenches |
-
+| `--batch_size, -b` | Number of testbenches generated per prompt |
+| `--output, -o` | Directory to store logs and testbenches |
+| `--no_sampling` | Forces no logit sampling |
+| `--seed, -S` | Sets seed for generation |
+| `--remove_polluted_context` | Enables removing polluted context |
+| `--max_iterations` | Sets the max number of iterations per run |
+| `--max_valid_iterations` | Sets the max number of valid iterations per run |
+| `--id` | Sets the id for the run |
+| `--quantize, -q` | Set this flag if a quantized model is being used |
+| `--tokenizer` | Path to tokenizer if a separate tokenizer is used |
+| `--dotenv_path` | Path to dotenv config used for API models |
 ---
 
 ## 🔁 Iterative Coverage Closure
 
 Each run:
 1. Loads design spec and module header.
-2. Generates testbenches using LLM (`m1_prompt` or `m2_prompts`).
+2. Generates testbenches using LLM.
 3. Simulates via QuestaSim and measures statement coverage.
 4. If coverage is below 100%, it prompts the LLM to improve coverage using:
    - Missed lines in coverage reports
@@ -141,29 +166,12 @@ Each run:
 
 ## 🧠 Prompt Types
 
-- `m1_prompt`: Direct testbench generation from spec + header
-- `m2_prompts`: Two-stage plan + testbench
-- `m3_prompt`: Coverage-based refinement prompt
+- `system_prompt`: System prompt for each iteration
+- `m1_prompt`: Generic prompt with module header and specification 
+- `m2_prompts`: Returns a prompt for generating a testplan and an m1_prompt
+- `m3_prompt`: Directs LLM to either fix an error or improve coverage
 - `error_prompt`: Fixes based on simulation/compile errors
 - `design_prompt`: Injects full design for later rounds
-
----
-
-## 🛠️ Extensions
-
-- Support for Ollama API (`ollama_chat.py`)
-- Support for PDF specs (TODO in `environment.py`)
-- Batch generation and parallel coverage simulation
-- LLM memory limiting (`limit_conversation`)
-- Supports vLLM and Transformers APIs
-
----
-
-## 🧪 Evaluation Metrics
-
-Implemented in `evaluation.py`:
-- `pass@k`: Standard probabilistic metric for multiple generations
-- Max/avg coverage tracking in `Record` class
 
 ---
 
@@ -179,6 +187,5 @@ All generated files are moved to the `FileStore` directory specified via `--outp
 ## 🧪 Testing and Debugging Tips
 
 - Run with `--batch_size 1` for isolated debugging
-- Use `--remove_polluted_context` to reset LLM state
 - Check logs: `_compile.log`, `_sim.log`, `_report.txt`
 - Use `design_prompt()` to insert entire RTL context mid-run
