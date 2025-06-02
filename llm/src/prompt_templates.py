@@ -49,7 +49,7 @@ Please declare signals before using them. When instantiating the DUT, the signal
 	",
 	"comments": " // Any additonal comments here "
 }
-''' + f"\n{design_message}"
+''' # + f"\n{design_message}"
 
 # This function returns the initial prompt used for generating a test bench
 def m1_prompt(design_specification: str, module_header: str) -> str:

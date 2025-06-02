@@ -7,6 +7,7 @@ from sentence_transformers import SentenceTransformer
 
 class VectorStore:
     def __init__(self, directory):
+        print("Initializing VectorStore...")
         self.directory = directory
         self.model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
         self.all_chunks = []
@@ -74,6 +75,7 @@ class VectorStore:
         self.index.add(embeddings)
 
     def retrieve_relevant_chunks(self, query, top_k=5):
+        print(f"Retrieving chunks for query:\n{query}")
         if self.index is None:
             self.create_index()
         query_embedding = self.model.encode([query], convert_to_tensor=True).numpy()

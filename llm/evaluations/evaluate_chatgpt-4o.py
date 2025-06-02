@@ -8,7 +8,7 @@ import subprocess
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 # Run 'module load' command
-# subprocess.run("module load bittware/questa-23.4", shell=True, check=True, executable="/bin/bash")
+subprocess.run("module load bittware/questa-23.4", shell=True, check=True, executable="/bin/bash")
 
 # Set the environment variable
 os.environ["LM_LICENSE_FILE"] = "27006@en4228283l.scai.dhcp.asu.edu"
@@ -133,7 +133,7 @@ def generate_and_evaluate(
 
 
 def run_conversation(
-    run_index: int, llama: LlamaChat, environment: Environment, record: Record, args: argparse.Namespace
+    run_index: int, llama: LlamaChat, environment: Environment, record: Record, vector_store: VectorStore, args: argparse.Namespace
 ):
     """
     Execute a single run of test bench generation and coverage evaluation.
@@ -162,7 +162,7 @@ def run_conversation(
         print(testplan_prompt)
         print(testbench_prompt)
         # Stage 1: Generate verification plan
-        cov = generate_and_evaluate(conversation, testplan_prompt, llama, environment, record, run_index, iteration, json=False)
+        cov = generate_and_evaluate(conversation, testplan_prompt, llama, environment, record, run_index, iteration, json=False, vector_store=vector_store)
         iteration += 1
     else:
         testbench_prompt = prompt_templates.m1_prompt(environment.design_specification, environment.module_header)
@@ -173,7 +173,7 @@ def run_conversation(
 
     # Stage 2: Generate test bench
     if cov.success:
-        cov = generate_and_evaluate(conversation, testbench_prompt, llama, environment, record, run_index, iteration, batch_size=environment.batch_size)
+        cov = generate_and_evaluate(conversation, testbench_prompt, llama, environment, record, run_index, iteration, batch_size=environment.batch_size, vector_store=vector_store)
         if cov.success:
             valid_iterations += 1
 
@@ -202,7 +202,7 @@ def run_conversation(
         print(prompt)
         
         # This call adds 2 prompts to the conversation: the next user promtp and the response
-        cov = generate_and_evaluate(conversation, prompt, llama, environment, record, run_index, iteration, batch_size=environment.batch_size)
+        cov = generate_and_evaluate(conversation, prompt, llama, environment, record, run_index, iteration, batch_size=environment.batch_size, vector_store=vector_store)
 
         iteration += 1
         print("Length of conversation: ", conversation.length())
@@ -306,7 +306,7 @@ def main():
         print(f"\nStarting Run {run_index}")
         record.reset_run()
         # Pass vector_store to run_conversation if you want to use it in the future
-        run_conversation(run_index, llama, environment, record, args)
+        run_conversation(run_index, llama, environment, record, vector_store, args)
 
     if args.merge_coverage:
         try:
