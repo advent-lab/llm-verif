@@ -8,7 +8,7 @@ import subprocess
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 # Run 'module load' command
-subprocess.run("module load bittware/questa-23.4", shell=True, check=True, executable="/bin/bash")
+# subprocess.run("module load bittware/questa-23.4", shell=True, check=True, executable="/bin/bash")
 
 # Set the environment variable
 os.environ["LM_LICENSE_FILE"] = "27006@en4228283l.scai.dhcp.asu.edu"
@@ -23,6 +23,7 @@ import argparse
 import src.prompt_templates as prompt_templates
 from src.eval_runs_util import Record
 from src.conversation_manager import ConversationManager
+from src.vector_store import VectorStore
 
 def parse_json_response(response: str) -> str | CoverageResponse:
     """
@@ -57,11 +58,20 @@ def evaluate_coverage(
 def generate_and_evaluate(
     conversation: ConversationManager, prompt: str, llama: LlamaChat, environment: Environment, 
     record: Record, run: int, iteration: int, json: bool = True, batch_size: int = 1,
-    set_stack_pointer: bool = False
+    set_stack_pointer: bool = False, vector_store=None, vector_store_top_k=5, rag_query=None
 ) -> CoverageResponse:
     """
     Generate a test bench and evaluate its coverage.
     """
+
+    # RAG logic: If vector_store is provided, augment prompt with retrieved context
+    if vector_store is not None:
+        # Use rag_query if provided, else use the prompt itself as the query
+        query = rag_query if rag_query is not None else prompt
+        retrieved_chunks = vector_store.retrieve_relevant_chunks(query, top_k=vector_store_top_k)
+        # Concatenate retrieved chunks for context
+        context = "\n\n".join([f"File: {file_path}\n{chunk}" for chunk, file_path, _ in retrieved_chunks])
+        prompt = f"{context}\n\n{prompt}"
 
     print(prompt)
     conversation.append_user_message(prompt, update_stack_pointer=set_stack_pointer)
@@ -269,6 +279,9 @@ def main():
     parser.add_argument("--model", type=str, required=True)
     parser.add_argument("--tokenizer", type=str, required=False, help="Tokenizer used for ConversationManager")
     parser.add_argument("--dotenv_path", type=str, required=False, help="Path to dotenv file containing required API keys.")
+    parser.add_argument('--vector_store_dir', type=str, required=False, help="Directory to build the vector store from.")
+    parser.add_argument('--enable_vector_store', action='store_true', help="Enable the use of the vector store.")
+    parser.add_argument('--vector_store_top_k', type=int, default=5, help="Number of top chunks to retrieve from the vector store.")
     args = parser.parse_args()
 
     environment = Environment(args)
@@ -280,9 +293,19 @@ def main():
         top_p=0.7, max_new_tokens=4098, timeout_seconds=1000, seed=args.seed
     )
 
+    # Vector store configuration
+    vector_store = None
+    if args.enable_vector_store and args.vector_store_dir:
+        print(f"Building vector store from directory: {args.vector_store_dir}")
+        vector_store = VectorStore(args.vector_store_dir)
+        vector_store.chunk_files()
+        vector_store.create_index()
+        print("Vector store initialized.")
+
     for run_index in range(args.generations):
         print(f"\nStarting Run {run_index}")
         record.reset_run()
+        # Pass vector_store to run_conversation if you want to use it in the future
         run_conversation(run_index, llama, environment, record, args)
 
     if args.merge_coverage:
