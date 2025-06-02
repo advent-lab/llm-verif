@@ -1,44 +1,184 @@
-# How to run a testbench generation job
+# 🧠 LLM-Driven Verilog Testbench Generation and Coverage Closure
 
-## 1. Get access to the model
-We are using Meta's Llama3.1 for our experiments which is a gated repo and requires approval from the maintainers for you to get access. Go to https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct to request access.
+This project leverages large language models (LLMs) to automatically generate Verilog testbenches from design specifications, iteratively refine them, and close coverage gaps using QuestaSim. It supports multi-turn prompting, testplan-guided generation, error recovery, and merging coverage across runs.
 
-## 2. Create an Access Token to access the model from the Sol cluster
-To use the model on the Sol cluster, you need to generate an Access Token in Huggingface. Go to Settings > Access Tokens to generate one.
+---
 
-## 3. Login to Huggingface on the Sol cluster using huggingface-cli
-Log into the Sol cluster (it can be a lightweight shell) and run: `huggingface-cli login`
-Then, paste your Huggingface Access Token where it says "Token:"
-You should see a message saying that you were successfully logged in if everything worked correctly. Others have had issues with this working correctly, so let someone know if you are having issues.
+## 🗂️ Project Structure
 
-## 4. Build the Python environment
-Run the following code on the Sol cluster:
-```bash
-cd ~
-module load mamba
-source activate scicomp
-python -m venv llm_venv
-deactivate
-source llm_venv/bin/activate
-pip install -r <cloned repo path>/llm/requirements.txt
-deactivate
 ```
-This code creates the virtual python environment that will be envoked by the scripts
-
-## 5. Try to run the job scripts!
-
-In the methods scripts, you can run them interactively or in batch. If you want to run them interactively to debug, make sure the python call in the script is going to stdout. Otherwise, uncomment the pipe at the end of the line to make it go to a log file.
-
-The scripts take the number of conversations, or runs, as a third argument.
-The scripts take a run id as a fourth argument, which will differentiate the directory names for batched runs. 
-I have an example script called run_parallel_runs.sh which shows how this works.
-
-Example usage of each script:
-```bash
-<cloned repo path>/llm/scripts/method6_job.sh <path to repo> <name of a datapoint> <NUMBER OF RUNS> <RUN id>
-```
-You can also submit them using sbatch if you want them to run as a job on the Sol cluter
-```bash
-sbatch scripts/module6_job.sh <path to repo> <name of a datapoint> <NUMBER OF RUNS> <RUN id>
+├── evaluate_methodology6.py        # Main script to generate testbenches and close coverage
+├── src/
+│   ├── llama3_chat.py              # vLLM wrapper for Meta Llama 3.1-70B-Instruct
+│   ├── ollama_chat.py             # Ollama API wrapper for LLM response generation
+│   ├── modelchat.py                # Abstract base class for all model interfaces
+│   ├── prompt_templates.py        # Multi-stage prompt generators
+│   ├── questasim.py               # QuestaSim wrapper to compile/simulate/report coverage
+│   ├── simulator.py               # Base simulator class with unified CoverageResponse interface
+│   ├── environment.py             # Environment abstraction for dataset, design files, and setup
+│   ├── eval_runs_util.py          # Utilities to record run results and export CSVs
+│   ├── evaluation.py              # Evaluation metrics like pass@k
+│   ├── dashboard.py               # Loads design metadata and specification from dashboard.json
+│   ├── storage.py                 # Manages testbench and log storage
+│   └── __init__.py
 ```
 
+---
+
+## 🚀 Quickstart
+
+### 1. 📁 Prepare Design Data
+
+Each design should be registered in a `dashboard.json` with the following structure:
+
+```json
+{
+  "chacha_top": {
+    "spec": ["$(BASE_DIR)/spec/chacha_spec.txt"],
+    "design": ["$(BASE_DIR)/rtl/chacha.v"],
+    "design_context": ["$(BASE_DIR)/rtl/constants.v"]
+  }
+}
+```
+
+Replace `$(BASE_DIR)` with the folder containing your dataset. The testbench generator will parse specs and design headers to guide generation.
+
+---
+
+### 2. ⚙️ Environment Setup
+
+Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+Requirements include:
+- `transformers`
+- `vllm`
+- `torch`
+- `pandas`, `numpy`
+- QuestaSim (for simulation and coverage)
+
+Ensure QuestaSim is accessible and its path is provided at runtime.
+
+---
+
+### 3. 🧪 Running Evaluation
+
+Run the main evaluation script:
+
+```bash
+python evaluate_methodology6.py \
+    --design ./designs/chacha_top \
+    --compiler /path/to/questasim \
+    --generations 5 \
+    --testplan \
+    --merge-coverage \
+    --temperature 0.3 \
+    --temperature_function logarithmic \
+    --batch_size 3 \
+    --max_iterations 12 \
+    --max_valid_iter 8 \
+    --output ./logs
+```
+
+#### Arguments:
+| Argument | Description |
+|----------|-------------|
+| `--design` | Path to the design directory |
+| `--compiler` | Path to QuestaSim installation |
+| `--generations` | Number of independent testbench generation runs |
+| `--testplan` | Enable 2-stage generation: verification plan then testbench |
+| `--merge-coverage` | Merge UCDBs into final report |
+| `--temperature` | Sampling temperature |
+| `--temperature_function` | One of: `constant`, `logarithmic`, `capped_sigmoid` |
+| `--batch_size` | Number of testbenches generated per prompt |
+| `--output` | Directory to store logs and testbenches |
+
+---
+
+## 🔁 Iterative Coverage Closure
+
+Each run:
+1. Loads design spec and module header.
+2. Generates testbenches using LLM (`m1_prompt` or `m2_prompts`).
+3. Simulates via QuestaSim and measures statement coverage.
+4. If coverage is below 100%, it prompts the LLM to improve coverage using:
+   - Missed lines in coverage reports
+   - Targeted design unit suggestions
+5. Optionally merges UCDBs across batches and runs.
+
+---
+
+## 📊 Output Files
+
+- **CSV Logs**: `<design>_evaluation6_<timestamp>.csv` contains metrics per iteration:
+  - Pass/fail, error codes
+  - Coverage percentage
+  - Token counts and generation time
+- **Testbenches**: Stored in the output dir with pattern:
+  ```
+  tb_llm_<design>_<run>_<iter>_<batch>.v
+  ```
+- **Coverage Reports**:
+  - `.ucdb` and `.txt` report per testbench
+  - `merged_coverage_<design>.ucdb` and report if merging is enabled
+
+---
+
+## 🧪 CoverageResponse Error Codes
+
+| Code | Meaning |
+|------|---------|
+| 0    | Success |
+| 1    | Compile Error |
+| 2    | Simulation Error |
+| 3    | Timeout |
+| 4    | JSON Decode Error |
+| 5    | Missing `$finish` in testbench |
+
+---
+
+## 🧠 Prompt Types
+
+- `m1_prompt`: Direct testbench generation from spec + header
+- `m2_prompts`: Two-stage plan + testbench
+- `m3_prompt`: Coverage-based refinement prompt
+- `error_prompt`: Fixes based on simulation/compile errors
+- `design_prompt`: Injects full design for later rounds
+
+---
+
+## 🛠️ Extensions
+
+- Support for Ollama API (`ollama_chat.py`)
+- Support for PDF specs (TODO in `environment.py`)
+- Batch generation and parallel coverage simulation
+- LLM memory limiting (`limit_conversation`)
+- Supports vLLM and Transformers APIs
+
+---
+
+## 🧪 Evaluation Metrics
+
+Implemented in `evaluation.py`:
+- `pass@k`: Standard probabilistic metric for multiple generations
+- Max/avg coverage tracking in `Record` class
+
+---
+
+## 📤 Logging and Storage
+
+All generated files are moved to the `FileStore` directory specified via `--output`. The framework preserves:
+- Testbenches
+- Compile/simulation logs
+- Coverage files
+
+---
+
+## 🧪 Testing and Debugging Tips
+
+- Run with `--batch_size 1` for isolated debugging
+- Use `--remove_polluted_context` to reset LLM state
+- Check logs: `_compile.log`, `_sim.log`, `_report.txt`
+- Use `design_prompt()` to insert entire RTL context mid-run
