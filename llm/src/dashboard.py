@@ -15,16 +15,16 @@ class Dataset:
         self.dataset = decoder.raw_decode(dashboard_content)[0]
         self.replace_base_dir()
 
-    def get_data_point(self, design_name: str) -> Union[dict[str, str | list[str]], None]:
+    def get_data_point(self, design_name: str) -> dict[str, str | list[str]]:
         if design_name in self.dataset.keys():
             return self.dataset[design_name]
         else:
-            return None
+            raise ValueError(f"Design name '{design_name}' not found in dataset.")
 
-    def get_design_spec(self, design_name: str) -> Union[str, list, None]:
+    def get_design_spec(self, design_name: str) -> Union[str, list]:
         return self.check_list(self.dataset[design_name], 'spec')
 
-    def get_design(self, design_name: str) -> Union[str, list, None]:
+    def get_design(self, design_name: str) -> Union[str, list]:
         return self.check_list(self.dataset[design_name], 'design')
 
     def get_design_context(self, design_name: str) -> str | list[str]:
