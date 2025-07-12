@@ -343,7 +343,7 @@ class VCS(Simulator):
 
         return False
 
-vcs_simulator = VCS("", "ehilaneh@ASUAD", "Macrina23*")
+vcs_simulator = VCS("", "ehilaneh@ASUAD", "")
 tb_path = "/scratch/ehilaneh/runs/activation_constant_temperature_0/tb_llm_activation_0_7_0.v"
 tb_path2 = "/scratch/ehilaneh/runs/simple_mat_mul_constant_batch_3/tb_llm_simple_mat_mul_0_11_4.v"
 tb_path3 = "/scratch/ehilaneh/runs/chacha_top_constant_batch_11/tb_llm_chacha_top_0_0_0.v"
