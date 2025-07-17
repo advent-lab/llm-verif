@@ -6,10 +6,10 @@ from accelerate import infer_auto_device_map
 import torch
 import os
 import json
-from src.storage import FileStore
+from llm_verif.storage import FileStore
 import time
-from src.simulator import Simulator, CoverageResponse
-from src.environment import Environment
+from llm_verif.simulator import Simulator, CoverageResponse
+from llm_verif.environment import Environment
 from math import exp, log10
 import logging
 from concurrent.futures import ThreadPoolExecutor

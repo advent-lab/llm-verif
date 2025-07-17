@@ -3,8 +3,8 @@
 import numpy as np
 import pandas as pd
 import time
-from src.evaluation import pass_at_k
-from src.questasim import CoverageResponse
+from llm_verif.evaluation import pass_at_k
+from llm_verif.questasim import CoverageResponse
 
 class Record:
     def __init__(self, design_name: str, identifier: str, temp_func: str, testplan: bool, batch_size: int, remove_polluted_context: bool, run_type: str = "RUN", include_merge_coverage: bool = False):

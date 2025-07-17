@@ -1,8 +1,8 @@
 from ctypes import ArgumentError
 import requests
-from src.simulator import Simulator, CoverageResponse
-from src.modelchat import ModelChat
-from src.storage import FileStore
+from llm_verif.simulator import Simulator, CoverageResponse
+from llm_verif.modelchat import ModelChat
+from llm_verif.storage import FileStore
 import torch
 from typing import Union, Any, Callable
 from transformers import PreTrainedModel, PreTrainedTokenizer, AutoTokenizer

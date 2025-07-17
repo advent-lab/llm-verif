@@ -1,11 +1,11 @@
 from openai import OpenAI
 import tiktoken
 import os
-from src.modelchat import ModelChat
+from llm_verif.modelchat import ModelChat
 import time
-from src.simulator import Simulator
-from src.environment import Environment
-from src.conversation_manager import ConversationManager
+from llm_verif.simulator import Simulator
+from llm_verif.environment import Environment
+from llm_verif.conversation_manager import ConversationManager
 import logging
 from dotenv import load_dotenv
 

@@ -1,9 +1,5 @@
-# import sys
-# sys.path.append('/home/asbabbit/llm_verif_dataset/llm_src')
-# import xml.etree.ElementTree as ET
-
 import re
-from src.questasim import CoverageResponse
+from llm_verif.questasim import CoverageResponse
 import os
 
 def system_prompt(design_content: list[str] | None = None):

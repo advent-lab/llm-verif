@@ -5,13 +5,13 @@ from urllib import response
 import torch
 import os
 import json
-from src.modelchat import ModelChat
-from src.storage import FileStore
+from llm_verif.modelchat import ModelChat
+from llm_verif.storage import FileStore
 import time
-from src.simulator import Simulator, CoverageResponse
-from src.environment import Environment
-from src.prompt_templates import design_prompt
-from src.conversation_manager import ConversationManager
+from llm_verif.simulator import Simulator, CoverageResponse
+from llm_verif.environment import Environment
+from llm_verif.prompt_templates import design_prompt
+from llm_verif.conversation_manager import ConversationManager
 from math import exp, log10
 import logging
 from concurrent.futures import ThreadPoolExecutor

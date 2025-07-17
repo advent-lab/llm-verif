@@ -3,7 +3,7 @@ import datetime
 import os
 import logging
 import shutil
-from src.simulator import Simulator, CoverageResponse, DU
+from llm_verif.simulator import Simulator, CoverageResponse, DU
 import re
 from typing import Union, Dict, List
 import xml.etree.ElementTree as ET

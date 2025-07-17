@@ -14,15 +14,14 @@ subprocess.run("module load bittware/questa-23.4", shell=True, check=True, execu
 os.environ["LM_LICENSE_FILE"] = "27006@en4228283l.scai.dhcp.asu.edu"
 
 from transformers import AutoTokenizer
-from src.environment import Environment
-from src.questasim import QuestaSim
-from src.simulator import CoverageResponse
-from src.llama3_chat import LlamaChat
-from src.chatgpt_chat import ChatGPTChat
+from llm_verif.environment import Environment
+from llm_verif.questasim import QuestaSim
+from llm_verif.simulator import CoverageResponse
+from llm_verif.llama3_chat import LlamaChat
 import argparse
-import src.prompt_templates as prompt_templates
-from src.eval_runs_util import Record
-from src.conversation_manager import ConversationManager
+import llm_verif.prompt_templates as prompt_templates
+from llm_verif.eval_runs_util import Record
+from llm_verif.conversation_manager import ConversationManager
 
 def parse_json_response(response: str) -> str | CoverageResponse:
     """
@@ -274,7 +273,7 @@ def main():
     environment = Environment(args)
     record = Record(environment.design_name, identifier=args.id, temp_func=args.temperature_function, testplan=args.testplan, batch_size=args.batch_size, remove_polluted_context=args.remove_polluted_context, run_type="RUN", include_merge_coverage=args.merge_coverage)
 
-    llama = ChatGPTChat(
+    llama = LlamaChat(
         QuestaSim(args.compiler), environment, do_sample=not args.no_sampling,
         temperature_function=args.temperature_function, temperature=args.temperature,
         top_p=0.7, max_new_tokens=4098, timeout_seconds=1000, seed=args.seed

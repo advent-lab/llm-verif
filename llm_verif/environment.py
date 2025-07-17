@@ -1,11 +1,8 @@
-# import sys
-# sys.path.append('/home/asbabbit/llm_verif_dataset/llm_src')
-
 from ast import Name
 from pathlib import Path
 import time
-from src.dashboard import Dataset
-from src.storage import FileStore
+from llm_verif.dashboard import Dataset
+from llm_verif.storage import FileStore
 import os
 import re
 from argparse import Namespace
