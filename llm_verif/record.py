@@ -3,7 +3,7 @@
 import numpy as np
 import pandas as pd
 import time
-from llm_verif.evaluation import pass_at_k
+from llm_verif.util import pass_at_k
 from llm_verif.questasim import CoverageResponse
 
 class Record:

@@ -239,7 +239,7 @@ dependencies = [
 ]
 
 [project.scripts]
-llm_verif = "llm_verif.main:main"
+llm_verif = "llm_verif.llm_verif:main"
 
 [build-system]
 requires = ["setuptools>=61.0"]
