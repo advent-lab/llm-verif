@@ -14,7 +14,7 @@ from transformers import AutoTokenizer
 from llm_verif.environment import Environment
 from llm_verif.questasim import QuestaSim
 from llm_verif.simulator import CoverageResponse
-from llm_verif.llama3_chat import LlamaChat
+from llm_verif.modelchat import ModelChat
 import argparse
 import llm_verif.prompt_templates as prompt_templates
 from llm_verif.record import Record
@@ -22,9 +22,9 @@ from llm_verif.conversation_manager import ConversationManager
 
 def parse_json_response(response: str) -> str | CoverageResponse:
     """
-    Parse the JSON response from LlamaChat and handle errors.
+    Parse the JSON response from ModelChat and handle errors.
     """
-    parsed_response, status = LlamaChat.convert_json_response_to_dict(response)
+    parsed_response, status = ModelChat.convert_json_response_to_dict(response)
     if status == 0:  # Valid JSON
         test_bench_code = parsed_response.get("test bench", "")
         return test_bench_code
@@ -34,7 +34,7 @@ def parse_json_response(response: str) -> str | CoverageResponse:
 
 
 def evaluate_coverage(
-    test_bench_code: str | None, tb_path: str, environment: Environment, llama: LlamaChat, run: int, iteration: int, batch: int
+    test_bench_code: str | None, tb_path: str, environment: Environment, llm: ModelChat, run: int, iteration: int, batch: int
 ) -> CoverageResponse:
     """
     Evaluate the coverage for a generated test bench.
@@ -44,14 +44,14 @@ def evaluate_coverage(
     
     try:
         data_point = environment.dataset.get_data_point(environment.design_name)
-        cov = llama.get_coverage(test_bench_code, tb_path, data_point, environment.store, batch)
+        cov = llm.get_coverage(test_bench_code, tb_path, data_point, environment.store, batch)
         return cov
     except KeyError as e:
         return CoverageResponse(False, 4, f"Key error: {e}")
 
 
 def generate_and_evaluate(
-    conversation: ConversationManager, prompt: str, llama: LlamaChat, environment: Environment, 
+    conversation: ConversationManager, prompt: str, llm: ModelChat, environment: Environment, 
     record: Record, run: int, iteration: int, json: bool = True, batch_size: int = 1,
     set_stack_pointer: bool = False
 ) -> CoverageResponse:
@@ -61,7 +61,7 @@ def generate_and_evaluate(
 
     print(prompt)
     conversation.append_user_message(prompt, update_stack_pointer=set_stack_pointer)
-    responses, tokens_generated, gen_time = llama.generate_response(conversation, num_return_sequences=1 if not json else batch_size)
+    responses, tokens_generated, gen_time = llm.generate_response(conversation, num_return_sequences=1 if not json else batch_size)
     print(responses)
     print(f"Tokens / second: {tokens_generated / gen_time}\n")
 
@@ -71,7 +71,7 @@ def generate_and_evaluate(
         
         for i, response in enumerate(json_responses):
             if isinstance(response, CoverageResponse):
-                record.update_dataframe(response, llama.temperature, llama.top_p, run, iteration, i, tokens_generated, gen_time)
+                record.update_dataframe(response, llm.temperature, llm.top_p, run, iteration, i, tokens_generated, gen_time)
                 
         record.write_to_csv(f'./{environment.csv_path}')
         
@@ -86,7 +86,7 @@ def generate_and_evaluate(
             ]
         
             coverage_responses: list[CoverageResponse] = [
-                evaluate_coverage(test_bench_code, tb_path, environment, llama, run, iteration, i)
+                evaluate_coverage(test_bench_code, tb_path, environment, llm, run, iteration, i)
                 for i, (test_bench_code, tb_path) in enumerate(zip(successful_responses, tb_paths))
             ]
 
@@ -99,7 +99,7 @@ def generate_and_evaluate(
             conversation.append_assistant_message(max_coverage[1], slice=(True and environment.remove_polluted_context))
             
             for i, response in enumerate(coverage_responses):
-                record.update_dataframe(response, llama.temperature, llama.top_p, run, iteration, i, tokens_generated, gen_time)
+                record.update_dataframe(response, llm.temperature, llm.top_p, run, iteration, i, tokens_generated, gen_time)
         
             selected = max_coverage[2]
         else: # If responses is empty, pick a bad response
@@ -119,7 +119,7 @@ def generate_and_evaluate(
 
 
 def run_conversation(
-    run_index: int, llama: LlamaChat, environment: Environment, record: Record, args: argparse.Namespace
+    run_index: int, llama: ModelChat, environment: Environment, record: Record, args: argparse.Namespace
 ):
     """
     Execute a single run of test bench generation and coverage evaluation.

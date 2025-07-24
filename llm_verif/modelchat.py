@@ -1,11 +1,9 @@
 from datetime import datetime
 import re
 from tracemalloc import start
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, PreTrainedModel, PreTrainedTokenizer, PreTrainedTokenizerFast
-from accelerate import infer_auto_device_map
-import torch
 import os
 import json
+from llm_verif.conversation_manager import ConversationManager
 from llm_verif.storage import FileStore
 import time
 from llm_verif.simulator import Simulator, CoverageResponse
@@ -98,14 +96,14 @@ class ModelChat:
         """
         Unload the Llama model and tokenizer to free up memory.
         """
-        del self.model
+        del self.llm
 
-    def generate_response(self, conversation_history: list[dict[str, str]]):
+    def generate_response(self, conversation_history: ConversationManager, num_return_sequences: int = 1) -> tuple[str, int, float]:
         """
         Generate a response from the model given the conversation history.
 
         Args:
-            conversation_history (list[dict]): The conversation history as a list of messages.
+            conversation_history (ConversationManager): The conversation history as a ConversationManager instance.
 
         Returns:
             tuple[str, int, float]: 
@@ -117,6 +115,8 @@ class ModelChat:
             ValueError: If the conversation history is empty or invalid.
             Exception: For unexpected errors during text generation.
         """
+
+        return "", 0, 0.0
 
     @staticmethod
     def convert_json_response_to_dict(generated_response: str) -> tuple[dict[str, Any], int]:
@@ -183,7 +183,7 @@ class ModelChat:
             logging.error(f"Unexpected error during JSON parsing: {e}")
             return {"error": f"Unexpected error\n\n{generated_response}"}, 3
 
-    def get_coverage(self, generated_response: str, tb_path: str, data_point: dict[str, str | list[str]] | None, storage: FileStore = None, batch: int = 0) -> CoverageResponse:
+    def get_coverage(self, generated_response: str, tb_path: str, data_point: dict[str, str | list[str]] | None, storage: FileStore | None = None, batch: int = 0) -> CoverageResponse:
         if not generated_response:
             return CoverageResponse(False, 4, "Empty test bench (JSON Decode Error)")
 

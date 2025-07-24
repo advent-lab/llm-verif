@@ -244,6 +244,7 @@ class QuestaSim(Simulator):
                 raise RuntimeError(sim_output)
             logging.info("Simulation successful.")
         except RuntimeError as e:
+            print(f"Simulation failed: {e}")
             return CoverageResponse(False, 2, str(e))
 
         # Coverage Report
@@ -327,7 +328,7 @@ class QuestaSim(Simulator):
         return ''
 
     def vlog_builder(self, tb_path: str, data_point: dict) -> str:
-        return f"vlog +cover=s {tb_path} {' '.join(data_point['design'])} {' '.join(data_point['design_context'])}"
+        return f"vlog -sv +cover=s {tb_path} {' '.join(data_point['design'])} {' '.join(data_point['design_context'])}"
 
     def has_finish(self, file_path):
         """

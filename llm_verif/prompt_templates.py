@@ -8,27 +8,41 @@ def system_prompt(design_content: list[str] | None = None):
 	if design_content:
 		design_message = design_prompt(design_content)
 
-	return f"""You are an expert Verilog verification assistant. You have expertise in writing high quality, high code coverage test bench for a wide variety of digital hardware designs.
+	return f"""You are an expert Verilog verification assistant. You have expertise in writing high quality, high code coverage testbench for a wide variety of digital hardware designs.       
 
-Directions:
+The testbench refers to the top-level module in which the DUT is instantiated. Additionally, there is code to generate clocks and sometimes resets in the testbench. A testcase refers to stimulus applied to the signals connected to the DUT's ports. In plain Verilog based testbenches, a testcase is written inside the testbench file inside initial blocks. A testcase may be organized using tasks and functions that can be called from an initial block. For example:
 
-When generating a verification plan or test plan, You should generate a verification plan with test scenarios that will achieve full statement coverage of the design.
-Your verification plan should cover as many valid and invalid sets of stimulus as possible to ensure you can reach the maximum coverage possible.
+initial begin
+  reset = 0;
+  #10;
+   reset = 1;
+  #10;
+  apb_write(); //task call
+  wait(); //task call
+  apb_read();  //task call
+  $finish();  
+end
 
-When generating a test bench:
-There are three options for improving line coverage, choose one of these option:
-1. Add another testcase to a previously generated testbench
-2. Modify a testcase from a previously generated testbench
-3. Generate a completely new testbench without previous generations as context
+In System Verilog based testbenches, a testcase is written in tasks and functions inside classes. These tasks and functions drive signals on the DUT through a virtual interface. The top-level class is usually created inside an initial block in the testbench and the top-level task is called. For example:
 
-It is important to ensure that a generated test case is novel and does not duplicate existing patterns. Modify input sequences and edge cases where possible.
+initial begin
+  stimulus stim = new();  //creating the stimulus class
+  stim.vif = interface_inst; //the instance of an interface containing the DUT's port signals
+  stim.run();  //the main task inside the object
+end
 
-The test bench should meet the statement coverage goal of 100%.
-Generate only the Verilog testbench and no additional words.
-Make sure you are ONLY using Verilog syntax and features, and not SystemVerilog such as for loops and asserts.\n
-Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag. Keep the test bench less than 500 lines. Ensure that there is only one testbench within the JSON formatted output.\n
-Here are some additional guidelines for the test bench: \n
-Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n
+A verification plan or a test plan is a document that includes the description of the verification strategy, the testbench architecture, and the various scenarios to test each feature of the DUT or design. At times you will need to generate a verification plan or a test plan. When generating a verification plan or test plan, you should generate a plan with test scenarios that will achieve full statement coverage of the design. Your plan should cover as many sets of stimulus as possible to ensure you can reach the maximum coverage possible. Your plan should mention the values and timings of various signals/variables that should be randomized. You plan should mention constraints on values and timings as well.
+
+At other times, you will generate a testbench. The goal of the testbench is to include testcases that can achieve a 100% line coverage of the DUT code. When generating a testbench, there are two options for improving line coverage, choose one of these options:
+1. Start from a testcase from a previously generated testbench. Modify the stimulus in it, or remove stimulus from it, or add extra stimulus  to it.
+2. Start a fresh testcase without using the previous generations as context. This will have new stimulus required to hit the coverage point being targeted.
+                         
+We will run multiple iterations. In each iteration, you will generate a testbench - using one of the options mentioned above. Your goal should be to cover as much as statement coverage goal as possible. Across multiple iterations, we aim to have a coverage of 100%.
+
+Generate only the testbench and no additional words.
+The module name of the testbench should be tb_llm.
+You can use either Verilog or SystemVerilog syntax and features. Do not generate any UVM code.
+If you use SystemVerilog classes, declare them before the top-level testbench module.
 """ + '''Example response:
 {
 	"test bench": "
@@ -38,26 +52,65 @@ Please declare signals before using them. When instantiating the DUT, the signal
 
 			initial
 			begin
-				// Generted test cases
+				// Generated testcase
 			$finish;
 			end
 		endmodule
 	",
-	"comments": " // Any additonal comments here "
+	"comments": " // Any additional comments here "
 }
 ''' + f"\n{design_message}"
 
+
 # This function returns the initial prompt used for generating a test bench
 def m1_prompt(design_specification: str, module_header: str) -> str:
-    return f'''Generate a Verilog testbench named tb_llm for the following design specification.
-The test bench should meet the statement coverage goal of 100%.
-Generate only the Verilog testbench and no additional words.
-Make sure you are ONLY using Verilog syntax and features, and not SystemVerilog such as for loops and asserts.\n
+    return f'''Generate a testbench for the following design specification.
+
 Module header:\n{module_header}\n
 Design Specification:\n{design_specification}\n
-Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the "test bench" tag and any additonal comments into the "comments" tag. Keep the test bench less than 500 lines. Ensure that there is only one testbench within the JSON formatted output.\n
+
+The module name of the testbench should be tb_llm.
+Generate only the testbench and no additional words.
+You can use either Verilog or SystemVerilog syntax and features. Do not generate any UVM code.
+Provide the generated testbench in a JSON format as shown below. You should put the generated testbench into the "testbench" tag and any additional comments into the "comments" tag. 
+Ensure that there is only one testbench within the JSON formatted output.\n
 Here are some additional guidelines for the test bench: \n
-Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n
+Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo.
+
+When you generate the testcase, randomize the appropriate signals to get as much coverage as possible. You can randomize signals using $urandom, $urandom_range, or randomize(). Please do not use $random as it lacks random stability. If you use the randomize(), ensure that you enclose the call in an assert(), so that if the randomization fails, an error is produced.
+
+Here's an example of a simple piece of code doing randomization on signals/variables names sigA, sigB, sigC, sigD, and sigE, and also on delays.
+
+initial begin
+  reset = 0;
+  #10;
+  reset = 1;
+  sigA = $urandom();
+  sigB = $urandom_range(10,20);  //randomize within a range
+  assert(randomize(sigC));  //use the std::randomize() method
+  success = randomize(sigD, sigE) with {{sigD < sigE; sigD + sigE < 2;}};  //std::randomize() with constraints
+  assert(success);
+  
+  delay = $urandom_range(10,100); 
+  repeat (delay) @(posedge clk);  //waiting random number of cycles
+  sigA = $urandom();
+  sigB = $urandom_range(10,20);  //randomize within a range
+ end
+  
+If you are using System Verilog classes, make sure you declare rand variables and then call .randomize() on the class objects. You can have constraints inside the class declaration or inline constraints when calling .randomize(). Here's some example code:
+
+class SimpleSum;
+  rand bit [7:0] x, y, z;
+  constraint c {{z == x + y;}}
+endclass
+
+SimpleSum p = new;
+int success = p.randomize();
+
+SimpleSum p = new;
+int success = p.randomize() with {{x < y}};
+
+Remember that when you use System Verilog classes for the testcases, you should create an interface, instantiate the interface, connect the right signals to it, and pass the handle to the interface to the class object.
 ''' + '''Example response:
 {
 	"test bench": "
@@ -67,12 +120,12 @@ Please declare signals before using them. When instantiating the DUT, the signal
 
 			initial
 			begin
-				// Generted test cases
+				// Generated testcase
 			$finish;
 			end
 		endmodule
 	",
-	"comments": " // Any additonal comments here "
+	"comments": " // Any additional comments here "
 }
 '''
 

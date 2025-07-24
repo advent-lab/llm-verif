@@ -13,6 +13,12 @@
             "$(BASE_DIR)/activation/questa/Makefile"
         ]
     },
+    "cvdp_agentic_alu": {
+	    "verif": "$(BASE_DIR)/cvdp_agentic_alu/verif/alu_core_tb.sv",
+	    "design": ["$(BASE_DIR)/cvdp_agentic_alu/rtl/alu_core.sv"],
+	    "design_context": [],
+	    "spec": "$(BASE_DIR)/cvdp_agentic_alu/docs/alu_core_specification.md"
+    },
     "float_adder": {
         "verif": [],
         "verif_context": [],

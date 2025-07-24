@@ -9,7 +9,7 @@ class Dataset:
         with open(dashboard_path, 'r') as f:
             dashboard_content = f.read()
 
-        self.base_dir = str(Path(dashboard_path).parents[0]) + '/data_points'
+        self.base_dir = str(Path(dashboard_path).parents[0]) + '/data'
 
         decoder = json.JSONDecoder(strict=False)
         self.dataset = decoder.raw_decode(dashboard_content)[0]
@@ -58,7 +58,10 @@ class Dataset:
                     for i in range(len(self.dataset[tkey][dkey])):
                         self.dataset[tkey][dkey][i] = self.dataset[tkey][dkey][i].replace('$(BASE_DIR)', self.base_dir)
 
-    def check_list(self, dlist: dict[str, list[str]], key: str) -> list[str] | str:
+    def check_list(self, dlist: dict[str, list[str] | str], key: str) -> list[str] | str:
+        if isinstance(dlist[key], str):
+            return dlist[key]
+        
         if len(dlist[key]) == 0:
             return []
         elif len(dlist[key]) == 1:
