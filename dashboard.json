@@ -13,6 +13,79 @@
             "$(BASE_DIR)/activation/questa/Makefile"
         ]
     },
+    "cvdp_agentic_ttc_lite": {
+        "verif": "$(BASE_DIR)/cvdp_agentic_ttc_lite/verif/ttc_counter_lite_tb.sv",
+        "design": ["$(BASE_DIR)/cvdp_agentic_ttc_lite/rtl/ttc_counter_lite.sv"],
+        "design_context": [],
+        "spec": "$(BASE_DIR)/cvdp_agentic_ttc_lite/docs/specification.md"
+    },
+    "cvdp_agentic_sorter": {
+        "verif": "$(BASE_DIR)/cvdp_agentic_sorter/verif/order_matching_engine_testbench.sv",
+        "design": ["$(BASE_DIR)/cvdp_agentic_sorter/rtl/sorting_engine.sv"],
+        "design_context": [],
+        "spec": "$(BASE_DIR)/cvdp_agentic_sorter/docs/specification.md"
+    },
+    "cvdp_agentic_rgb_color_space_conversion": {
+        "design": ["$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/rtl/rgb_color_space_hsv.sv"],
+        "design_context": [],
+        "spec": "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/docs/specification.md"
+    },
+    "cvdp_agentic_multiplexer": {
+        "verif": "$(BASE_DIR)/cvdp_agentic_multiplexer/verif/multiplexer_tb.sv",
+        "design": ["$(BASE_DIR)/cvdp_agentic_multiplexer/rtl/multiplexer.sv"],
+        "design_context": [],
+        "spec": "$(BASE_DIR)/cvdp_agentic_multiplexer/docs/multiplexer_specification.md"
+    },
+    "cvdp_agentic_memory_scheduler": {
+        "design": ["$(BASE_DIR)/cvdp_agentic_memory_scheduler/rtl/memory_scheduler.sv"],
+        "design_context": [],
+        "spec": "$(BASE_DIR)/cvdp_agentic_memory_scheduler/docs/specs.md"
+    },
+    "cvdp_agentic_fixed_arbiter": {
+        "verif": "$(BASE_DIR)/cvdp_agentic_fixed_arbiter/verif/fixed_priority_arbiter_tb.sv",
+        "design": ["$(BASE_DIR)/cvdp_agentic_fixed_arbiter/rtl/fixed_priority_arbiter.sv"],
+        "design_context": [],
+        "spec": "$(BASE_DIR)/cvdp_agentic_fixed_arbiter/docs/specification.md"
+    },
+    "cvdp_agentic_dual_port_memory": {
+        "verif": "$(BASE_DIR)/cvdp_agentic_dual_port_memory/verif/tb.sv",
+        "design": ["$(BASE_DIR)/cvdp_agentic_dual_port_memory/rtl/dual_port_memory.sv"],
+        "design_context": [],
+        "spec": "$(BASE_DIR)/cvdp_agentic_dual_port_memory/docs/specification.md"
+    },
+    "cvdp_agentic_door_lock": {
+        "design": ["$(BASE_DIR)/cvdp_agentic_door_lock/rtl/door_lock.sv"],
+        "design_context": [],
+        "spec": "$(BASE_DIR)/cvdp_agentic_door_lock/docs/specification.md"
+    },
+    "cvdp_agentic_cont_adder": {
+        "verif": "$(BASE_DIR)/cvdp_agentic_cont_adder/verif/continuous_adder_tb.sv",
+        "design": ["$(BASE_DIR)/cvdp_agentic_cont_adder/rtl/continuous_adder.sv"],
+        "design_context": [],
+        "spec": "$(BASE_DIR)/cvdp_agentic_cont_adder/docs/continuous_adder_specification.md"
+    },
+    "cvdp_cic_decimator": {
+        "design": ["$(BASE_DIR)/cvdp_cic_decimator/rtl/cic_decimator.sv"],
+        "design_context": [],
+        "spec": "$(BASE_DIR)/cvdp_cic_decimator/docs/specs.md"
+    },
+    "cvdp_agentic_caesar_cipher": {
+        "verif": "$(BASE_DIR)/cvdp_agentic_caesar_cipher/verif/caesar_cipher_tb.sv",
+        "design": ["$(BASE_DIR)/cvdp_agentic_caesar_cipher/rtl/caesar_cipher.sv"],
+        "design_context": [],
+        "spec": "$(BASE_DIR)/cvdp_agentic_caesar_cipher/docs/specification.md"
+    },
+    "cvdp_agentic_byte_enable_ram": {
+        "design": ["$(BASE_DIR)/cvdp_agentic_byte_enable_ram/rtl/custom_byte_enable_ram.sv"],
+        "design_context": [],
+        "spec": "$(BASE_DIR)/cvdp_agentic_byte_enable_ram/docs/specs.md"
+    },
+    "cvdp_agentic_alu": {
+	    "verif": "$(BASE_DIR)/cvdp_agentic_alu/verif/alu_core_tb.sv",
+	    "design": ["$(BASE_DIR)/cvdp_agentic_alu/rtl/alu_core.sv"],
+	    "design_context": [],
+	    "spec": "$(BASE_DIR)/cvdp_agentic_alu/docs/alu_core_specification.md"
+    },
     "float_adder": {
         "verif": [],
         "verif_context": [],

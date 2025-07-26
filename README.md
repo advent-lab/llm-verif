@@ -22,22 +22,24 @@ This repository contains scripts, data, and workflows for generating and evaluat
 ## Project Structure
 
 ```
-llm_verif_dataset/
-├── data_points/         # Hardware modules and their simulation setups
+llm_verif/
+├── data/                # Hardware modules and their simulation setups
 │   └── <module>/        # Each module (e.g., oh, dpretet_axi-crossbar)
 │       └── questa/      # QuestaSim project files and Makefiles
-├── llm/                 # LLM-related scripts, requirements, and configs
-│   ├── requirements.in
-│   ├── requirements.txt
-│   ├── build_llm_venv.sh
-│   └── scripts/         # Job scripts for running LLM-based workflows
+├── llm_veirf/           # Source files
+│   ├── __init.py__
+│   ├── llm_verif.py
+│   ├── chatgpt_chat.py
+│   └── ...
+├── tests/               # Project tests (not up to date)
+├── scripts/             # Some relevant project scripts (also not up to date)
 ├── README.md            # This file
 └── ...
 ```
 
-- **data_points/**: Contains hardware modules and their simulation environments.
-- **llm/**: Contains scripts and requirements for LLM-based testbench generation and evaluation.
-- **llm/scripts/**: Contains job scripts for running experiments and batch jobs.
+- **data/**: Contains hardware modules and their simulation environments.
+- **llm_verif/**: Contains source code for LLM-based testbench generation and evaluation.
+- **scripts/**: Contains job scripts for running experiments and batch jobs.
 
 ## Getting Started
 
