@@ -11,6 +11,7 @@ import time
 class Environment:
 
     def __init__(self, env_options: Namespace):
+        self.work_dir = env_options.work_dir
         self.design_dir = env_options.design
         self.design_name = os.path.split(self.design_dir)[1]
         self.design_dir_path = Path(self.design_dir)

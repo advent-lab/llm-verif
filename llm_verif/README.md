@@ -7,49 +7,38 @@ This project leverages large language models (LLMs) to automatically generate Ve
 ## 🗂️ Project Structure
 
 ```
-├── evaluate_methodology6.py        # Main script to generate testbenches and close coverage
-├── src/
-│   ├── llama3_chat.py              # vLLM wrapper for Meta Llama 3.1-70B-Instruct
-│   ├── ollama_chat.py             # Ollama API wrapper for LLM response generation
-│   ├── modelchat.py                # Abstract base class for all model interfaces
-│   ├── prompt_templates.py        # Multi-stage prompt generators
-│   ├── questasim.py               # QuestaSim wrapper to compile/simulate/report coverage
-│   ├── simulator.py               # Base simulator class with unified CoverageResponse interface
-│   ├── environment.py             # Environment abstraction for dataset, design files, and setup
-│   ├── eval_runs_util.py          # Utilities to record run results and export CSVs
-│   ├── evaluation.py              # Evaluation metrics like pass@k
-│   ├── dashboard.py               # Loads design metadata and specification from dashboard.json
-│   ├── storage.py                 # Manages testbench and log storage
-│   └── __init__.py
-
-├── build_llm_venv.sh                 # Python environment build script
-├── evaluations                      
-│   ├── evaluate_chatgpt-4o.py        # Script for running a chatgpt-4o eval
-│   └── evaluate_methodology6.py      # Script for running a Llama3.3 eval
+llm_verif_dataset/
+├── build_llm_venv.sh             # Helper script to build environment
+├── CONTRIBUTING.md               # Instructions on contributing
+├── dashboard.json                # Dataset directory
+├── dashboard_scripts/            # Helper scripts for dataset
+├── data/                         # Dataset
+├── llm_verif
+│   ├── chatgpt_chat.py           # Extension of ModelChat Base Class for OpenAI API
+│   ├── conversation_manager.py   # ConversationManager class that manages the conversation
+│   ├── dashboard.py              # Dataset class that manages the dataset
+│   ├── environment.py            # Environment class that manages the environment
+│   ├── __init__.py
+│   ├── llama3_chat.py            # Extension of ModelChat Base class for local Llama models
+│   ├── llm_verif.py              # Main tool entry point
+│   ├── modelchat.py              # ModelChat base class
+│   ├── ollama_chat.py            # Extension of ModelChat for Ollama (deprecated)
+│   ├── prompt_templates.py       # Set of prompt templates
+│   ├── questasim.py              # Extension of Simulator for QuestaSim
+│   ├── README.md
+│   ├── record.py                 # Record class for recording data during runs
+│   ├── simulator.py              # Simulator base class
+│   ├── storage.py                # FileStore class for storing run artifacts
+│   ├── util.py                   # Utility functions
+│   ├── VCS.py                    # Extension of Simulator for VCS (in progress)
+│   └── vector_store.py           # Vector store used for RAG
+├── pyproject.toml
 ├── README.md
 ├── requirements.in
 ├── requirements.txt
-├── scripts/                          # Scripts for running various configurations/jobs
-├── src
-│   ├── chatgpt_chat.py               # Extension of ModelChat for ChatGPT-4o
-│   ├── conversation_manager.py       # Class used for controlling the conversation flow
-│   ├── dashboard.py                  # Loads designs and their data from the dataset
-│   ├── environment.py                # Stores environment data
-│   ├── eval_runs_util.py             # Utils for evaluation runs (now mainly data management)
-│   ├── evaluation.py                 # Util function for evaluating metrics (deprecating soon)
-│   ├── __init__.py                   
-│   ├── llama3_chat.py                # Extension of ModelChat for Llama3.3
-│   ├── modelchat.py                  # Base class for models
-│   ├── ollama_chat.py                # Extension of ModelChat
-│   ├── prompt_templates.py           # Templates for prompts used during conversations
-│   ├── quantize_llama3.3.py          # Script for quantization
-│   ├── questasim.py                  # Extention of Simulator for QuestaSim (needs refactor)
-│   ├── simulator.py                  # Base class for integrating simulators
-│   ├── storage.py                    # Stores conversation artifacts
-│   └── vector_store.py               
-└── tests/                            # Tests for framework
+├── scripts/
+├── tests/
 ```
-
 ---
 
 ## 🚀 Quickstart

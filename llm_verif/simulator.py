@@ -1,3 +1,4 @@
+from pathlib import Path
 from xml.etree.ElementTree import Element
 
 class DU:
@@ -40,7 +41,7 @@ class Simulator():
     def __init__(self, simulator_path: str):
         self.simulator_path = simulator_path
 
-    def run_sim(self, tb_path: str, data_point: dict[str, str | list[str]] | None, log_name: str) -> CoverageResponse:
+    def run_sim(self, work_dir: str | Path, tb_name: str, data_point: dict[str, str | list[str]] | None, log_name: str) -> CoverageResponse:
         """Run the simulation - to be overridden by subclasses"""
         raise NotImplementedError("This method should be implemented by subclasses.")
     

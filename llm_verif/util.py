@@ -27,6 +27,7 @@ def parse_json_response(response: str) -> str | CoverageResponse:
     parsed_response, status = ModelChat.convert_json_response_to_dict(response)
     if status == 0:  # Valid JSON
         test_bench_code = parsed_response.get("test bench", "")
+        test_bench_code = test_bench_code.replace('\\"', '"')
         return test_bench_code
     else:
         error_message = parsed_response.get("error", "JSON parsing error.")
@@ -34,7 +35,7 @@ def parse_json_response(response: str) -> str | CoverageResponse:
 
 
 def evaluate_coverage(
-    test_bench_code: str | None, tb_path: str, environment: Environment, llm: ModelChat, run: int, iteration: int, batch: int
+    test_bench_code: str | None, tb_name: str, environment: Environment, llm: ModelChat, run: int, iteration: int, batch: int
 ) -> CoverageResponse:
     """
     Evaluate the coverage for a generated test bench.
@@ -44,7 +45,7 @@ def evaluate_coverage(
     
     try:
         data_point = environment.dataset.get_data_point(environment.design_name)
-        cov = llm.get_coverage(test_bench_code, tb_path, data_point, environment.store, batch)
+        cov = llm.get_coverage(test_bench_code, environment.work_dir, tb_name, data_point, environment.store, batch)
         return cov
     except KeyError as e:
         return CoverageResponse(False, 4, f"Key error: {e}")
@@ -58,6 +59,8 @@ def generate_and_evaluate(
     """
     Generate a test bench and evaluate its coverage.
     """
+
+    csv_path = f"{environment.work_dir}/{environment.csv_path}"
 
     print(prompt)
     conversation.append_user_message(prompt, update_stack_pointer=set_stack_pointer)
@@ -73,21 +76,20 @@ def generate_and_evaluate(
             if isinstance(response, CoverageResponse):
                 record.update_dataframe(response, llm.temperature, llm.top_p, run, iteration, i, tokens_generated, gen_time)
                 
-        record.write_to_csv(f'./{environment.csv_path}')
+        record.write_to_csv(csv_path)
         
         successful_responses: list[str] = list(filter(lambda x: isinstance(x, str), json_responses)) # type: ignore
 
         # If successful responses isn't empty, find the best one
         if len(successful_responses) != 0:
-            
-            tb_paths = [
-                f'{environment.design_dir}/tb_llm_{environment.design_name}_{run}_{iteration}_{i}.v' 
+            tb_names = [
+                f'tb_llm_{environment.design_name}_{run}_{iteration}_{i}.v'
                 for i in range(len(successful_responses))
             ]
-        
+
             coverage_responses: list[CoverageResponse] = [
-                evaluate_coverage(test_bench_code, tb_path, environment, llm, run, iteration, i)
-                for i, (test_bench_code, tb_path) in enumerate(zip(successful_responses, tb_paths))
+                evaluate_coverage(test_bench_code, tb_name, environment, llm, run, iteration, i)
+                for i, (test_bench_code, tb_name) in enumerate(zip(successful_responses, tb_names))
             ]
 
             
@@ -109,7 +111,7 @@ def generate_and_evaluate(
 
             selected = bad_response 
             
-        record.write_to_csv(f'./{environment.csv_path}')
+        record.write_to_csv(csv_path)
         return selected
     else:
         conversation.append_assistant_message(responses[0], slice=False)
@@ -144,14 +146,14 @@ def run_conversation(
     valid_iterations = 0  
     iteration = 0
     if environment.testplan:
-        testplan_prompt, testbench_prompt = prompt_templates.m2_prompts(environment.design_specification, environment.module_header)
+        testplan_prompt, testbench_prompt = prompt_templates.verif_and_testbench_prompt(environment.design_specification, environment.module_header)
         print(testplan_prompt)
         print(testbench_prompt)
         # Stage 1: Generate verification plan
         cov = generate_and_evaluate(conversation, testplan_prompt, llama, environment, record, run_index, iteration, json=False)
         iteration += 1
     else:
-        testbench_prompt = prompt_templates.m1_prompt(environment.design_specification, environment.module_header)
+        testbench_prompt = prompt_templates.first_testbench_prompt(environment.design_specification, environment.module_header)
         print(testbench_prompt)
     
     print("Length of conversation: ", conversation.length())
@@ -184,7 +186,7 @@ def run_conversation(
                 # Add design prompt to end of conversation
                 conversation.update_system_prompt(prompt_templates.system_prompt(environment.all_design_file_paths))
                 
-        prompt = prompt_templates.error_prompt(cov.error_code, cov.error_message) if not cov.success else prompt_templates.m3_prompt(cov, environment.design_module_name)
+        prompt = prompt_templates.error_prompt(cov.error_code, cov.error_message) if not cov.success else prompt_templates.iter_prompt(cov, environment.design_module_name)
         print(prompt)
         
         # This call adds 2 prompts to the conversation: the next user promtp and the response

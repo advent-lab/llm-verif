@@ -23,6 +23,7 @@ def main():
     parser.add_argument('--dotenv_path', type=str, required=True, help="Path to dotenv file containing required API keys and config.")
 
     # All other args are optional at parse-time
+    parser.add_argument('-w', '--work_dir', type=str, default="./work", help="Working directory for test benches and logs.")
     parser.add_argument('-d', '--design', type=str, help="Path of the design directory.")
     parser.add_argument('-r', '--runs', type=int, help="Number of runs/conversations.")
     parser.add_argument('-c', '--compiler', type=str, help="Path to EDA compiler.")
@@ -82,14 +83,21 @@ def main():
                 print(f"ERROR: Failed to cast {key}='{env_val}' from .env to {cast.__name__}")
                 sys.exit(1)
         return default
+    
+    args.work_dir = resolve_config("work_dir", default="./work", cast=str)
+    if not os.path.exists(args.work_dir):
+        os.makedirs(args.work_dir, exist_ok=True)
 
+    args.work_dir = os.path.abspath(args.work_dir)
+    os.chdir(args.work_dir)
+    print(f"Using working directory: {args.work_dir}")
     args.design = resolve_config("design", cast=str)
     print(f"Using design directory: {args.design}")
     args.runs = resolve_config("runs", default=1, cast=int)
     print(f"Number of runs: {args.runs}")
     args.compiler = resolve_config("compiler", cast=str)
     print(f"Using compiler path: {args.compiler}")
-    args.output = resolve_config("output", default="./output", cast=str)
+    args.output = os.path.join(args.work_dir, resolve_config("output", default="output", cast=str))
     print(f"Output directory: {args.output}")
     args.no_sampling = resolve_config("no_sampling", default=False, cast=bool)
     print(f"Sampling disabled: {args.no_sampling}")

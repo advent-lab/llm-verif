@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 import re
 from tracemalloc import start
 import os
@@ -183,28 +184,33 @@ class ModelChat:
             logging.error(f"Unexpected error during JSON parsing: {e}")
             return {"error": f"Unexpected error\n\n{generated_response}"}, 3
 
-    def get_coverage(self, generated_response: str, tb_path: str, data_point: dict[str, str | list[str]] | None, storage: FileStore | None = None, batch: int = 0) -> CoverageResponse:
+    def get_coverage(self, generated_response: str, work_dir: str | Path, tb_name: str, data_point: dict[str, str | list[str]] | None, storage: FileStore | None = None, batch: int = 0) -> CoverageResponse:
         if not generated_response:
             return CoverageResponse(False, 4, "Empty test bench (JSON Decode Error)")
 
+        tb_path = os.path.join(work_dir, tb_name)
+        compile_log_path = os.path.join(work_dir, f'{tb_name}_compile.log')
+        sim_log_path = os.path.join(work_dir, f'{tb_name}_sim.log')
+        coverage_ucdb_path = os.path.join(work_dir, f'{tb_name}.ucdb')
+        coverage_report_path = os.path.join(work_dir, f'{tb_name}_report.xml')
+
         # Write the generated testbench to a file
         print(tb_path)
-        with open(tb_path, "w+") as testbench_file:
+        with open(tb_name, "w+") as testbench_file:
             testbench_file.write(generated_response)
 
         # Run QuestaSim to get coverage
         # env = Environment(questa_dir)
-        log_name = tb_path.split('.')[0] 
-        coverage_response = self.simulator.run_sim(tb_path=tb_path, data_point=data_point, log_name=log_name)
+        log_name = tb_name.split('.')[0] 
+        coverage_response = self.simulator.run_sim(work_dir=work_dir, tb_name=tb_name, data_point=data_point, log_name=log_name)
 
         # Move test bench file to storage
         if storage:
             storage.move(tb_path)
-            storage.move(f'{log_name}_compile.log')
-            storage.move(f'{log_name}_sim.log')
-            storage.move(f'{log_name}.ucdb')
-            storage.move(f'{log_name}_report.txt')
-        
+            storage.move(compile_log_path)
+            storage.move(sim_log_path)
+            storage.move(coverage_ucdb_path)
+            storage.move(coverage_report_path)
 
         return coverage_response
 
