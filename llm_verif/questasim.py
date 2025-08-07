@@ -14,11 +14,14 @@ logging.basicConfig(level=logging.INFO)
 
 class QuestaSim(Simulator):
 
-    def __init__(self, simulator_path: str):
-        super().__init__(simulator_path)
-    
+    def __init__(self, simulator_path: str, design_unit: str):
+        super().__init__(simulator_path, design_unit)
+
+    """
+    Generic method for running commands
+    """
     @staticmethod
-    def run_command(command: List[str], log_file: str = None, timeout: int = None) -> str:
+    def run_command(command: List[str], log_file: str | None = None, timeout: int | None = None) -> str:
         """
         Run a command in the shell and capture its output.
 
@@ -61,6 +64,9 @@ class QuestaSim(Simulator):
         except Exception as e:
             logging.warning(f"Error during cleanup: {e}")
 
+    """
+    COMPILING AND SIMULATING
+    """
     def compile_design(self, tb_path: str, data_point: dict) -> str:
         """
         Compile the design files.
@@ -76,7 +82,7 @@ class QuestaSim(Simulator):
         compile_command = self.vlog_builder(tb_path=tb_path, data_point=data_point).split()
         return self.run_command(compile_command)
 
-    def run_simulation(self, testbench_module: str, log_name: str) -> str:
+    def simulate_design(self, testbench_module: str, log_name: str) -> str:
         """
         Run the simulation.
 
@@ -92,12 +98,85 @@ class QuestaSim(Simulator):
             f'{questa_dir}/vsim',
             f'work.tb_llm',
             '-coverage',
+            '-sv_seed',
+            'random',
             '-c',
             '-do',
             f'coverage exclude -du tb_llm;coverage save -onexit {log_name}.ucdb;run -all;exit;'
         ]
         return self.run_command(command, timeout=300)
+    
+    def run_simulation_flow(self, tb_path: str, data_point: dict[str, str | list[str]] | None, log_name: str, sim_runs: int = 1) -> CoverageResponse:
+        """
+        Run the simulation and generate the coverage report.
 
+        Args:
+            tb_path (str): Path to the testbench file.
+            data_point (dict): Data point for the simulation.
+            log_name (str): Log file name.
+            sim_runs (int): Number of times to simulate the test bench. Useful if a testbench has random testing
+                            If it is more than once, then it will merge the coverage results into one report.
+
+        Returns:
+            CoverageResponse: Response containing coverage data.
+        """
+        if not os.path.exists(tb_path):
+            raise ValueError(f"Testbench path does not exist: {tb_path}")
+        if not data_point:
+            raise ValueError("Data point is required for simulation.")
+        if sim_runs <= 0:
+            raise ValueError("sim_runs must be greater than zero.")
+
+        questa_dir = self.simulator_path
+        design_dir = os.path.split(os.path.split(tb_path)[0])[0]
+        tb_name = self.get_testbench_name(tb_path)
+
+        # Check for $finish in the testbench
+        if not self.has_finish(tb_path):
+            return CoverageResponse(False, 5, "No $finish found in the test bench. Simulation will not finish.")
+
+        # Cleanup
+        self.cleanup(design_dir)
+
+        # Compilation
+        try:
+            compile_output = self.compile_design(tb_path, data_point)
+            with  open(f'{log_name}_compile.log', 'w') as f:
+                f.write(compile_output)
+            if not QuestaSim.check_errors(compile_output):
+                raise RuntimeError(compile_output)
+            logging.info("Compilation successful.")
+        except RuntimeError as e:
+            return CoverageResponse(False, 1, str(e))
+
+        # Simulation
+        try:
+            for i in range(sim_runs):
+                sim_output = self.simulate_design(tb_name, log_name + f"_{i}")
+                with open(f'{log_name}_{i}_sim.log', 'w') as f:
+                    f.write(sim_output)
+                if not QuestaSim.check_errors(sim_output):
+                    raise RuntimeError(sim_output)
+                logging.info("Simulation successful.")
+        except RuntimeError as e:
+            print(f"Simulation failed: {e}")
+            return CoverageResponse(False, 2, str(e))
+
+        # Coverage Report
+        try:
+            if sim_runs > 1:
+                self.generate_merged_coverage_report(self.design_unit, [f"{log_name}_{i}.ucdb" for i in range(sim_runs)], log_name)
+            else:
+                self.generate_coverage_report(f"{log_name}.ucdb", f"{log_name}_report.xml")
+            coverage_list, total_coverage = self.parse_coverage_report(f'{log_name}_report.xml')
+            logging.info("Coverage report generated successfully.")
+            return CoverageResponse(True, 0, sim_output, coverage_list, total_coverage)
+        except RuntimeError as e:
+            return CoverageResponse(False, 3, str(e))
+        
+    """
+    GENERATING REPORTS
+    """
     def generate_coverage_report(self, coverage_report_ucdb: str, coverage_report_path: str) -> str:
         """
         Generate the coverage report.
@@ -200,71 +279,6 @@ class QuestaSim(Simulator):
             print(f"File not found: {report_path}")
             return [], 0
 
-    def run_sim(self, work_dir: str | Path, tb_name: str, data_point: dict[str, str | list[str]] | None, log_name: str) -> CoverageResponse:
-        """
-        Run the simulation and generate the coverage report.
-
-        Args:
-            tb_path (str): Path to the testbench file.
-            data_point (dict): Data point for the simulation.
-            log_name (str): Log file name.
-
-        Returns:
-            CoverageResponse: Response containing coverage data.
-        """
-
-        tb_path = os.path.join(work_dir, tb_name)
-
-        if not os.path.isfile(tb_path):
-            raise ValueError(f"Testbench path does not exist: {tb_path}")
-        if not data_point:
-            raise ValueError("Data point is required for simulation.")
-
-        tb_name = self.get_testbench_name(tb_path)
-
-        # Check for $finish in the testbench
-        if not self.has_finish(tb_path):
-            return CoverageResponse(False, 5, "No $finish found in the test bench. Simulation will not finish.")
-
-        # Cleanup
-        self.cleanup(work_dir)
-
-        # Compilation
-        try:
-            compile_output = self.compile_design(tb_path, data_point)
-            compile_log_path = os.path.join(work_dir, f'{log_name}_compile.log')
-            with open(compile_log_path, 'w') as f:
-                f.write(compile_output)
-            if not QuestaSim.check_errors(compile_output):
-                raise RuntimeError(compile_output)
-            logging.info("Compilation successful.")
-        except RuntimeError as e:
-            return CoverageResponse(False, 1, str(e))
-
-        # Simulation
-        try:
-            sim_output = self.run_simulation(tb_path, os.path.join(work_dir, log_name))
-            sim_log_path = os.path.join(work_dir, f'{log_name}_sim.log')
-            with open(sim_log_path, 'w') as f:
-                f.write(sim_output)
-            if not QuestaSim.check_errors(sim_output):
-                raise RuntimeError(sim_output)
-            logging.info("Simulation successful.")
-        except RuntimeError as e:
-            print(f"Simulation failed: {e}")
-            return CoverageResponse(False, 2, str(e))
-
-        # Coverage Report
-        try:
-            coverage_report_ucdb = os.path.join(work_dir, f'{log_name}.ucdb')
-            coverage_report_path = os.path.join(work_dir, f'{log_name}_report.xml')
-            self.generate_coverage_report(coverage_report_ucdb, coverage_report_path)
-            coverage_list, total_coverage = self.parse_coverage_report(coverage_report_path)
-            logging.info("Coverage report generated successfully.")
-            return CoverageResponse(True, 0, sim_output, coverage_list, total_coverage)
-        except RuntimeError as e:
-            return CoverageResponse(False, 3, str(e))
-
     def generate_merged_coverage_report(
         self, du: str, coverage_dbs: list[str], log_name: str
     ) -> str:
@@ -297,7 +311,7 @@ class QuestaSim(Simulator):
                 raise RuntimeError(f"Error during UCDB merge: {merge_output}")
 
             # Generate the coverage report
-            report_output = self.generate_coverage_report(log_name)
+            report_output = self.generate_coverage_report(f"{log_name}.ucdb", f"{log_name}_report.xml")
             return report_output
         except Exception as e:
             # Propagate exception for the caller to handle

@@ -75,7 +75,7 @@ class ModelChat:
         self.max_new_tokens = max_new_tokens
         self.timeout_seconds = timeout_seconds
 
-    def load_model(self, seed: Union[int, None] = None) -> tuple[None, None]:
+    def load_model(self, seed: Union[int, None] = None) -> tuple[Any, Any]:
         """
         Load the model and tokenizer with quantization settings.
 
@@ -202,7 +202,7 @@ class ModelChat:
         # Run QuestaSim to get coverage
         # env = Environment(questa_dir)
         log_name = tb_name.split('.')[0] 
-        coverage_response = self.simulator.run_sim(work_dir=work_dir, tb_name=tb_name, data_point=data_point, log_name=log_name)
+        coverage_response = self.simulator.run_simulation_flow(work_dir=work_dir, tb_name=tb_name, data_point=data_point, log_name=log_name)
 
         # Move test bench file to storage
         if storage:

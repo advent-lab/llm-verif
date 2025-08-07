@@ -142,7 +142,7 @@ class OllamaChat:
         # Run QuestaSim to get coverage
         # env = Environment(questa_dir)
         log_name = tb_path.split('.')[0]
-        coverage_response = self.simulator.run_sim(tb_path=tb_path, data_point=data_point, log_name=log_name)
+        coverage_response = self.simulator.run_simulation_flow(tb_path=tb_path, data_point=data_point, log_name=log_name)
 
         # Move test bench file to storage
         if storage:

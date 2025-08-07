@@ -1,3 +1,4 @@
+from typing import Any
 from openai import OpenAI
 import tiktoken
 import os
@@ -17,7 +18,7 @@ class ChatGPTChat(ModelChat):
 
         super().__init__(simulator, environment, do_sample, temperature_function, temperature, top_p, max_new_tokens, timeout_seconds, seed, skip_load)
 
-    def load_model(self, dotenv_path: str | None = None, seed: int | None = None) -> tuple[None, None]:
+    def load_model(self, dotenv_path: str | None = None, seed: int | None = None) -> tuple[Any, Any]:
         
         # Set seed if given
         if seed is not None:

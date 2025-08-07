@@ -38,10 +38,11 @@ class CoverageResponse:
 
 class Simulator():
 
-    def __init__(self, simulator_path: str):
+    def __init__(self, simulator_path: str, design_unit: str):
         self.simulator_path = simulator_path
+        self.design_unit = design_unit
 
-    def run_sim(self, work_dir: str | Path, tb_name: str, data_point: dict[str, str | list[str]] | None, log_name: str) -> CoverageResponse:
+    def run_simulation_flow(self, work_dir: str | Path, tb_name: str, data_point: dict[str, str | list[str]] | None, log_name: str) -> CoverageResponse:
         """Run the simulation - to be overridden by subclasses"""
         raise NotImplementedError("This method should be implemented by subclasses.")
     

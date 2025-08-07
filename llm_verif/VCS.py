@@ -166,7 +166,7 @@ class VCS(Simulator):
         """
        
 
-    def run_sim(self, tb_path: str, data_point: dict[str, str | list[str]] | None, log_name: str) -> CoverageResponse:
+    def run_simulation_flow(self, tb_path: str, data_point: dict[str, str | list[str]] | None, log_name: str) -> CoverageResponse:
         """
         Run the simulation and generate the coverage report.
 
