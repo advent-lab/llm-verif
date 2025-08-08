@@ -207,7 +207,7 @@ def iter_prompt(coverage: CoverageResponse, top_design_module: str) -> str:
 		return error_prompt(coverage.error_code, coverage.error_message)
 	
 	if coverage.total_coverage <= 0:
-		return '''You may have generated a testbench with an uncaught error or that is empty because there was no code coverage of the design.
+		return f'''You may have generated a testbench with an uncaught error or that is empty because there was no code coverage of the design.
 		
 Error Message: {coverage.error_message}
 

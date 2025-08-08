@@ -42,11 +42,11 @@ class Simulator():
         self.simulator_path = simulator_path
         self.design_unit = design_unit
 
-    def run_simulation_flow(self, work_dir: str | Path, tb_name: str, data_point: dict[str, str | list[str]] | None, log_name: str) -> CoverageResponse:
+    def run_simulation_flow(self, work_dir: str | Path, tb_name: str, data_point: dict[str, str | list[str]] | None, log_name: str, sim_runs: int = 1) -> CoverageResponse:
         """Run the simulation - to be overridden by subclasses"""
         raise NotImplementedError("This method should be implemented by subclasses.")
     
-    def generate_merged_coverage_report(self, du: str, coverage_dbs: list[str], log_name: str) -> str:
+    def generate_merged_coverage_report(self, du: str, coverage_dbs: list[str], coverage_ucdb_path: str, coverage_report_path: str) -> str:
         """Generate merged coverage report - to be overridden by subclasses"""
         raise NotImplementedError("This method should be implemented by subclasses.")
     

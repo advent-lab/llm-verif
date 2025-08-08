@@ -35,7 +35,7 @@ def parse_json_response(response: str) -> str | CoverageResponse:
 
 
 def evaluate_coverage(
-    test_bench_code: str | None, tb_name: str, environment: Environment, llm: ModelChat, run: int, iteration: int, batch: int
+    test_bench_code: str | None, tb_name: str, environment: Environment, llm: ModelChat, run: int, iteration: int, batch: int, sim_runs: int = 1
 ) -> CoverageResponse:
     """
     Evaluate the coverage for a generated test bench.
@@ -45,7 +45,7 @@ def evaluate_coverage(
     
     try:
         data_point = environment.dataset.get_data_point(environment.design_name)
-        cov = llm.get_coverage(test_bench_code, environment.work_dir, tb_name, data_point, environment.store, batch)
+        cov = llm.get_coverage(test_bench_code, environment.work_dir, tb_name, data_point, environment.store, batch, sim_runs=sim_runs)
         return cov
     except KeyError as e:
         return CoverageResponse(False, 4, f"Key error: {e}")
@@ -54,7 +54,7 @@ def evaluate_coverage(
 def generate_and_evaluate(
     conversation: ConversationManager, prompt: str, llm: ModelChat, environment: Environment, 
     record: Record, run: int, iteration: int, json: bool = True, batch_size: int = 1,
-    set_stack_pointer: bool = False
+    set_stack_pointer: bool = False, sim_runs: int = 1
 ) -> CoverageResponse:
     """
     Generate a test bench and evaluate its coverage.
@@ -88,7 +88,7 @@ def generate_and_evaluate(
             ]
 
             coverage_responses: list[CoverageResponse] = [
-                evaluate_coverage(test_bench_code, tb_name, environment, llm, run, iteration, i)
+                evaluate_coverage(test_bench_code, tb_name, environment, llm, run, iteration, i, sim_runs=sim_runs)
                 for i, (test_bench_code, tb_name) in enumerate(zip(successful_responses, tb_names))
             ]
 
@@ -121,7 +121,7 @@ def generate_and_evaluate(
 
 
 def run_conversation(
-    run_index: int, llama: ModelChat, environment: Environment, record: Record, args: argparse.Namespace
+    run_index: int, llm: ModelChat, environment: Environment, record: Record, args: argparse.Namespace
 ):
     """
     Execute a single run of test bench generation and coverage evaluation.
@@ -150,7 +150,7 @@ def run_conversation(
         print(testplan_prompt)
         print(testbench_prompt)
         # Stage 1: Generate verification plan
-        cov = generate_and_evaluate(conversation, testplan_prompt, llama, environment, record, run_index, iteration, json=False)
+        cov = generate_and_evaluate(conversation, testplan_prompt, llm, environment, record, run_index, iteration, json=False)
         iteration += 1
     else:
         testbench_prompt = prompt_templates.first_testbench_prompt(environment.design_specification, environment.module_header)
@@ -161,7 +161,7 @@ def run_conversation(
 
     # Stage 2: Generate test bench
     if cov.success:
-        cov = generate_and_evaluate(conversation, testbench_prompt, llama, environment, record, run_index, iteration, batch_size=environment.batch_size)
+        cov = generate_and_evaluate(conversation, testbench_prompt, llm, environment, record, run_index, iteration, batch_size=environment.batch_size, sim_runs=args.sim_runs)
         if cov.success:
             valid_iterations += 1
 
@@ -190,7 +190,7 @@ def run_conversation(
         print(prompt)
         
         # This call adds 2 prompts to the conversation: the next user promtp and the response
-        cov = generate_and_evaluate(conversation, prompt, llama, environment, record, run_index, iteration, batch_size=environment.batch_size)
+        cov = generate_and_evaluate(conversation, prompt, llm, environment, record, run_index, iteration, batch_size=environment.batch_size)
 
         iteration += 1
         print("Length of conversation: ", conversation.length())
@@ -199,20 +199,22 @@ def run_conversation(
     # Merged Coverage Logic
     if args.merge_coverage:
         try:
-            log_name = f"{environment.store.storage_path}/merged_coverage_{environment.design_name}_{run_index}"
+            log_name = f"{args.work_dir}/merged_coverage_{environment.design_name}_{run_index}"
 
             # Check FileStore for UCDB files
             if environment.store:
                 stored_ucdb_files = [
-                    os.path.join(environment.store.storage_path, f"tb_llm_{environment.design_name}_{run_index}_{i}_{j}.ucdb")
+                    os.path.join(args.work_dir, f"tb_llm_{environment.design_name}_{run_index}_{i}_{j}_{k}.ucdb")
                     for i in range(iteration)
                     for j in range(environment.batch_size)
+                    for k in range(args.sim_runs)
                 ]
             else:
                 stored_ucdb_files = [
-                    f"{args.design}/tb_llm_{environment.design_name}_{run_index}_{i}_{j}.ucdb"
+                    f"{args.design}/tb_llm_{environment.design_name}_{run_index}_{i}_{j}_{k}.ucdb"
                     for i in range(iteration)
                     for j in range(environment.batch_size)
+                    for k in range(args.sim_runs)
                 ]
 
             # Filter for existing UCDB files
@@ -223,14 +225,13 @@ def run_conversation(
                 return
 
             # Call QuestaSim to merge coverage
-            merge_output = llama.simulator.generate_merged_coverage_report(
-                du=environment.design_module_name,
-                coverage_dbs=coverage_dbs,
-                log_name=log_name,
+            merge_output = llm.simulator.generate_merged_coverage_report(
+                environment.design_module_name, 
+                coverage_dbs, 
+                f"{log_name}.ucdb", 
+                f"{log_name}_report.txt"
             )
             
-            environment.store.move(f"{log_name}.ucdb")
-            environment.store.move(f"{log_name}_report.txt")
             logging.info("Merged coverage generated successfully.")
             # Parse merged coverage
             merged_coverage, total_coverage = QuestaSim.parse_coverage_report(f"{log_name}_report.txt")
