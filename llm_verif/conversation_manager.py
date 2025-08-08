@@ -33,7 +33,7 @@ class ConversationManager:
         self.conversation[0]["content"] = system_prompt
 
     def _token_count(self, prompt: str):
-        return len(self.tokenizer(prompt, return_tensors="pt")["input_ids"][0])
+        return len(self.tokenizer(prompt, return_tensors="pt")["input_ids"][0]) # type: ignore
     
     def _prune_to_fit(self, prompt: str):
         while self._token_count(prompt) > self.max_input_tokens and len(self.conversation) > 2:

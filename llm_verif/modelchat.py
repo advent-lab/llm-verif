@@ -75,7 +75,7 @@ class ModelChat:
         self.max_new_tokens = max_new_tokens
         self.timeout_seconds = timeout_seconds
 
-    def load_model(self, seed: Union[int, None] = None) -> tuple[None, None]:
+    def load_model(self, seed: Union[int, None] = None) -> tuple[Any, Any]:
         """
         Load the model and tokenizer with quantization settings.
 
@@ -184,15 +184,16 @@ class ModelChat:
             logging.error(f"Unexpected error during JSON parsing: {e}")
             return {"error": f"Unexpected error\n\n{generated_response}"}, 3
 
-    def get_coverage(self, generated_response: str, work_dir: str | Path, tb_name: str, data_point: dict[str, str | list[str]] | None, storage: FileStore | None = None, batch: int = 0) -> CoverageResponse:
+    def get_coverage(self, generated_response: str, work_dir: str | Path, tb_name: str, data_point: dict[str, str | list[str]] | None, storage: FileStore | None = None, batch: int = 0, sim_runs: int = 1) -> CoverageResponse:
         if not generated_response:
             return CoverageResponse(False, 4, "Empty test bench (JSON Decode Error)")
 
+        log_name = tb_name.split('.')[0] 
         tb_path = os.path.join(work_dir, tb_name)
-        compile_log_path = os.path.join(work_dir, f'{tb_name}_compile.log')
-        sim_log_path = os.path.join(work_dir, f'{tb_name}_sim.log')
-        coverage_ucdb_path = os.path.join(work_dir, f'{tb_name}.ucdb')
-        coverage_report_path = os.path.join(work_dir, f'{tb_name}_report.xml')
+        compile_log_path = os.path.join(work_dir, f'{log_name}_compile.log')
+        sim_log_path = os.path.join(work_dir, f'{log_name}_sim.log')
+        coverage_ucdb_path = os.path.join(work_dir, f'{log_name}.ucdb')
+        coverage_report_path = os.path.join(work_dir, f'{log_name}_report.xml')
 
         # Write the generated testbench to a file
         print(tb_path)
@@ -201,8 +202,7 @@ class ModelChat:
 
         # Run QuestaSim to get coverage
         # env = Environment(questa_dir)
-        log_name = tb_name.split('.')[0] 
-        coverage_response = self.simulator.run_sim(work_dir=work_dir, tb_name=tb_name, data_point=data_point, log_name=log_name)
+        coverage_response = self.simulator.run_simulation_flow(work_dir=work_dir, tb_name=tb_name, data_point=data_point, log_name=log_name, sim_runs=sim_runs)
 
         # Move test bench file to storage
         if storage:

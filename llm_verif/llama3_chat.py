@@ -4,7 +4,6 @@ from urllib import response
 # from accelerate import infer_auto_device_map
 import torch
 import os
-import json
 from llm_verif.modelchat import ModelChat
 from llm_verif.storage import FileStore
 import time
@@ -18,10 +17,6 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Union
 from vllm import LLM, SamplingParams 
 from pathlib import Path
-import re
-import torch._dynamo
-
-torch._dynamo.config.suppress_errors = True
 
 logging.basicConfig(level=logging.INFO)
 
@@ -174,8 +169,8 @@ class LlamaChat(ModelChat):
         conversation = conversation_history.get_prompt()
 
         sampling_params = SamplingParams(
-            temperature=self.temperature if self.do_sample else None,
-            top_p=self.top_p if self.do_sample else None,
+            temperature=self.temperature if self.do_sample else 0,
+            top_p=self.top_p if self.do_sample else 0,
             max_tokens=self.max_new_tokens,
             n=num_return_sequences
         )
