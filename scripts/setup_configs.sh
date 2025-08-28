@@ -17,7 +17,7 @@ for func in "${TEMPERATURE_FUNCTIONS[@]}"; do
         echo "Generating $FILE"
 
         cat > "$FILE" <<EOF
-OPENAI_API_KEY=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
+OPENAI_API_KEY=
 COMPILER=/mnt/vault0/tools/Intel/intelFPGA_pro/23.4/questa_fe/bin
 MERGE_COVERAGE=1
 SIM_RUNS=20
