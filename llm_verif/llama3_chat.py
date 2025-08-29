@@ -7,12 +7,13 @@ from pathlib import Path
 from typing import Union, TYPE_CHECKING
 from math import exp, log10
 
+from .modelchat import ModelChat
+
 # Only for type checkers; avoids importing these at runtime
 if TYPE_CHECKING:
     from .environment import Environment
     from .simulator import Simulator
     from .conversation_manager import ConversationManager
-    from .modelchat import ModelChat
     # vLLM/torch types are intentionally not imported here
 
 
@@ -69,9 +70,9 @@ class LlamaChat(ModelChat):
         Lazily create the vLLM engine and tokenizer (unless skip_load=True).
         Returns (engine, tokenizer) for compatibility with your previous design.
         """
-        if self.skip_load:
-            logging.info("skip_load=True; not initializing vLLM engine.")
-            return None, None
+        # if self.skip_load:
+        #    logging.info("skip_load=True; not initializing vLLM engine.")
+        #    return None, None
 
         self._ensure_engine(seed=seed)
         return self._engine, self._tokenizer

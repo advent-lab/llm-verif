@@ -166,6 +166,7 @@ def main():
         )
 
     elif args.backend == "vllm":
+        from .llama3_chat import LlamaChat
 
         llm = LlamaChat(
             QuestaSim(args.compiler, environment.design_module_name), 
