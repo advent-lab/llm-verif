@@ -7,6 +7,10 @@ from pathlib import Path
 from typing import Union, TYPE_CHECKING
 from math import exp, log10
 
+# --- Move HF env config to module import time (so workers inherit it, no mutation in hot path)
+os.environ.setdefault("HUGGINGFACE_HUB_CACHE", "/scratch/slowe8/.cache")
+os.environ.setdefault("HF_HOME", "/scratch/slowe8/.cache")
+
 from .modelchat import ModelChat
 
 # Only for type checkers; avoids importing these at runtime
@@ -17,11 +21,24 @@ if TYPE_CHECKING:
     # vLLM/torch types are intentionally not imported here
 
 
+# --- One-time preloader to keep dynamic imports out of compiled regions
+#     Called during __init__ (before any model forward is compiled)
+
+def _preload_heavy_libs():
+    """Import torch/vllm once, outside of any compiled code paths.
+    Returns torch, LLM, SamplingParams. Swallows optional extras to avoid import-time failures.
+    """
+    import torch  # heavy
+    from vllm import LLM, SamplingParams  # heavy
+
+    return torch, LLM, SamplingParams
+
+
 class LlamaChat(ModelChat):
     """
-    vLLM-backed chat class with lazy loading & your existing behavior preserved.
+    vLLM-backed chat class with compile-safe preloading & your existing behavior preserved.
+    - Imports torch/vLLM at construction time (not lazily) to avoid TorchDynamo tracing __import__.
     - Keeps your snapshot selection, quantization toggle (AWQ), seeding, and HF cache envs.
-    - Defers heavy imports (torch/vllm) and engine creation until first use.
     - Maintains your temperature scheduling and response signature.
     """
 
@@ -51,34 +68,32 @@ class LlamaChat(ModelChat):
             skip_load,
         )
 
-        # Lazy-loading internals
-        self._lazy_loaded: bool = False
-        self._engine = None           # vLLM LLM instance
+        # Preload heavy libs once, *outside* compiled regions
+        self._torch, self._LLM, self._SamplingParams = _preload_heavy_libs()
+
+        # Lazy-loading internals (creation of engine is still deferred until first use)
+        self._lazy_loaded: bool = True   # heavy modules are preloaded now
+        self._engine = None             # vLLM LLM instance
         self._tokenizer = None
-        self._LLM = None              # set in _lazy_import()
-        self._SamplingParams = None   # set in _lazy_import()
-        self._torch = None            # set in _lazy_import()
 
         # Back-compat with any external code that expects these attributes
         self.llm = None
         self.model = None
         self.tokenizer = None
 
-        self._engine, self._tokenizer = self.load_model(seed=seed) if not skip_load else (None, None)
-        self.llm = self._engine
-        self.tokenizer = self._tokenizer
+        # Create engine/tokenizer up front unless explicitly skipped
+        if not skip_load:
+            self._engine, self._tokenizer = self.load_model(seed=seed)
+            self.llm = self._engine
+            self.tokenizer = self._tokenizer
 
     # --------- Public API expected by your base class ---------
 
     def load_model(self, seed: Union[int, None] = None):
         """
-        Lazily create the vLLM engine and tokenizer (unless skip_load=True).
+        Create the vLLM engine and tokenizer (unless skip_load=True in __init__).
         Returns (engine, tokenizer) for compatibility with your previous design.
         """
-        # if self.skip_load:
-        #    logging.info("skip_load=True; not initializing vLLM engine.")
-        #    return None, None
-
         self._ensure_engine(seed=seed)
         return self._engine, self._tokenizer
 
@@ -112,6 +127,7 @@ class LlamaChat(ModelChat):
         # Prompt construction from your ConversationManager
         conversation = conversation_history.get_prompt()
 
+        # Ensure engine/tokenizer exist (no imports occur here anymore)
         self._ensure_engine()
 
         # Build sampling params: respect do_sample gate
@@ -120,12 +136,12 @@ class LlamaChat(ModelChat):
             top_p=self.top_p if self.do_sample else 0.0,
             max_tokens=self.max_new_tokens,
             n=num_return_sequences,
-        ) # type: ignore
+        )  # type: ignore
 
         start_time = time.time()
         try:
             # vLLM accepts str or list[str]; keep your call shape
-            output = self._engine.generate(conversation, sp) # type: ignore
+            output = self._engine.generate(conversation, sp)  # type: ignore
             elapsed = time.time() - start_time
 
             # Keep your extraction logic (first request, N completions)
@@ -157,46 +173,28 @@ class LlamaChat(ModelChat):
         T = T_start + (T_end - T_start) * (log10(n + 1) / log10(N + 1))
         return min(T, T_end)
 
-    # --------- Lazy loading & engine setup ---------
+    # --------- Engine setup (no dynamic imports here) ---------
 
     def _lazy_import(self):
-        """Import heavy packages only if/when needed."""
-        if self._lazy_loaded:
-            return
-        try:
-            import torch  # heavy
-            from vllm import LLM, SamplingParams  # heavy
-        except Exception as e:
-            raise RuntimeError(
-                "vLLM backend requested, but vllm/torch are not available."
-            ) from e
-
-        self._torch = torch
-        self._LLM = LLM
-        self._SamplingParams = SamplingParams
-        self._lazy_loaded = True
+        """Kept for back-compat; now a no-op because we preload in __init__."""
+        return
 
     def _ensure_engine(self, seed: Union[int, None] = None):
         """Create the vLLM engine/tokenizer once, on first use."""
         if self._engine is not None:
             return
 
-        self._lazy_import()
-
+        # Heavy libs are already loaded in __init__
         # Optional seeding (kept from your original load_model)
         if seed is not None:
             logging.info(f"Setting PyTorch seed to {seed}.")
-            self._torch.manual_seed(seed) # type: ignore
-            if self._torch.cuda.is_available(): # type: ignore
-                self._torch.cuda.manual_seed_all(seed) # type: ignore
-
-        # Preserve your HF cache envs
-        os.environ["HUGGINGFACE_HUB_CACHE"] = "/scratch/slowe8/.cache"
-        os.environ["HF_HOME"] = "/scratch/slowe8/.cache"
+            self._torch.manual_seed(seed)  # type: ignore
+            if self._torch.cuda.is_available():  # type: ignore
+                self._torch.cuda.manual_seed_all(seed)  # type: ignore
 
         model_id = self._resolve_model_id_from_snapshots(self.environment.model_id)
 
-        num_gpus = self._torch.cuda.device_count() # type: ignore
+        num_gpus = self._torch.cuda.device_count()  # type: ignore
         if num_gpus == 0:
             raise RuntimeError("No GPUs available.")
 
@@ -210,7 +208,7 @@ class LlamaChat(ModelChat):
             engine_kwargs["quantization"] = "AWQ"
 
         # Create engine (this is the heavy step allocating GPU mem)
-        self._engine = self._LLM(**engine_kwargs) # type: ignore
+        self._engine = self._LLM(**engine_kwargs)  # type: ignore
         self._tokenizer = self._engine.get_tokenizer()
 
         # Back-compat mirrors for any external code using previous names
