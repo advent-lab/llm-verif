@@ -68,8 +68,6 @@ class ModelChat:
         self.timeout_seconds: float
 
         self.simulator = simulator
-        if not skip_load:
-            self.llm, self.tokenizer = self.load_model(seed=seed)
         self.do_sample = do_sample
         self.seed = seed
         self.skip_load = skip_load

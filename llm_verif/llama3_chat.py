@@ -50,6 +50,7 @@ class LlamaChat(ModelChat):
             seed,
             skip_load,
         )
+
         # Lazy-loading internals
         self._lazy_loaded: bool = False
         self._engine = None           # vLLM LLM instance
@@ -62,6 +63,10 @@ class LlamaChat(ModelChat):
         self.llm = None
         self.model = None
         self.tokenizer = None
+
+        self._engine, self._tokenizer = self.load_model(seed=seed) if not skip_load else (None, None)
+        self.llm = self._engine
+        self.tokenizer = self._tokenizer
 
     # --------- Public API expected by your base class ---------
 
