@@ -21,6 +21,7 @@ def main():
     parser = argparse.ArgumentParser(description="LLM Test Bench Generator Tool")
     parser.add_argument('--version', action='version', version=f'%(prog)s {VERSION}')
     parser.add_argument('--dotenv_path', type=str, required=True, help="Path to dotenv file containing required API keys and config.")
+    parser.add_argument('--backend', type=str, help="Backend to use for LLM.")
 
     # All other args are optional at parse-time
     parser.add_argument('-w', '--work_dir', type=str, help="Working directory for test benches and logs.")
@@ -150,17 +151,37 @@ def main():
         include_merge_coverage=args.merge_coverage
     )
 
-    llm = ChatGPTChat(
-        QuestaSim(args.compiler, environment.design_module_name), 
-        environment, 
-        do_sample=not args.no_sampling,
-        temperature_function=args.temperature_function, 
-        temperature=args.temperature,
-        top_p=0.7, 
-        max_new_tokens=4098, 
-        timeout_seconds=1000, 
-        seed=args.seed
-    )
+    if args.backend == "openai":
+
+        llm = ChatGPTChat(
+            QuestaSim(args.compiler, environment.design_module_name), 
+            environment, 
+            do_sample=not args.no_sampling,
+            temperature_function=args.temperature_function, 
+            temperature=args.temperature,
+            top_p=0.7, 
+            max_new_tokens=4098, 
+            timeout_seconds=1000, 
+            seed=args.seed
+        )
+
+    elif args.backend == "vllm":
+
+        llm = LlamaChat(
+            QuestaSim(args.compiler, environment.design_module_name), 
+            environment, 
+            do_sample=not args.no_sampling,
+            temperature_function=args.temperature_function, 
+            temperature=args.temperature,
+            top_p=0.7, 
+            max_new_tokens=4098, 
+            timeout_seconds=1000, 
+            seed=args.seed
+        )
+
+    else:
+        logging.error("No valid backend specified. Use --backend to select 'openai' or 'vllm'.")
+        exit(1)
 
     for run_index in range(args.runs):
         print(f"\nStarting Run {run_index}")

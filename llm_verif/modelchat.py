@@ -61,6 +61,8 @@ class ModelChat:
         if not skip_load:
             self.llm, self.tokenizer = self.load_model(seed=seed)
         self.do_sample = do_sample
+        self.seed = seed
+        self.skip_load = skip_load
 
         if temperature_function == "constant":
             self.temperature_function = lambda _: temperature
