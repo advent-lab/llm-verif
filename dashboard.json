@@ -27,15 +27,16 @@
     "cvdp_agentic_lfsr": {
         "spec": "$(BASE_DIR)/cvdp_agentic_lfsr/docs/8Bit_lfsr_spec.md",
         "design": ["$(BASE_DIR)/cvdp_agentic_lfsr/rtl/lfsr_8bit.sv"],
+	"design_context": [],
         "verif": ["$(BASE_DIR)/cvdp_agentic_lfsr/verif/lfsr_8bit_tb.sv"]
     },
     "cvdp_agentic_poly_interpolator": {
         "spec": "$(BASE_DIR)/cvdp_agentic_poly_interpolator/docs/poly_filter.md",
         "design": ["$(BASE_DIR)/cvdp_agentic_poly_interpolator/rtl/poly_filter.sv"],
         "design_context": [
-            "$(BASE_DIR)/cvdp_poly_interpolator/rtl/adder_tree.sv",
-            "$(BASE_DIR)/cvdp_poly_interpolator/rtl/coeff_ram.sv",
-            "$(BASE_DIR)/cvdp_poly_interpolator/rtl/shift_register.sv"
+            "$(BASE_DIR)/cvdp_agentic_poly_interpolator/rtl/adder_tree.sv",
+            "$(BASE_DIR)/cvdp_agentic_poly_interpolator/rtl/coeff_ram.sv",
+            "$(BASE_DIR)/cvdp_agentic_poly_interpolator/rtl/shift_register.sv"
         ]
     },
     "cvdp_agentic_spi_complex_mult": {
