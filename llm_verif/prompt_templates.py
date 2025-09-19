@@ -5,6 +5,7 @@ import os
 json_format_str = '''Example response:
 {
 	"test bench": "
+		`timescale 1ns / 1ps
 		module tb_llm;
 
 			// Clock logic
@@ -20,7 +21,7 @@ json_format_str = '''Example response:
 }
 '''
 
-def system_prompt(design_content: list[str] | None = None):
+def system_prompt(design_specification: str, module_header: str,design_content: list[str] | None = None):
 
 	design_message = ""
 	if design_content:
@@ -62,12 +63,33 @@ The module name of the testbench should be tb_llm.
 You can use either Verilog or SystemVerilog syntax and features. Do not generate any UVM code.
 If you use SystemVerilog classes, declare them before the top-level testbench module.
 Provide the generated testbench in a JSON format as shown below. You should put the generated testbench into the "test bench" tag and any additional comments into the "comments" tag. Ensure that there is only one testbench within the JSON formatted output.\n
+Below are a specification for the design you are trying to verify and a module header for the top-level module of the design. Use this information to generate the testbench.
+Module Header:
+{module_header}
+
+Design Specification:
+{design_specification}
+
+Below is the JSON format you must use to respond. Do not change the format in any way.
 """ + json_format_str + f"\n{design_message}"
 
+def zero_shot_prompt() -> str:
+	return f'''Generate a testbench for the following design specification.
+Generate a Verilog testbench named tb_llm for the the top-level module. The test bench should meet the statement coverage goal of 100%. Generate only the Verilog testbench and no additional words.
+
+The module name of the testbench should be tb_llm.
+Generate only the testbench and no additional words.
+You can use either Verilog or SystemVerilog syntax and features. Do not generate any UVM code.
+Provide the generated testbench in a JSON format as shown below. You should put the generated testbench into the "testbench" tag and any additional comments into the "comments" tag. 
+Ensure that there is only one testbench within the JSON formatted output.\n
+Here are some additional guidelines for the test bench: \n
+Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo.
+''' + json_format_str
 
 # This function returns the initial prompt used for generating a test bench
 def first_testbench_prompt(design_specification: str | None = None, module_header: str | None = None) -> str:
-    return f'''Generate a testbench for the following design specification.\n\n''' + (f'Module header:\n{module_header}\nDesign Specification:\n{design_specification}\n' if design_specification and module_header else "") + '''Generate a Verilog testbench named tb_llm for the the top-level module. The test bench should meet the statement coverage goal of 100%. Generate only the Verilog testbench and no additional words.
+    return f'''Generate a testbench for the given design specification and module header.
+Generate a Verilog testbench named tb_llm for the the top-level module. The test bench should meet the statement coverage goal of 100%. Generate only the Verilog testbench and no additional words.
 
 The module name of the testbench should be tb_llm.
 Generate only the testbench and no additional words.
@@ -113,7 +135,7 @@ int success = p.randomize() with {{x < y}};
 Remember that when you use System Verilog classes for the testcases, you should create an interface, instantiate the interface, connect the right signals to it, and pass the handle to the interface to the class object.
 ''' + json_format_str
 
-def verification_plan_prompt(design_specification: str, module_header: str) -> str:
+def verification_plan_prompt() -> str:
 	prompt = f"""You are a hardware verification expert. Your task is to generate a *comprehensive* and *structured* verification plan for a SystemVerilog testbench that targets the design described below.
 
 Objective
@@ -127,13 +149,6 @@ A strong verification plan should:
 - Explicitly mention which statements or coverage goals are exercised by each scenario.
 - Include **justification** for how each test contributes to coverage.
 - Optionally recommend **checkers** or **assertions** if useful for complex conditions.
-
-Module Header:
-```verilog
-{module_header}
-```
-Design Specification:
-{design_specification}
 
 Output Format
 Return the verification plan in a structured format like:
@@ -168,9 +183,9 @@ Begin writing the verification plan now:
 # The first prompt should be used to generate the verification plan
 # The second prompt should be used to generate the test bench after the verification plan is generated
 # The second prompt assumes that conversation histroy is being provided to the LLM in addition to the second prompt
-def verif_and_testbench_prompt(design_specification: str, module_header: str) -> tuple[str, str]:
-    p1 = verification_plan_prompt(design_specification, module_header)
-    p2 = '''Now we are in the second stage of the verification process.''' + first_testbench_prompt() + json_format_str
+def verif_and_testbench_prompt(crt: bool = True) -> tuple[str, str]:
+    p1 = verification_plan_prompt()
+    p2 = '''Now we are in the second stage of the verification process.''' + first_testbench_prompt() if crt else zero_shot_prompt() + json_format_str
     return (p1, p2)
 
 def error_prompt(error_code: int, error_message: str) -> str:
