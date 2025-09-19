@@ -54,27 +54,8 @@ llm_verif/
 
 1. **Clone the repository:**
    ```bash
-   git clone <repo-url>
-   cd llm_verif_dataset
-   ```
-
-2. **Set up the Python environment:**
-   - On the Sol cluster, run:
-     ```bash
-     cd llm
-     source build_llm_venv.sh
-     ```
-   - This script creates a virtual environment (`llm_venv`) and installs all required dependencies.
-
-3. **(Optional) Manual setup:**
-   ```bash
-   cd llm
-   python3 -m venv ~/llm_venv
-   source ~/llm_venv/bin/activate
-   pip install --upgrade pip
-   pip install pip-tools
-   pip-sync requirements.txt
-   deactivate
+   git clone https://github.com/advent-lab/llm-verif
+   pip install -e llm_verif/
    ```
 
 ### Model Access
@@ -95,41 +76,16 @@ llm_verif/
 
 ### Running Testbench Generation Jobs
 
-- Example usage of a job script:
-  ```bash
-  llm/scripts/method6_job.sh <repo_path> <datapoint_name> <NUM_RUNS> <RUN_ID>
-  ```
-- To run as a batch job:
-  ```bash
-  sbatch llm/scripts/method6_job.sh <repo_path> <datapoint_name> <NUM_RUNS> <RUN_ID>
-  ```
-
-- See `llm/README.md` for more details and example scripts.
-
-### Simulation and Coverage
-
-- Each datapoint contains a `questa/Makefile` for compiling and simulating the hardware design.
-- Example:
-  ```bash
-  cd data_points/oh/questa
-  make all
-  ```
-- This will:
-  - Create the simulation library
-  - Compile the design files
-  - Run the simulation and generate coverage reports
-
-## Scripts
-
-- **llm/build_llm_venv.sh**: Automates environment setup.
-- **llm/scripts/**: Contains job scripts for running LLM-based workflows and experiments.
+- See `scripts/run_job.sh` and `scripts/setup_configs.sh` for examples on how to configure and run the framework. You can also see `llm_verif/README.md` for a more detailed list of command line args to run the tools. Or, run:
+```bash
+llm_verif --help
+``` 
 
 ## Data Points
 
-- Each subdirectory in `data_points/` represents a hardware module with its own simulation setup.
-- Makefiles are provided for easy simulation and coverage collection.
+- Each subdirectory in `data/` represents a hardware module with its own simulation setup.
 
 ---
 
-For more details on running jobs and troubleshooting, see [llm/README.md](llm/README.md).
+For more details on running jobs and troubleshooting, see [llm_verif/README.md](llm_verif/README.md).
 

@@ -63,9 +63,9 @@ Replace `$(BASE_DIR)` with the folder containing your dataset. The testbench gen
 
 ### 2. ⚙️ Environment Setup
 
-Install dependencies:
+Install CLI tool:
 ```bash
-pip install -r requirements.txt
+pip install -e llm_verif/
 ```
 ---
 
@@ -74,7 +74,7 @@ pip install -r requirements.txt
 Run the main evaluation script:
 
 ```bash
-python evaluate_methodology6.py \
+llm_verif \
     --design /path/to/design \
     --compiler /path/to/questasim \
     --generations 5 \
