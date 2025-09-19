@@ -1,4 +1,4 @@
-# LLM Verification Dataset
+# Spec2Cov: An Agentic Framework for Code Coverage Closure of Digital Hardware Designs
 
 This repository contains scripts, data, and workflows for generating and evaluating verification datasets using Large Language Models (LLMs) for hardware design verification tasks. The project is designed to automate the process of generating testbenches, running simulations, and collecting coverage data for various hardware modules.
 
