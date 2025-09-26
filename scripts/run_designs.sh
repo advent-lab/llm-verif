@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MAX_JOBS=10
+MAX_JOBS=20
 
 designs=(
   # cvdp_agentic_alu
@@ -15,15 +15,26 @@ designs=(
   # cvdp_agentic_rgb_color_space_conversion
   # cvdp_agentic_sorter
   # cvdp_agentic_ttc_lite
-	cvdp_agentic_spi_complex_mult
-	cvdp_agentic_poly_interpolator
-	cvdp_agentic_lfsr
-	cvdp_agentic_async_fifo_compute_ram_application
+	# cvdp_agentic_spi_complex_mult
+	# cvdp_agentic_poly_interpolator
+	# cvdp_agentic_lfsr
+	# cvdp_agentic_async_fifo_compute_ram_application
+	sha1_top
+	chacha_top
+	activation
+	cryptech_uart
+	fifo
+	float_adder
+	float_multiplier
+	pooling
+	simple_mat_mul
+	trng_top
+	vndecorrelator
 )
 
 source llm_verif_dataset/venv/bin/activate
-# pip uninstall llm_verif -y
-# pip install -e llm_verif_dataset
+pip uninstall llm_verif -y
+pip install -e llm_verif_dataset
 
 # Path to your generated base_env configs
 config_dir="configs"

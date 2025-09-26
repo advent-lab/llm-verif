@@ -2,7 +2,7 @@ from transformers import PreTrainedTokenizerBase
 
 class ConversationManager:
 
-    def __init__(self, tokenizer: PreTrainedTokenizerBase, system_prompt: str, max_input_tokens: int = 30000):
+    def __init__(self, tokenizer: PreTrainedTokenizerBase, system_prompt: str, max_input_tokens: int = 15000):
         self.tokenizer: PreTrainedTokenizerBase = tokenizer
         self.max_input_tokens = max_input_tokens
         self.conversation = [{"role": "system", "content": system_prompt}]

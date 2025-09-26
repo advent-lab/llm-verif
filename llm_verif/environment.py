@@ -18,6 +18,7 @@ class Environment:
         self.dashboard_path = f'{str(self.design_dir_path.parents[1])}/dashboard.json'
         self.csv_path = f"{self.design_name}_{time.strftime('%Y%m%d_%H%M%S')}.csv"
         self.no_design_prompt = env_options.no_design_prompt
+        self.crt = env_options.crt
 
         self.dotenv_path = env_options.dotenv_path
 

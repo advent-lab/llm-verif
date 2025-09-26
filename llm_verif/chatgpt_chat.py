@@ -18,6 +18,8 @@ class ChatGPTChat(ModelChat):
 
         super().__init__(simulator, environment, do_sample, temperature_function, temperature, top_p, max_new_tokens, timeout_seconds, seed, skip_load)
 
+        self.llm, self.tokenizer = self.load_model(seed=seed)
+
     def load_model(self, dotenv_path: str | None = None, seed: int | None = None) -> tuple[Any, Any]:
         
         # Set seed if given

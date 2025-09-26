@@ -13,7 +13,8 @@ from llm_verif.simulator import CoverageResponse
 from llm_verif.chatgpt_chat import ChatGPTChat
 import argparse
 from llm_verif.record import Record
-from llm_verif.util import run_conversation
+from llm_verif.util import run_conversation, zero_shot
+from llm_verif import prompt_templates
 from dotenv import load_dotenv
 
 
@@ -21,6 +22,7 @@ def main():
     parser = argparse.ArgumentParser(description="LLM Test Bench Generator Tool")
     parser.add_argument('--version', action='version', version=f'%(prog)s {VERSION}')
     parser.add_argument('--dotenv_path', type=str, required=True, help="Path to dotenv file containing required API keys and config.")
+    parser.add_argument('--backend', type=str, help="Backend to use for LLM.")
 
     # All other args are optional at parse-time
     parser.add_argument('-w', '--work_dir', type=str, help="Working directory for test benches and logs.")
@@ -44,6 +46,8 @@ def main():
     parser.add_argument("--tokenizer", type=str, help="Tokenizer used for ConversationManager")
     parser.add_argument('--no_design_prompt', action='store_true', default=None, help="Disable design prompt.")
     parser.add_argument("--sim_runs", type=int, help="Number of times constrained random testbench should be simulated.")
+    parser.add_argument("--zero_shot", action='store_true', default=None, help="Enable zero-shot prompting.")
+    parser.add_argument("--crt", action='store_true', default=None, help="Enable constrained random testing.")
 
     args = parser.parse_args()
 
@@ -136,6 +140,10 @@ def main():
     print(f"Design prompt disabled: {args.no_design_prompt}")
     args.sim_runs = resolve_config("sim_runs", default=20, cast=int)
     print(f"Simulating constrained random testbench {args.sim_runs} times")
+    args.zero_shot = resolve_config("zero_shot", default=False, cast=str_to_bool)
+    print(f"Zero-shot prompting enabled: {args.zero_shot}")
+    args.crt = resolve_config("crt", default=True, cast=str_to_bool)
+    print(f"Constrained random testing enabled: {args.crt}")
 
     environment = Environment(args)
 
@@ -150,22 +158,48 @@ def main():
         include_merge_coverage=args.merge_coverage
     )
 
-    llm = ChatGPTChat(
-        QuestaSim(args.compiler, environment.design_module_name), 
-        environment, 
-        do_sample=not args.no_sampling,
-        temperature_function=args.temperature_function, 
-        temperature=args.temperature,
-        top_p=0.7, 
-        max_new_tokens=4098, 
-        timeout_seconds=1000, 
-        seed=args.seed
-    )
+    if args.backend == "openai":
+
+        llm = ChatGPTChat(
+            QuestaSim(args.compiler, environment.design_module_name), 
+            environment, 
+            do_sample=not args.no_sampling,
+            temperature_function=args.temperature_function, 
+            temperature=args.temperature,
+            top_p=0.7, 
+            max_new_tokens=4098, 
+            timeout_seconds=1000, 
+            seed=args.seed
+        )
+
+    elif args.backend == "vllm":
+        from .llama3_chat import LlamaChat
+
+        llm = LlamaChat(
+            QuestaSim(args.compiler, environment.design_module_name), 
+            environment, 
+            do_sample=not args.no_sampling,
+            temperature_function=args.temperature_function, 
+            temperature=args.temperature,
+            top_p=0.7, 
+            max_new_tokens=4098, 
+            timeout_seconds=1000, 
+            seed=args.seed
+        )
+
+    else:
+        logging.error("No valid backend specified. Use --backend to select 'openai' or 'vllm'.")
+        exit(1)
 
     for run_index in range(args.runs):
         print(f"\nStarting Run {run_index}")
         record.reset_run()
-        run_conversation(run_index, llm, environment, record, args)
+        if args.zero_shot and args.crt:
+            zero_shot(run_index, prompt_templates.first_testbench_prompt, llm, environment, record, args, sim_runs=args.sim_runs)
+        elif args.zero_shot and not args.crt:
+            zero_shot(run_index, prompt_templates.zero_shot_prompt, llm, environment, record, args)
+        else:
+            run_conversation(run_index, llm, environment, record, args)
 
     if args.merge_coverage:
         try:
