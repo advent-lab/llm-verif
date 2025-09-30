@@ -21,7 +21,7 @@ from dotenv import load_dotenv
 def main():
     parser = argparse.ArgumentParser(description="LLM Test Bench Generator Tool")
     parser.add_argument('--version', action='version', version=f'%(prog)s {VERSION}')
-    parser.add_argument('--dotenv_path', type=str, required=True, help="Path to dotenv file containing required API keys and config.")
+    parser.add_argument('--dotenv_path', type=str, help="Path to dotenv file containing required API keys and config.")
     parser.add_argument('--backend', type=str, help="Backend to use for LLM.")
 
     # All other args are optional at parse-time
@@ -42,7 +42,7 @@ def main():
     parser.add_argument('-b', "--batch_size", type=int, help="The number of test benches to generate per query.")
     parser.add_argument('--id', type=str, help="User specified identifier")
     parser.add_argument("-q", "--quantize", action="store_true", default=None, help="Enable quantization.")
-    parser.add_argument("--model", type=str, help="LLM model name or path.")
+    parser.add_argument("--model_id", type=str, help="LLM model name or path.")
     parser.add_argument("--tokenizer", type=str, help="Tokenizer used for ConversationManager")
     parser.add_argument('--no_design_prompt', action='store_true', default=None, help="Disable design prompt.")
     parser.add_argument("--sim_runs", type=int, help="Number of times constrained random testbench should be simulated.")
@@ -132,8 +132,8 @@ def main():
     print(f"User identifier: {args.id}")
     args.quantize = resolve_config("quantize", default=False, cast=str_to_bool)
     print(f"Quantization enabled: {args.quantize}")
-    args.model = resolve_config("model", default="gpt-4o", cast=str)
-    print(f"Using model: {args.model}")
+    args.model_id = resolve_config("model_id", default="gpt-4o", cast=str)
+    print(f"Using model: {args.model_id}")
     args.tokenizer = resolve_config("tokenizer", default="meta-llama/Llama-3.3-70B-Instruct", cast=str)
     print(f"Using tokenizer: {args.tokenizer}")
     args.no_design_prompt = resolve_config("no_design_prompt", default=False, cast=str_to_bool)
@@ -144,6 +144,9 @@ def main():
     print(f"Zero-shot prompting enabled: {args.zero_shot}")
     args.crt = resolve_config("crt", default=True, cast=str_to_bool)
     print(f"Constrained random testing enabled: {args.crt}")
+    args.api_key = resolve_config("api_key", default="", cast=str)
+    args.base_url = resolve_config("base_url", default="https://api.openai.com/v1", cast=str)
+    print(f"Using API base URL: {args.base_url}")
 
     environment = Environment(args)
 
@@ -158,38 +161,17 @@ def main():
         include_merge_coverage=args.merge_coverage
     )
 
-    if args.backend == "openai":
-
-        llm = ChatGPTChat(
-            QuestaSim(args.compiler, environment.design_module_name), 
-            environment, 
-            do_sample=not args.no_sampling,
-            temperature_function=args.temperature_function, 
-            temperature=args.temperature,
-            top_p=0.7, 
-            max_new_tokens=4098, 
-            timeout_seconds=1000, 
-            seed=args.seed
-        )
-
-    elif args.backend == "vllm":
-        from .llama3_chat import LlamaChat
-
-        llm = LlamaChat(
-            QuestaSim(args.compiler, environment.design_module_name), 
-            environment, 
-            do_sample=not args.no_sampling,
-            temperature_function=args.temperature_function, 
-            temperature=args.temperature,
-            top_p=0.7, 
-            max_new_tokens=4098, 
-            timeout_seconds=1000, 
-            seed=args.seed
-        )
-
-    else:
-        logging.error("No valid backend specified. Use --backend to select 'openai' or 'vllm'.")
-        exit(1)
+    llm = ChatGPTChat(
+        QuestaSim(args.compiler, environment.design_module_name), 
+        environment, 
+        do_sample=not args.no_sampling,
+        temperature_function=args.temperature_function, 
+        temperature=args.temperature,
+        top_p=0.7, 
+        max_new_tokens=4098, 
+        timeout_seconds=1000, 
+        seed=args.seed
+    )
 
     for run_index in range(args.runs):
         print(f"\nStarting Run {run_index}")
