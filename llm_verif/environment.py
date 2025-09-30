@@ -22,7 +22,7 @@ class Environment:
 
         self.dotenv_path = env_options.dotenv_path
 
-        self.model_id = env_options.model
+        self.model_id = env_options.model_id
         self.tokenizer_id = env_options.tokenizer
         self.quantized = env_options.quantize
 
@@ -31,6 +31,9 @@ class Environment:
         self.testplan = env_options.testplan
         self.batch_size = env_options.batch_size
         self.remove_polluted_context = env_options.remove_polluted_context
+
+        self.api_key = env_options.api_key
+        self.base_url = env_options.base_url
 
         # Create the prompt
         # Read the specification file

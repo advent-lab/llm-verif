@@ -48,6 +48,8 @@ def main():
     parser.add_argument("--sim_runs", type=int, help="Number of times constrained random testbench should be simulated.")
     parser.add_argument("--zero_shot", action='store_true', default=None, help="Enable zero-shot prompting.")
     parser.add_argument("--crt", action='store_true', default=None, help="Enable constrained random testing.")
+    parser.add_argument('--api_key', type=str, help="API key for the LLM service.")
+    parser.add_argument('--base_url', type=str, help="Base URL for the LLM service API.")
 
     args = parser.parse_args()
 
