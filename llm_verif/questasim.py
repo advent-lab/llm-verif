@@ -17,37 +17,6 @@ class QuestaSim(Simulator):
     def __init__(self, simulator_path: str, design_unit: str):
         super().__init__(simulator_path, design_unit)
 
-    """
-    Generic method for running commands
-    """
-    @staticmethod
-    def run_command(command: List[str], log_file: str | None = None, timeout: int | None = None) -> str:
-        """
-        Run a command in the shell and capture its output.
-
-        Args:
-            command (List[str]): The command to execute.
-            log_file (str, optional): File to log the output.
-            timeout (int, optional): Timeout in seconds.
-
-        Returns:
-            str: Standard output of the command.
-
-        Raises:
-            RuntimeError: If the command fails or times out.
-        """
-        try:
-            result = run(command, stdout=PIPE, stderr=PIPE, timeout=timeout)
-            output = result.stdout.decode()
-            if log_file:
-                with open(log_file, 'w') as f:
-                    f.write(output)
-            return output
-        except TimeoutExpired:
-            raise RuntimeError(f"Command {' '.join(command)} timed out.")
-        except Exception as e:
-            raise RuntimeError(f"Failed to execute {' '.join(command)}: {e}")
-
     @staticmethod
     def cleanup(directory: str):
         """
@@ -365,25 +334,4 @@ class QuestaSim(Simulator):
     def vlog_builder(self, tb_path: str, data_point: dict) -> str:
         return f"vlog -sv +cover=s {tb_path} {' '.join(data_point['design'])} {' '.join(data_point['design_context'])}"
 
-    def has_finish(self, file_path):
-        """
-        Checks if '$finish' is present in a Verilog test bench file.
-        
-        Args:
-            file_path (str): Path to the Verilog test bench file.
-        
-        Returns:
-            bool: True if '$finish' is found, False otherwise.
-        """
-        finish_pattern = re.compile(r'\$finish\b')
-
-        try:
-            with open(file_path, 'r') as file:
-                for line in file:
-                    if finish_pattern.search(line):
-                        return True
-        except FileNotFoundError:
-            print(f"Error: File not found - {file_path}")
-            return False
-
-        return False
+    
