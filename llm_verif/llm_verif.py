@@ -10,7 +10,7 @@ from llm_verif import __version__ as VERSION
 from llm_verif.environment import Environment
 from llm_verif.questasim import QuestaSim
 from llm_verif.simulator import CoverageResponse
-from llm_verif.chatgpt_chat import ChatGPTChat
+from llm_verif.llama3_chat import LlamaChat
 import argparse
 from llm_verif.record import Record
 from llm_verif.util import run_conversation
@@ -150,7 +150,7 @@ def main():
         include_merge_coverage=args.merge_coverage
     )
 
-    llm = ChatGPTChat(
+    llm = LlamaChat(
         QuestaSim(args.compiler, environment.design_module_name), 
         environment, 
         do_sample=not args.no_sampling,
