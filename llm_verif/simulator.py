@@ -1,42 +1,35 @@
+from dataclasses import dataclass
 from pathlib import Path
 from subprocess import PIPE, TimeoutExpired, run
-from typing import List
+from typing import List, Sequence
 from xml.etree.ElementTree import Element
 
+from llm_verif.verilator_coverage_util import FileCoverage
+
+@dataclass
 class DU:
-    def __init__(self, path: str, du: str, coverage: dict[str, int | float], coverage_details: list[Element]) -> None:
-        self.path: str
-        self.du: str
-        self.coverage: dict[str, int | float]
-        self.coverage_details: list[Element]
+    path: str
+    du: str
+    coverage: dict[str, int | float]
+    coverage_details: list[Element]
 
-        self.path = path
-        self.du = du
-        self.coverage = coverage
-        self.coverage_details = coverage_details
-
+@dataclass
 class CoverageResponse:
-    def __init__(self, success: bool = False, error_code: int = -1, error_message: str = "", coverage_list: list[DU] = [], total_coverage: float = 0):
         
-        self.success: bool
-        self.error_code: int
-        self.error_message: str
-        self.coverage_list: list[DU]
-        self.total_coverage: float
-        
-        self.success = success
-        # Error codes
-        # -1: empty object
-        # 0: success -> ignore error message
-        # 1: compile error
-        # 2: simulation error
-        # 3: simulation timeout
-        # 4: JSON Decode error -> incomplete testbench
-        # 5: No $finish found -> LLM did not generate finish in test bench. Avoids running a test bench that will not finish
-        self.error_code = error_code
-        self.error_message = error_message
-        self.coverage_list = coverage_list
-        self.total_coverage = total_coverage
+    success: bool
+    error_code: int
+    error_message: str
+    coverage_list: Sequence[DU | FileCoverage] = []
+    total_coverage: float = 0.0
+    
+    # Error codes
+    # -1: empty object
+    # 0: success -> ignore error message
+    # 1: compile error
+    # 2: simulation error
+    # 3: simulation timeout
+    # 4: JSON Decode error -> incomplete testbench
+    # 5: No $finish found -> LLM did not generate finish in test bench. Avoids running a test bench that will not finish
 
 class Simulator():
 
@@ -90,6 +83,19 @@ class Simulator():
     def merge_coverage(self) -> str:
         """Merge coverage - to be overridden by subclasses"""
         raise NotImplementedError("This method should be implemented by subclasses.")
+    
+    def get_testbench_name(self, tb_path: str) -> str:
+        with open(tb_path, 'r') as tb_file:
+            tb_content = tb_file.readlines()
+            tb_name = ''
+            for line in tb_content:
+                if line.find('module') != -1:
+                    split_line = re.split(r'[\W+]', line)
+                    stripped_items = [item.strip() for item in split_line]
+                    cleaned_items = [x for x in stripped_items if x]
+                    return cleaned_items[-1]
+
+        return ''
     
     def has_finish(self, file_path):
         """

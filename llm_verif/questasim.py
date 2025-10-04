@@ -318,18 +318,7 @@ class QuestaSim(Simulator):
 
         return False
 
-    def get_testbench_name(self, tb_path: str) -> str:
-        with open(tb_path, 'r') as tb_file:
-            tb_content = tb_file.readlines()
-            tb_name = ''
-            for line in tb_content:
-                if line.find('module') != -1:
-                    split_line = re.split(r'[\W+]', line)
-                    stripped_items = [item.strip() for item in split_line]
-                    cleaned_items = [x for x in stripped_items if x]
-                    return cleaned_items[-1]
-
-        return ''
+    
 
     def vlog_builder(self, tb_path: str, data_point: dict) -> str:
         return f"vlog -sv +cover=s {tb_path} {' '.join(data_point['design'])} {' '.join(data_point['design_context'])}"

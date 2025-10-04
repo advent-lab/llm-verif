@@ -68,7 +68,7 @@ def generate_and_evaluate(
     print(responses)
     print(f"Tokens / second: {tokens_generated / gen_time}\n")
 
-    selected: CoverageResponse = CoverageResponse()
+    selected: CoverageResponse = CoverageResponse(False, -1, "Empty response")
     if json:
         json_responses: list[str | CoverageResponse] = [parse_json_response(response) for response in responses]
         
@@ -93,7 +93,7 @@ def generate_and_evaluate(
             ]
 
             
-            max_coverage: tuple[float, str, CoverageResponse] = (0, "", CoverageResponse())
+            max_coverage: tuple[float, str, CoverageResponse] = (0, "", CoverageResponse(False, -1, "Empty response"))
             for i, response in enumerate(coverage_responses):
                 if response.total_coverage >= max_coverage[0]:
                     max_coverage = (response.total_coverage, successful_responses[i], response)
