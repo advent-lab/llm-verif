@@ -69,6 +69,8 @@ class Environment:
 
         self.store = FileStore(env_options.output)
 
+        self.simulator_name = env_options.simulator
+
     def get_design_name(self, design_path: str) -> str:
         split_filename = os.path.split(design_path)[1].split('.')
         if len(split_filename) != 2:

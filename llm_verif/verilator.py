@@ -19,7 +19,7 @@ class Verilator(Simulator):
   COMPILE AND SIMULATE
   """
 
-  def compile(self, testbench_path: str, data_point: dict[str, str | list[str]]) -> str:
+  def compile(self, testbench_path: str, data_point: dict[str, str | list[str]], coverage_dat_path: str) -> str:
     """
     Compile the design and testbench using Verilator.
 
@@ -31,7 +31,7 @@ class Verilator(Simulator):
         str: Compilation output or error message.
     """
 
-    compile_command = self.build_compile_command(testbench_path, data_point).split()
+    compile_command = self.build_compile_command(testbench_path, data_point, coverage_dat_path).split()
     return self.run_command(compile_command)
   
   def simulate(self, testbench_module: str, dat_path: str) -> str:
@@ -51,13 +51,6 @@ class Verilator(Simulator):
     ]
 
     return self.run_command(command, timeout=300)
-
-
-
-  @staticmethod
-  def check_errors(output: str) -> bool:
-      raise NotImplementedError
-    
   
   def run_simulation_flow(self, work_dir: str | Path, tb_name: str, data_point: dict[str, str | list[str]] | None, log_name: str, sim_runs: int = 1) -> CoverageResponse:
     
@@ -68,7 +61,7 @@ class Verilator(Simulator):
     coverage_dat_path = os.path.join(work_dir, f"{log_name}_coverage.dat")
     coverage_report_path = os.path.join(work_dir, f"{log_name}_coverage_report.txt")
     coverage_info_path = os.path.join(work_dir, f"{log_name}_coverage_info.txt")
-    coverage_annotate_dir_path = os.path.join(work_dir, f"{log_name}_annotated")
+    coverage_annotate_dir_path = os.path.join(work_dir, f"annotated")
 
     design_dir = os.path.split(os.path.split(tb_name)[0])[0]
     tb_module_name = self.get_testbench_name(tb_path)
@@ -178,4 +171,15 @@ class Verilator(Simulator):
     total_lines, covered_lines, coverage_pct = total_coverage(file_coverage)
 
     return file_coverage, coverage_pct
+  
+  import re
+
+  @staticmethod
+  def check_errors(output: str) -> bool:
+    """
+    Return True if Verilator output indicates an error or fatal condition.
+    Accepts stdout/stderr text from compilation or simulation.
+    """
+    return bool(re.search(r'\b%(?:Error|Fatal):', output))
+
 

@@ -4,7 +4,7 @@ Put citation here
 
 
 from collections import defaultdict, Counter
-from typing import Callable, List, Union, Iterable, Dict
+from typing import List, Union, Iterable, Dict
 import itertools
 import numpy as np
 
@@ -68,7 +68,7 @@ def generate_and_evaluate(
     print(responses)
     print(f"Tokens / second: {tokens_generated / gen_time}\n")
 
-    selected: CoverageResponse = CoverageResponse(False, -1, "Empty response")
+    selected: CoverageResponse = CoverageResponse()
     if json:
         json_responses: list[str | CoverageResponse] = [parse_json_response(response) for response in responses]
         
@@ -93,7 +93,7 @@ def generate_and_evaluate(
             ]
 
             
-            max_coverage: tuple[float, str, CoverageResponse] = (0, "", CoverageResponse(False, -1, "Empty response"))
+            max_coverage: tuple[float, str, CoverageResponse] = (0, "", CoverageResponse())
             for i, response in enumerate(coverage_responses):
                 if response.total_coverage >= max_coverage[0]:
                     max_coverage = (response.total_coverage, successful_responses[i], response)
@@ -138,7 +138,7 @@ def run_conversation(
     cov = CoverageResponse(True, 0, "")
     
     tokenizer = AutoTokenizer.from_pretrained(environment.tokenizer_id, use_fast=False)
-    conversation = ConversationManager(tokenizer, prompt_templates.system_prompt(environment.design_specification, environment.module_header))
+    conversation = ConversationManager(tokenizer, prompt_templates.system_prompt())
 
     print("Length of conversation: ", conversation.length())
     print("Stack pointer: ", conversation.stack_pointer)
@@ -146,13 +146,14 @@ def run_conversation(
     valid_iterations = 0  
     iteration = 0
     if environment.testplan:
-        testplan_prompt, testbench_prompt = prompt_templates.verif_and_testbench_prompt(crt=environment.crt)
+        testplan_prompt, testbench_prompt = prompt_templates.verif_and_testbench_prompt(environment.design_specification, environment.module_header)
         print(testplan_prompt)
         print(testbench_prompt)
         # Stage 1: Generate verification plan
         cov = generate_and_evaluate(conversation, testplan_prompt, llm, environment, record, run_index, iteration, json=False)
+        iteration += 1
     else:
-        testbench_prompt = prompt_templates.first_testbench_prompt() if environment.crt else prompt_templates.zero_shot_prompt()
+        testbench_prompt = prompt_templates.first_testbench_prompt(environment.design_specification, environment.module_header)
         print(testbench_prompt)
     
     print("Length of conversation: ", conversation.length())
@@ -183,9 +184,11 @@ def run_conversation(
             valid_iterations += 1
             if not environment.no_design_prompt:
                 # Add design prompt to end of conversation
-                conversation.update_system_prompt(prompt_templates.system_prompt(environment.design_specification, environment.module_header, environment.all_design_file_paths))
+                conversation.update_system_prompt(prompt_templates.system_prompt(environment.all_design_file_paths))
                 
         prompt = prompt_templates.error_prompt(cov.error_code, cov.error_message) if not cov.success else prompt_templates.iter_prompt(cov, environment.design_module_name)
+        if cov.success:
+            prompt = prompt_templates.iter_prompt(cov, environment.design_module_name, backend=environment.simulator_name, verilator_annot_dir=f"{environment.work_dir}/annotated")
         print(prompt)
         
         # This call adds 2 prompts to the conversation: the next user promtp and the response
@@ -243,88 +246,6 @@ def run_conversation(
     record.update_run_max_coverage(run_index)
     record.update_run_average_total_coverage(run_id=run_index)
     record.write_to_csv(f'./{environment.csv_path}')
-
-def zero_shot(
-        run_index: int,
-        prompt_callback: Callable,
-        llm: ModelChat,
-        environment: Environment,
-        record: Record,
-        args: argparse.Namespace,
-        sim_runs: int = 1
-):
-
-    temperature = 0.3
-    top_p = 0.7
-    coverage_response = CoverageResponse(True, 0, "")
-    iteration = 0
-
-    tokenizer = AutoTokenizer.from_pretrained(environment.tokenizer_id, use_fast=False)
-    conversation = ConversationManager(tokenizer, prompt_templates.system_prompt(environment.design_specification, environment.module_header))
-
-    prompt = prompt_callback()
-
-    coverage_response = generate_and_evaluate(
-        conversation=conversation,
-        prompt=prompt,
-        llm=llm,
-        environment=environment,
-        record=record,
-        run=run_index,
-        iteration=iteration,
-        sim_runs=sim_runs,
-    )
-
-    # Merged Coverage Logic
-    if args.merge_coverage:
-        try:
-            log_name = f"{args.work_dir}/merged_coverage_{environment.design_name}_{run_index}"
-
-            # Check FileStore for UCDB files
-            if environment.store:
-                stored_ucdb_files = [
-                    os.path.join(args.work_dir, f"tb_llm_{environment.design_name}_{run_index}_{i}_{j}_{k}.ucdb")
-                    for i in range(iteration)
-                    for j in range(environment.batch_size)
-                    for k in range(args.sim_runs)
-                ]
-            else:
-                stored_ucdb_files = [
-                    f"{args.design}/tb_llm_{environment.design_name}_{run_index}_{i}_{j}_{k}.ucdb"
-                    for i in range(iteration)
-                    for j in range(environment.batch_size)
-                    for k in range(args.sim_runs)
-                ]
-
-            # Filter for existing UCDB files
-            coverage_dbs = [file for file in stored_ucdb_files if os.path.exists(file)]
-
-            if not coverage_dbs:
-                logging.warning("No UCDB files found for merging coverage.")
-                return
-
-            # Call QuestaSim to merge coverage
-            merge_output = llm.simulator.generate_merged_coverage_report(
-                environment.design_module_name, 
-                coverage_dbs, 
-                f"{log_name}.ucdb", 
-                f"{log_name}_report.txt"
-            )
-            
-            logging.info("Merged coverage generated successfully.")
-            # Parse merged coverage
-            merged_coverage, total_coverage = QuestaSim.parse_coverage_report(f"{log_name}_report.txt")
-            record.update_run_merge_coverage(CoverageResponse(True, 0, "Merged successfully", merged_coverage, total_coverage), run_index)
-
-        except Exception as e:
-            logging.error(f"Failed to generate merged coverage: {e}")
-    
-    # Final Write to CSV
-    record.update_run_max_coverage(run_index)
-    record.update_run_average_total_coverage(run_id=run_index)
-    record.write_to_csv(f'./{environment.csv_path}')
-
-
 
 def estimate_pass_at_k(
         num_samples: Union[int, List[int], np.ndarray],
