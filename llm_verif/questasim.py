@@ -382,7 +382,7 @@ class QuestaSim(Simulator):
         return ".ucdb"
 
     def merge_and_parse_run_coverage(
-        self, design_name: str, work_dir: str, run_index: int, max_iterations: int,
+        self, design_name: str, work_dir: str, run_idx: int, max_iterations: int,
         batch_size: int, sim_runs: int, design_dir: str, use_store: bool
     ) -> CoverageResponse:
         """
@@ -408,7 +408,7 @@ class QuestaSim(Simulator):
             coverage_dbs = []
             for iter_idx in range(max_iterations):
                 for batch_idx in range(batch_size):
-                    tb_stem = f"tb_llm_{design_name}_{run_index}_{iter_idx}_{batch_idx}"
+                    tb_stem = f"tb_llm_{design_name}_{run_idx}_{iter_idx}_{batch_idx}"
                     artifact_plan = self.plan_artifacts(work_dir, tb_stem, sim_runs)
 
                     # Collect per-run coverage databases from the artifact plan
@@ -421,7 +421,7 @@ class QuestaSim(Simulator):
                 return CoverageResponse(False, -1, "No coverage files found")
 
             # Define output paths for merged coverage
-            log_name = f"{work_dir}/merged_coverage_{design_name}_run{run_index}"
+            log_name = f"{work_dir}/merged_coverage_{design_name}_run{run_idx}"
             merged_ucdb_path = f"{log_name}.ucdb"
             merged_report_path = f"{log_name}_report.xml"
 

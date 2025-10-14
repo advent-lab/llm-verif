@@ -22,7 +22,7 @@ def main():
     parser.add_argument('--version', action='version', version=f'%(prog)s {VERSION}')
     parser.add_argument('--dotenv_path', type=str, required=True, help="Path to dotenv file containing required API keys and config.")
     parser.add_argument('--backend', type=str, help="Backend to use for LLM.")
-    parser.add_argument('--simulator', type=str, default='verilator', choices=['verilator', 'questasim'], help="Simulator to use for compiling and simulating test benches.")
+    parser.add_argument('--simulator', type=str, default=None, choices=['verilator', 'questasim'], help="Simulator to use for compiling and simulating test benches.")
     parser.add_argument('-v', '--verbose', action='count', default=0, help="Increase verbosity level (can be repeated: -v, -vv, -vvv)")
 
     # All other args are optional at parse-time
