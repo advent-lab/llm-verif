@@ -8,12 +8,11 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from llm_verif import __version__ as VERSION
 from llm_verif.environment import Environment
-from llm_verif.questasim import QuestaSim
 from llm_verif.simulator import CoverageResponse
 from llm_verif.chatgpt_chat import ChatGPTChat
 import argparse
 from llm_verif.record import Record
-from llm_verif.util import run_conversation, zero_shot
+from llm_verif.conversation_runner import ConversationRunner
 from llm_verif import prompt_templates
 from dotenv import load_dotenv
 
@@ -23,6 +22,8 @@ def main():
     parser.add_argument('--version', action='version', version=f'%(prog)s {VERSION}')
     parser.add_argument('--dotenv_path', type=str, required=True, help="Path to dotenv file containing required API keys and config.")
     parser.add_argument('--backend', type=str, help="Backend to use for LLM.")
+    parser.add_argument('--simulator', type=str, default='verilator', choices=['verilator', 'questasim'], help="Simulator to use for compiling and simulating test benches.")
+    parser.add_argument('-v', '--verbose', action='count', default=0, help="Increase verbosity level (can be repeated: -v, -vv, -vvv)")
 
     # All other args are optional at parse-time
     parser.add_argument('-w', '--work_dir', type=str, help="Working directory for test benches and logs.")
@@ -51,16 +52,36 @@ def main():
 
     args = parser.parse_args()
 
+    # Configure logging based on verbosity level
+    # -v    = INFO (default operational info)
+    # -vv   = DEBUG (detailed debugging info)
+    # -vvv  = DEBUG with even more detail (for developers)
+    # no -v = WARNING (only warnings and errors)
+    if args.verbose == 0:
+        log_level = logging.WARNING
+    elif args.verbose == 1:
+        log_level = logging.INFO
+    else:  # >= 2
+        log_level = logging.DEBUG
+
+    logging.basicConfig(
+        level=log_level,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+
+    logger = logging.getLogger(__name__)
+
     # Load env file
     dotenv_path = args.dotenv_path
     if not os.path.exists(dotenv_path):
-        print(f"ERROR: dotenv file not found at '{dotenv_path}'")
+        logger.error(f"dotenv file not found at '{dotenv_path}'")
         sys.exit(1)
 
     load_dotenv(dotenv_path)
 
     # Required keys to enforce (must be in either env or CLI)
-    REQUIRED_KEYS = ["design", "compiler", "id"]
+    REQUIRED_KEYS = ["design", "compiler", "id", "simulator", "backend"]
 
     # Validate presence of required options
     missing_keys = []
@@ -71,8 +92,8 @@ def main():
             missing_keys.append(key)
 
     if missing_keys:
-        print(f"ERROR: Missing required configuration for: {', '.join(missing_keys)}")
-        print("You must specify them either as command-line arguments or in the .env file.")
+        logger.error(f"Missing required configuration for: {', '.join(missing_keys)}")
+        logger.error("You must specify them either as command-line arguments or in the .env file.")
         sys.exit(1)
 
 
@@ -89,63 +110,75 @@ def main():
             try:
                 return cast(env_val)
             except ValueError:
-                print(f"ERROR: Failed to cast {key}='{env_val}' from .env to {cast.__name__}")
+                logger.error(f"Failed to cast {key}='{env_val}' from .env to {cast.__name__}")
                 sys.exit(1)
         return default
-    
+
     args.work_dir = resolve_config("work_dir", default="./work", cast=str)
     if not os.path.exists(args.work_dir):
         os.makedirs(args.work_dir, exist_ok=True)
 
     args.work_dir = os.path.abspath(args.work_dir)
     os.chdir(args.work_dir)
-    print(f"Using working directory: {args.work_dir}")
+    logger.info(f"Using working directory: {args.work_dir}")
     args.design = resolve_config("design", cast=str)
-    print(f"Using design directory: {args.design}")
+    logger.info(f"Using design directory: {args.design}")
     args.runs = resolve_config("runs", default=1, cast=int)
-    print(f"Number of runs: {args.runs}")
+    logger.info(f"Number of runs: {args.runs}")
     args.compiler = resolve_config("compiler", cast=str)
-    print(f"Using compiler path: {args.compiler}")
+    logger.info(f"Using compiler path: {args.compiler}")
     args.output = os.path.join(args.work_dir, resolve_config("output", default="output", cast=str))
-    print(f"Output directory: {args.output}")
+    logger.info(f"Output directory: {args.output}")
     args.no_sampling = resolve_config("no_sampling", default=False, cast=str_to_bool)
-    print(f"Sampling disabled: {args.no_sampling}")
+    logger.info(f"Sampling disabled: {args.no_sampling}")
     args.temperature = resolve_config("temperature", default=0.3, cast=float)
-    print(f"Sampling temperature: {args.temperature}")
+    logger.info(f"Sampling temperature: {args.temperature}")
     args.temperature_function = resolve_config("temperature_function", default="constant", cast=str)
-    print(f"Temperature function: {args.temperature_function}")
+    logger.info(f"Temperature function: {args.temperature_function}")
     args.seed = resolve_config("seed", default=None, cast=int)
-    print(f"Random seed: {args.seed}")
+    logger.info(f"Random seed: {args.seed}")
     args.merge_coverage = resolve_config("merge_coverage", default=True, cast=str_to_bool)
-    print(f"Merging coverage reports: {args.merge_coverage}")
+    logger.info(f"Merging coverage reports: {args.merge_coverage}")
     args.testplan = resolve_config("testplan", default=True, cast=str_to_bool)
-    print(f"Generating test plan: {args.testplan}")
+    logger.info(f"Generating test plan: {args.testplan}")
     args.remove_polluted_context = resolve_config("remove_polluted_context", default=False, cast=str_to_bool)
-    print(f"Removing polluted context: {args.remove_polluted_context}")
+    logger.info(f"Removing polluted context: {args.remove_polluted_context}")
     args.max_iterations = resolve_config("max_iterations", default=5, cast=int)
-    print(f"Maximum iterations: {args.max_iterations}")
+    logger.info(f"Maximum iterations: {args.max_iterations}")
     args.max_valid_iter = resolve_config("max_valid_iter", default=3, cast=int)
-    print(f"Maximum valid iterations: {args.max_valid_iter}")
+    logger.info(f"Maximum valid iterations: {args.max_valid_iter}")
     args.batch_size = resolve_config("batch_size", default=1, cast=int)
-    print(f"Batch size: {args.batch_size}")
+    logger.info(f"Batch size: {args.batch_size}")
     args.id = resolve_config("id", default="default", cast=str)
-    print(f"User identifier: {args.id}")
+    logger.info(f"User identifier: {args.id}")
     args.quantize = resolve_config("quantize", default=False, cast=str_to_bool)
-    print(f"Quantization enabled: {args.quantize}")
+    logger.info(f"Quantization enabled: {args.quantize}")
     args.model = resolve_config("model", default="gpt-4o", cast=str)
-    print(f"Using model: {args.model}")
+    logger.info(f"Using model: {args.model}")
     args.tokenizer = resolve_config("tokenizer", default="meta-llama/Llama-3.3-70B-Instruct", cast=str)
-    print(f"Using tokenizer: {args.tokenizer}")
+    logger.info(f"Using tokenizer: {args.tokenizer}")
     args.no_design_prompt = resolve_config("no_design_prompt", default=False, cast=str_to_bool)
-    print(f"Design prompt disabled: {args.no_design_prompt}")
+    logger.info(f"Design prompt disabled: {args.no_design_prompt}")
     args.sim_runs = resolve_config("sim_runs", default=20, cast=int)
-    print(f"Simulating constrained random testbench {args.sim_runs} times")
+    logger.info(f"Simulating constrained random testbench {args.sim_runs} times")
     args.zero_shot = resolve_config("zero_shot", default=False, cast=str_to_bool)
-    print(f"Zero-shot prompting enabled: {args.zero_shot}")
+    logger.info(f"Zero-shot prompting enabled: {args.zero_shot}")
     args.crt = resolve_config("crt", default=True, cast=str_to_bool)
-    print(f"Constrained random testing enabled: {args.crt}")
+    logger.info(f"Constrained random testing enabled: {args.crt}")
+    args.simulator = resolve_config("simulator", default="verilator", cast=str)
+    logger.info(f"Using simulator: {args.simulator}")
 
     environment = Environment(args)
+    
+    if args.simulator == "questasim":
+        from llm_verif.questasim import QuestaSim
+        sim = QuestaSim(args.compiler, environment.design_module_name)
+    elif args.simulator == "verilator":
+        from llm_verif.verilator import Verilator
+        sim = Verilator(args.compiler, environment.design_module_name)
+    else:
+        logger.error(f"Unsupported simulator '{args.simulator}'. Supported simulators are 'verilator' and 'questasim'.")
+        sys.exit(1)
 
     record = Record(
         environment.design_name, 
@@ -161,7 +194,7 @@ def main():
     if args.backend == "openai":
 
         llm = ChatGPTChat(
-            QuestaSim(args.compiler, environment.design_module_name), 
+            sim,
             environment, 
             do_sample=not args.no_sampling,
             temperature_function=args.temperature_function, 
@@ -176,7 +209,7 @@ def main():
         from .llama3_chat import LlamaChat
 
         llm = LlamaChat(
-            QuestaSim(args.compiler, environment.design_module_name), 
+            sim,
             environment, 
             do_sample=not args.no_sampling,
             temperature_function=args.temperature_function, 
@@ -192,59 +225,28 @@ def main():
         exit(1)
 
     for run_index in range(args.runs):
-        print(f"\nStarting Run {run_index}")
+        logger.info(f"\n{'='*60}\nStarting Run {run_index}\n{'='*60}")
         record.reset_run()
-        if args.zero_shot and args.crt:
-            zero_shot(run_index, prompt_templates.first_testbench_prompt, llm, environment, record, args, sim_runs=args.sim_runs)
-        elif args.zero_shot and not args.crt:
-            zero_shot(run_index, prompt_templates.zero_shot_prompt, llm, environment, record, args)
-        else:
-            run_conversation(run_index, llm, environment, record, args)
+        runner = ConversationRunner(llm, environment, record, args)
+        runner.run_conversation(run_index)
 
     if args.merge_coverage:
-        try:
-            log_name = f"{args.work_dir}/merged_coverage_{environment.design_name}"
+        # Use simulator-agnostic merge method
+        merge_result = llm.simulator.merge_and_parse_cross_run_coverage(
+            design_name=environment.design_name,
+            work_dir=args.work_dir,
+            runs=args.runs,
+            max_iterations=args.max_iterations,
+            batch_size=args.batch_size,
+            sim_runs=args.sim_runs,
+            design_dir=args.design,
+            use_store=environment.store
+        )
 
-            # Check FileStore for UCDB files
-            if environment.store:
-                stored_ucdb_files = [
-                    os.path.join(args.work_dir, f"tb_llm_{environment.design_name}_{i}_{j}_{k}_{l}.ucdb")
-                    for i in range(args.runs)
-                    for j in range(args.max_iterations)
-                    for k in range(args.batch_size)
-                    for l in range(args.sim_runs)
-                ]
-            else:
-                stored_ucdb_files = [
-                    f"{args.design}/tb_llm_{environment.design_name}_{i}_{j}_{k}_{l}.ucdb"
-                    for i in range(args.runs)
-                    for j in range(args.max_iterations)
-                    for k in range(args.batch_size)
-                    for l in range(args.sim_runs)
-                ]
-
-            # Filter for existing UCDB files
-            coverage_dbs = [file for file in stored_ucdb_files if os.path.exists(file)]
-
-            if not coverage_dbs:
-                logging.warning("No UCDB files found for merging coverage.")
-                return
-
-            # Call QuestaSim to merge coverage
-            merge_output = llm.simulator.generate_merged_coverage_report(
-                environment.design_module_name, 
-                coverage_dbs, 
-                f"{log_name}.ucdb", 
-                f"{log_name}_report.txt"
-            )
-
-            logging.info("Merged coverage generated successfully.")
-            # Parse merged coverage
-            merged_coverage, total_coverage = QuestaSim.parse_coverage_report(f"{log_name}_report.txt")
-            record.update_cross_run_merge_coverage(CoverageResponse(True, 0, "Merged successfully", merged_coverage, total_coverage))
-
-        except Exception as e:
-            logging.error(f"Failed to generate merged coverage: {e}")
+        if merge_result.success:
+            record.update_cross_run_merge_coverage(merge_result)
+        else:
+            logging.warning(f"Failed to merge coverage: {merge_result.error_message}")
     
     # Final Write to CSV
     record.write_to_csv(f'./{environment.csv_path}')

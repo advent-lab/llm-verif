@@ -218,56 +218,21 @@ Please declare signals before using them. When instantiating the DUT, the signal
 
 	return ""
 
-import os, re, glob, random
-from typing import Iterable, Optional, Tuple, List
-
-# --- tiny helpers ------------------------------------------------------------
-
-def _norm(p: str) -> str:
-    return os.path.normpath(p).replace("\\", "/")
-
-def _matches_any(path: str, patterns: Iterable[str]) -> bool:
-    if not patterns:
-        return False
-    base = os.path.basename(path)
-    for pat in patterns:
-        if glob.fnmatch.fnmatch(_norm(path), pat) or glob.fnmatch.fnmatch(base, pat):
-            return True
-    return False
-
-def _pick_random_annotated_file(annot_dir: str, exclude: Iterable[str] = ()) -> Optional[str]:
-    """Return a random annotated source file path from annot_dir (recursive), honoring excludes."""
-    files: List[str] = []
-    for root, _, fnames in os.walk(annot_dir):
-        for fn in fnames:
-            # Verilator annotate writes plain text copies of sources; keep all text-like files
-            if _matches_any(fn, ("*.gcov",)):   # ignore gcov byproducts if present
-                continue
-            path = _norm(os.path.join(root, fn))
-            if not _matches_any(path, exclude):
-                files.append(path)
-    return random.choice(files) if files else None
-
-_VERILATOR_ANNOTATION_HELP = """\
-How to read the Verilator annotated file:
-- Each line has a prefix before the bar `|`.
-  - A number like `   12 |` means the line executed 12 times (covered).
-  - `##### |` means 0 hits (NOT covered).
-  - `    - |` (dash or blank) means non-coverable (e.g., comments, braces).
-Focus on lines marked `#####` to improve coverage.
-"""
-
 # --- main prompt builder -----------------------------------------------------
 
 def iter_prompt(
     coverage: "CoverageResponse",
     top_design_module: str,
-    *,
-    backend: str = "questa",              # "questa" or "verilator"
-    verilator_annot_dir: Optional[str] = None,
-    exclude_files: Iterable[str] = (),    # e.g., ["tb_*.sv", "*_tb.sv", "**/tests/**"]
+    simulator,  # Simulator instance (QuestaSim or Verilator)
+    work_dir: str,
 ) -> str:
+    """
+    Generate an iteration prompt using simulator-specific coverage feedback.
 
+    This function delegates coverage formatting and feedback extraction to the
+    simulator implementation, maintaining simulator independence.
+    """
+    # Handle error cases
     if coverage.error_code != 0:
         return error_prompt(coverage.error_code, coverage.error_message)
 
@@ -279,76 +244,17 @@ Error Message: {coverage.error_message}
 Please remember to format your response properly. We want you to put the test bench you think will achieve the most coverage
 inside of the JSON. Please see the format below again for reference:\n''' + json_format_str
 
-    # ---- Common: build short coverage summary header (keeps your prior behavior)
-    formatted_coverage_report = f"Total Design Coverage: {coverage.total_coverage}\n"
-    missed_lines = {}
-    assert(isinstance(coverage.coverage_list[0], DU))
+    # Use simulator-specific methods for coverage formatting
+    coverage_summary = simulator.format_coverage_summary(coverage)
+    coverage_feedback = simulator.extract_coverage_feedback(coverage, top_design_module, work_dir)
 
-    for inst in coverage.coverage_list:
-        design_unit = inst.du
-        for stmt in inst.coverage_details:
-            if stmt.get('hits') == '0':
-                line = int(str(stmt.get('ln')))
-                if design_unit not in missed_lines:
-                    missed_lines[design_unit] = {"path": inst.path, "lines": []}
-                missed_lines[design_unit]["lines"].append(line)  # type: ignore
-        formatted_coverage_report += (
-            f"File: {os.path.split(inst.path)[1]}\t"
-            f"Design Unit: {design_unit}\t"
-            f"Active: {inst.coverage['active']}\t"
-            f"Hits: {inst.coverage['hits']}\t"
-            f"Percent: {inst.coverage['percent']}\n"
-        )
-
-    # ---- QuestaSim path: your existing behavior (module snippet with an injected comment)
-    if backend.lower() == "questa":
-        if not missed_lines:
-            return "No missed lines left to fix"
-
-        prioritized_misses = prioritize_missed_lines(missed_lines)
-        if not prioritized_misses:
-            return "No valid missed lines found."
-
-        rand_du, missed_line, rand_du_filepath = prioritized_misses[0]
-        rand_du_filename = os.path.split(rand_du_filepath)[1]
-
-        try:
-            with open(rand_du_filepath, 'r', encoding="utf-8", errors="ignore") as f:
-                lines = f.readlines()
-        except FileNotFoundError:
-            return f"Error: Could not open file {rand_du_filepath}."
-
-        # mark the missed line inline for the LLM
-        if 1 <= missed_line <= len(lines):
-            lines[missed_line - 1] = lines[missed_line - 1].rstrip("\n") + "\t// This line was not covered\n"
-
-        # extract the module body
-        start_line = end_line = None
-        for i, line in enumerate(lines):
-            if re.match(rf"\s*module\s+{rand_du}\b", line):
-                start_line = i
-            if re.match(r"\s*endmodule\b", line) and start_line is not None:
-                end_line = i
-                break
-        module = ""
-        if start_line is not None and end_line is not None:
-            module = ''.join(lines[start_line:end_line])
-
-        return (
-            "The test bench that you generated did not meet coverage goals. "
-            "Use the following coverage data and context to generate a test bench that achieves better coverage:\n"
-            + formatted_coverage_report
-            + f"""
-A missed line was detected in the module {rand_du}, located in {rand_du_filename}, specifically at line {missed_line}.
-Important:
-1. The test bench should ONLY target the top-level module {top_design_module}, even if the missed line exists in a submodule.
-2. Ensure the test bench stimulates {top_design_module} in a way that exercises the missing coverage in {rand_du}.
-3. Think about what signals you must drive on {top_design_module} to hit the coverage hole in {rand_du}.
-
-Here is {rand_du} with the coverage hole marked:
-{module}
-
-There are two options for improving line coverage; choose one:
+    # Build the prompt using simulator-agnostic structure
+    return (
+        "The test bench that you generated did not meet coverage goals. "
+        "Use the following coverage data and context to generate a test bench that achieves better coverage:\n\n"
+        + coverage_summary + "\n\n"
+        + coverage_feedback + "\n\n"
+        + f"""There are two options for improving line coverage; choose one:
 1) Modify an existing testcase from a previous testbench (adjust/add/remove stimulus).
 2) Start a fresh testcase with novel stimulus to target the uncovered logic.
 
@@ -356,78 +262,7 @@ Generate a **Verilog** testbench named tb_llm for top module {top_design_module}
 The test bench should target 100% statement coverage.
 Provide the output in the JSON format below (one testbench only):
 """ + json_format_str
-        )
-
-    # ---- Verilator path: surface a random annotated source file with a short legend
-    if backend.lower() == "verilator":
-        if not verilator_annot_dir:
-            return "Error: verilator_annot_dir must be provided for Verilator backend."
-
-        # choose a random annotated file, honoring excludes (e.g., testbench)
-        annotated_path = _pick_random_annotated_file(verilator_annot_dir, exclude_files)
-        if not annotated_path:
-            return f"Error: No annotated sources found under {verilator_annot_dir} (after exclusions)."
-
-        try:
-            with open(annotated_path, "r", encoding="utf-8", errors="ignore") as f:
-                annotated_text = f.read()
-        except FileNotFoundError:
-            return f"Error: Could not open annotated file: {annotated_path}"
-
-        annot_name = os.path.basename(annotated_path)
-
-        return (
-            "The test bench that you generated did not meet coverage goals. "
-            "Use the following coverage data and **Verilator-annotated source** to generate a better test bench:\n"
-            + formatted_coverage_report
-            + "\n" + _VERILATOR_ANNOTATION_HELP + "\n"
-            + f"Annotated file (randomly selected): {annot_name}\n"
-            + "--------------------------------- BEGIN ANNOTATED SOURCE ---------------------------------\n"
-            + annotated_text
-            + "\n---------------------------------- END ANNOTATED SOURCE ----------------------------------\n\n"
-            + f"""Important:
-1. The test bench should ONLY target the top-level module {top_design_module}.
-2. Use the annotated lines marked '##### |' (0 hits) as your primary targets.
-3. Drive {top_design_module} inputs with sequences that exercise those uncovered lines (and their surrounding logic).
-
-There are two options for improving line coverage; choose one:
-1) Modify an existing testcase from a previous testbench (adjust/add/remove stimulus).
-2) Start a fresh testcase with novel stimulus to target the uncovered logic.
-
-Generate a **Verilog** testbench named tb_llm for top module {top_design_module} (no SystemVerilog features).
-The test bench should target 100% statement coverage.
-Provide the output in the JSON format below (one testbench only):
-""" + json_format_str
-        )
-
-    # Unknown backend
-    return f"Error: Unknown backend '{backend}'. Use 'questa' or 'verilator'."
-
-
-def prioritize_missed_lines(missed_lines):
-	"""
-	Prioritize missed lines based on their control flow importance
-	"""
-
-	prioritized = []
-
-	for du, details in missed_lines.items():
-		try:
-			with open(details["path"], 'r') as f:
-				lines = f.readlines()
-
-			for line_num in details["lines"]:
-				code_line = lines[line_num - 1].strip()
-
-				if re.search(r'if\s*\(|case\s*\(|while\s*\(|for\s*\(', code_line):
-					prioritized.insert(0, (du, line_num, details["path"]))  # Insert at front
-				else:
-					prioritized.append((du, line_num, details["path"]))  # Append at back
-        
-		except (FileNotFoundError, IndexError):
-			continue  # Skip if file is missing or line number is out of range
-	
-	return prioritized
+    )
 
 def design_prompt(all_design_files: list[str]) -> str:
 

@@ -198,29 +198,34 @@ class ModelChat:
         if not generated_response:
             return CoverageResponse(False, 4, "Empty test bench (JSON Decode Error)")
 
-        log_name = tb_name.split('.')[0] 
-        tb_path = os.path.join(work_dir, tb_name)
-        compile_log_path = os.path.join(work_dir, f'{log_name}_compile.log')
-        sim_log_path = os.path.join(work_dir, f'{log_name}_sim.log')
-        coverage_ucdb_path = os.path.join(work_dir, f'{log_name}.ucdb')
-        coverage_report_path = os.path.join(work_dir, f'{log_name}_report.xml')
+        log_stem = tb_name.split('.')[0]
+        artifact_plan = self.simulator.plan_artifacts(work_dir, log_stem, sim_runs)
 
         # Write the generated testbench to a file
-        print(tb_path)
-        with open(tb_name, "w+") as testbench_file:
+        with open(artifact_plan.tb_path, "w+") as testbench_file:
             testbench_file.write(generated_response)
 
-        # Run QuestaSim to get coverage
-        # env = Environment(questa_dir)
-        coverage_response = self.simulator.run_simulation_flow(work_dir=work_dir, tb_name=tb_name, data_point=data_point, log_name=log_name, sim_runs=sim_runs)
-
-        # Move test bench file to storage
+        # Run simulator to get coverage
+        coverage_response = self.simulator.run_simulation_flow(
+            work_dir=work_dir,
+            tb_name=os.path.basename(artifact_plan.tb_path),
+            data_point=data_point,
+            sim_runs=sim_runs
+        )
+            
         if storage:
-            storage.move(tb_path)
-            storage.move(compile_log_path)
-            storage.move(sim_log_path)
-            storage.move(coverage_ucdb_path)
-            storage.move(coverage_report_path)
+            for p in [
+                artifact_plan.tb_path, 
+                artifact_plan.compile_log, 
+                *artifact_plan.sim_logs,
+                *(artifact_plan.per_run_coverage_dbs or []),
+                artifact_plan.merged_coverage_db,
+                artifact_plan.report_path,
+                artifact_plan.annotate_dir,
+                artifact_plan.info_path
+            ]:
+                if p and os.path.exists(p):
+                    storage.move(p)
 
         return coverage_response
 

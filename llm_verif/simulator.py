@@ -1,10 +1,35 @@
 from dataclasses import dataclass
+import os
 from pathlib import Path
 from subprocess import PIPE, TimeoutExpired, run
-from typing import List, Sequence
+from typing import Any, List, Sequence, Optional
 from xml.etree.ElementTree import Element
+import re
+import logging
 
-from llm_verif.verilator_coverage_util import FileCoverage
+@dataclass(frozen=True)
+class CoverageDB:
+    path: str
+    run_id: int
+
+@dataclass(frozen=True)
+class CoverageMergeResult:
+    merged_db: Optional[str]
+    report_path: Optional[str]
+    annotate_dir: Optional[str]
+    extra_paths: List[str]
+
+@dataclass
+class ArtifactPlan:
+    work_dir: str
+    tb_path: str
+    compile_log: str
+    sim_logs: List[str]
+    per_run_coverage_dbs: List[str]
+    merged_coverage_db: str
+    report_path: str
+    annotate_dir: Optional[str]
+    info_path: Optional[str]
 
 @dataclass
 class DU:
@@ -15,13 +40,13 @@ class DU:
 
 @dataclass
 class CoverageResponse:
-        
-    success: bool
-    error_code: int
-    error_message: str
-    coverage_list: Sequence[DU | FileCoverage] = []
+
+    success: bool = False
+    error_code: int = -1
+    error_message: str = ""
+    coverage_list: Sequence[Any] = []  # Simulator-specific: QuestaSim uses DU, Verilator uses FileCoverage
     total_coverage: float = 0.0
-    
+
     # Error codes
     # -1: empty object
     # 0: success -> ignore error message
@@ -51,14 +76,21 @@ class Simulator():
             timeout (int, optional): Timeout in seconds.
 
         Returns:
-            str: Standard output of the command.
+            str: Combined standard output and standard error of the command.
 
         Raises:
             RuntimeError: If the command fails or times out.
         """
         try:
             result = run(command, stdout=PIPE, stderr=PIPE, timeout=timeout)
-            output = result.stdout.decode()
+            stdout = result.stdout.decode()
+            stderr = result.stderr.decode()
+
+            # Combine stdout and stderr for complete output
+            output = stdout
+            if stderr:
+                output += "\n" + stderr
+
             if log_file:
                 with open(log_file, 'w') as f:
                     f.write(output)
@@ -72,7 +104,7 @@ class Simulator():
     def cleanup(directory: str):
         raise NotImplementedError("This method should be implemented by subclasses.") 
 
-    def run_simulation_flow(self, work_dir: str | Path, tb_name: str, data_point: dict[str, str | list[str]] | None, log_name: str, sim_runs: int = 1) -> CoverageResponse:
+    def run_simulation_flow(self, work_dir: str | Path, tb_name: str, data_point: dict[str, str | list[str]] | None, sim_runs: int = 1) -> CoverageResponse:
         """Run the simulation - to be overridden by subclasses"""
         raise NotImplementedError("This method should be implemented by subclasses.")
     
@@ -115,7 +147,83 @@ class Simulator():
                     if finish_pattern.search(line):
                         return True
         except FileNotFoundError:
-            print(f"Error: File not found - {file_path}")
+            logging.error(f"File not found - {file_path}")
             return False
 
         return False
+    
+    def plan_artifacts(self, work_dir: str | Path, tb_stem: str, sim_runs: int) -> ArtifactPlan:
+
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
+    def get_coverage_file_extension(self) -> str:
+        """
+        Get the file extension for coverage database files.
+
+        Returns:
+            str: File extension (e.g., '.ucdb' for QuestaSim, '.dat' for Verilator)
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
+    def merge_and_parse_cross_run_coverage(
+        self, design_name: str, work_dir: str, runs: int, max_iterations: int,
+        batch_size: int, sim_runs: int, design_dir: str, use_store: bool
+    ) -> CoverageResponse:
+        """
+        Merge coverage across all runs and parse the result.
+
+        This is a high-level method that handles file collection, merging, and parsing
+        in a simulator-agnostic way.
+
+        Args:
+            design_name: Name of the design module
+            work_dir: Working directory containing coverage files
+            runs: Number of runs
+            max_iterations: Maximum iterations per run
+            batch_size: Batch size per iteration
+            sim_runs: Number of simulation runs per testbench
+            design_dir: Design directory path
+            use_store: Whether using file store
+
+        Returns:
+            CoverageResponse: Response containing merged coverage data
+
+        Raises:
+            FileNotFoundError: If no coverage files are found
+            RuntimeError: If merge or parse fails
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
+    def format_coverage_summary(self, coverage: CoverageResponse) -> str:
+        """
+        Format a human-readable coverage summary from coverage response.
+
+        Each simulator can format its coverage data in the most appropriate way
+        for presentation to the LLM.
+
+        Args:
+            coverage: Coverage response to format
+
+        Returns:
+            Formatted string summarizing coverage
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
+    def extract_coverage_feedback(
+        self, coverage: CoverageResponse, top_design_module: str, work_dir: str
+    ) -> str:
+        """
+        Extract coverage feedback to help LLM improve the next testbench.
+
+        This method selects the most relevant coverage information (e.g., a specific
+        uncovered module, an annotated source file) and formats it for the LLM.
+
+        Args:
+            coverage: Coverage response with coverage data
+            top_design_module: Name of the top-level design module
+            work_dir: Working directory (may contain annotated sources)
+
+        Returns:
+            Formatted feedback string with coverage holes and context
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.") 

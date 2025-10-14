@@ -1,6 +1,10 @@
 # 🧠 LLM-Driven Verilog Testbench Generation and Coverage Closure
 
-This project leverages large language models (LLMs) to automatically generate Verilog testbenches from design specifications, iteratively refine them, and close coverage gaps using QuestaSim. It supports multi-turn prompting, testplan-guided generation, error recovery, and merging coverage across runs.
+This project leverages large language models (LLMs) to automatically generate Verilog testbenches from design specifications, iteratively refine them, and close coverage gaps using industry-standard simulators. It supports multi-turn prompting, testplan-guided generation, error recovery, and merging coverage across runs.
+
+**Supported Simulators:**
+- **Verilator** (open-source)
+- **QuestaSim/ModelSim** (commercial)
 
 ---
 
@@ -25,6 +29,7 @@ llm_verif_dataset/
 │   ├── ollama_chat.py            # Extension of ModelChat for Ollama (deprecated)
 │   ├── prompt_templates.py       # Set of prompt templates
 │   ├── questasim.py              # Extension of Simulator for QuestaSim
+│   ├── verilator.py              # Extension of Simulator for Verilator
 │   ├── README.md
 │   ├── record.py                 # Record class for recording data during runs
 │   ├── simulator.py              # Simulator base class
@@ -75,9 +80,12 @@ Run the main evaluation script:
 
 ```bash
 llm_verif \
+    --dotenv_path .env \
+    --backend openai \
+    --simulator verilator \
     --design /path/to/design \
-    --compiler /path/to/questasim \
-    --generations 5 \
+    --compiler /path/to/verilator \
+    --runs 5 \
     --testplan \
     --merge-coverage \
     --temperature 0.3 \
@@ -85,7 +93,9 @@ llm_verif \
     --batch_size 3 \
     --max_iterations 12 \
     --max_valid_iter 8 \
-    --output ./logs
+    --sim_runs 20 \
+    --output ./logs \
+    -v  # Verbose output (use -vv for debug)
 ```
 
 #### Arguments:
