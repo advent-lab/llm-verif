@@ -135,7 +135,7 @@ class ConversationRunner:
 
             self.record.write_to_csv(csv_path)
 
-            successful_responses: list[str] = list(str(filter(lambda x: isinstance(x, str), json_responses)))
+            successful_responses: list[str] = list(filter(lambda x: isinstance(x, str), json_responses)) # type: ignore
 
             # If successful responses isn't empty, find the best one
             if len(successful_responses) != 0:
@@ -264,64 +264,20 @@ class ConversationRunner:
 
         # Merged Coverage Logic
         if self.args.merge_coverage:
-            self._generate_merged_coverage(run_index, iteration)
+            merged_response = self.llm.simulator.merge_and_parse_run_coverage(
+                design_name=self.environment.design_name,
+                work_dir=self.environment.store.storage_path,
+                run_idx=run_index,
+                max_iterations=self.args.max_iterations,
+                batch_size=self.environment.batch_size,
+                sim_runs=self.args.sim_runs,
+                design_dir=self.args.design,
+                use_store=True
+            )
+
+            self.record.update_run_merge_coverage(merged_response, run_index)
 
         # Final Write to CSV
         self.record.update_run_max_coverage(run_index)
         self.record.update_run_average_total_coverage(run_id=run_index)
         self.record.write_to_csv(f'./{self.environment.csv_path}')
-
-    def _generate_merged_coverage(self, run_index: int, iteration: int):
-        """
-        Generate merged coverage report for all iterations.
-
-        Args:
-            run_index (int): The run index.
-            iteration (int): The final iteration count.
-        """
-        try:
-            log_name = f"{self.args.work_dir}/merged_coverage_{self.environment.design_name}_{run_index}"
-
-            # Check FileStore for UCDB files
-            if self.environment.store:
-                stored_ucdb_files = [
-                    os.path.join(
-                        self.args.work_dir,
-                        f"tb_llm_{self.environment.design_name}_{run_index}_{i}_{j}_{k}.ucdb"
-                    )
-                    for i in range(iteration)
-                    for j in range(self.environment.batch_size)
-                    for k in range(self.args.sim_runs)
-                ]
-            else:
-                stored_ucdb_files = [
-                    f"{self.args.design}/tb_llm_{self.environment.design_name}_{run_index}_{i}_{j}_{k}.ucdb"
-                    for i in range(iteration)
-                    for j in range(self.environment.batch_size)
-                    for k in range(self.args.sim_runs)
-                ]
-
-            # Filter for existing UCDB files
-            coverage_dbs = [file for file in stored_ucdb_files if os.path.exists(file)]
-
-            if not coverage_dbs:
-                logging.warning("No UCDB files found for merging coverage.")
-                return
-
-            # Call QuestaSim to merge coverage
-            merge_output = self.llm.simulator.generate_merged_coverage_report(
-                self.environment.design_module_name,
-                coverage_dbs,
-                f"{log_name}.ucdb",
-                f"{log_name}_report.txt"
-            )
-
-            logging.info("Merged coverage generated successfully.")
-            # Parse merged coverage
-            merged_coverage, total_coverage = QuestaSim.parse_coverage_report(f"{log_name}_report.txt")
-            self.record.update_run_merge_coverage(
-                CoverageResponse(True, 0, "Merged successfully", merged_coverage, total_coverage), run_index
-            )
-
-        except Exception as e:
-            logging.error(f"Failed to generate merged coverage: {e}")

@@ -7,14 +7,8 @@ from typing import List, Tuple, Iterable
 import fnmatch
 
 from llm_verif.simulator import ArtifactPlan, Simulator, CoverageResponse, DU
-
-# External dependency for LCOV parsing
-try:
-    from lcovparser import parse_file as lcov_parse_file, Report, Record
-except ImportError:
-    logging.warning("lcovparser not installed. Install with: pip install lcovparser")
-    lcov_parse_file = None
-
+from llm_verif.lcovparser import Report, Record
+from llm_verif.lcovparser import parse_file as lcov_parse_file
 
 # ============================================================================
 # Verilator-specific data structures and utilities
@@ -159,14 +153,14 @@ class Verilator(Simulator):
     )
 
 
-  def build_compile_command(self, testbench_path: str, data_point: dict, coverage_dat_path: str) -> str:
-    return f"{self.simulator_path}/verilator --binary -j 4 --coverage-line -Wno-fatal +verilator+coverage+file+{coverage_dat_path} {testbench_path} {' '.join(data_point['design'])} {' '.join(data_point['design_context'])}"
+  def build_compile_command(self, work_dir: str,testbench_path: str, data_point: dict) -> str:
+    return f"{self.simulator_path}/verilator --binary -j 4 --coverage-line -Wno-fatal --Mdir {work_dir}/obj_dir {testbench_path} {' '.join(data_point['design'])} {' '.join(data_point['design_context'])}"
 
   """
   COMPILE AND SIMULATE
   """
 
-  def compile(self, testbench_path: str, data_point: dict[str, str | list[str]], coverage_dat_path: str) -> str:
+  def compile(self, work_dir: str, testbench_path: str, data_point: dict[str, str | list[str]]) -> str:
     """
     Compile the design and testbench using Verilator.
 
@@ -178,10 +172,10 @@ class Verilator(Simulator):
         str: Compilation output or error message.
     """
 
-    compile_command = self.build_compile_command(testbench_path, data_point, coverage_dat_path).split()
+    compile_command = self.build_compile_command(work_dir, testbench_path, data_point).split()
     return self.run_command(compile_command)
-  
-  def simulate(self, testbench_module: str) -> str:
+
+  def simulate(self, work_dir: str, testbench_module: str, coverage_dat_path: str) -> str:
     """
     Simulate the compiled design using Verilator.
 
@@ -196,7 +190,8 @@ class Verilator(Simulator):
     """
 
     command = [
-      f"./obj_dir/V{testbench_module}"
+      f"{work_dir}/obj_dir/V{testbench_module}",
+      f"+verilator+coverage+file+{coverage_dat_path}" 
     ]
 
     return self.run_command(command, timeout=300)
@@ -239,7 +234,7 @@ class Verilator(Simulator):
     try:
       # For Verilator, coverage output file is set at compile time via +verilator+coverage+file+
       # All simulation runs will write to this single .dat file
-      compile_output = self.compile(tb_path, data_point, artifact_plan.merged_coverage_db) # type: ignore
+      compile_output = self.compile(work_dir, tb_path, data_point) # type: ignore
       with open(compile_log_path, 'w') as f:
         f.write(compile_output)
 
@@ -257,7 +252,7 @@ class Verilator(Simulator):
       for i in range(sim_runs):
         sim_log_path_i = artifact_plan.sim_logs[i]
 
-        sim_output = self.simulate(tb_module_name)
+        sim_output = self.simulate(str(work_dir), tb_stem, artifact_plan.merged_coverage_db)
         with open(sim_log_path_i, 'w') as f:
           f.write(sim_output)
 
@@ -392,6 +387,67 @@ class Verilator(Simulator):
   def get_coverage_file_extension(self) -> str:
     """Get the file extension for Verilator coverage database files."""
     return ".dat"
+  
+  def merge_and_parse_run_coverage(
+      self, design_name: str, work_dir: str, run_idx: int, max_iterations: int,
+      batch_size: int, sim_runs: int, design_dir: str, use_store: bool
+  ) -> CoverageResponse:
+    """
+    Merge Verilator coverage for a single run and parse the result.
+
+    This method uses ArtifactPlan to systematically find all coverage database files
+    for the specified run, then merges and parses them.
+
+    Args:
+        design_name: Name of the design module
+        work_dir: Working directory containing coverage files
+        run_idx: Index of the run to merge
+        max_iterations: Maximum iterations per run
+        batch_size: Batch size per iteration
+        sim_runs: Number of simulation runs per testbench
+        design_dir: Design directory path (not used, kept for signature compatibility)
+        use_store: Whether using file store
+    """
+    try:
+      # Collect all coverage database files using ArtifactPlan
+      coverage_dats = []
+      for iter_idx in range(max_iterations):
+        for batch_idx in range(batch_size):
+          tb_stem = f"tb_llm_{design_name}_{run_idx}_{iter_idx}_{batch_idx}"
+          artifact_plan = self.plan_artifacts(work_dir, tb_stem, sim_runs)
+
+          # Only collect the merged_coverage_db (single .dat file per testbench)
+          if os.path.exists(artifact_plan.merged_coverage_db):
+            coverage_dats.append(artifact_plan.merged_coverage_db)
+
+      if not coverage_dats:
+        logging.warning("No .dat files found for merging coverage.")
+        return CoverageResponse(False, -1, "No coverage files found")
+
+      # Define output paths for merged coverage
+      log_name = f"{work_dir}/merged_coverage_{design_name}"
+      merged_dat_path = f"{log_name}.dat"
+      merged_info_path = f"{log_name}.info"
+      merged_annotate_dir = f"{log_name}_annotated"
+
+      # Merge coverage
+      merge_output = self.generate_merged_coverage_report(
+        self.design_unit,
+        coverage_dats,
+        merged_dat_path,
+        merged_info_path,
+        merged_annotate_dir
+      )
+
+      logging.info(f"Merged {len(coverage_dats)} coverage files successfully.")
+
+      # Parse merged coverage - Verilator needs tb_path for exclusion, use empty string for cross-run merge
+      merged_coverage, total_coverage = Verilator.parse_coverage_report(merged_info_path, "")
+      return CoverageResponse(True, 0, "Merged successfully", merged_coverage, total_coverage)
+
+    except Exception as e:
+      logging.error(f"Failed to generate merged coverage: {e}")
+      return CoverageResponse(False, -1, f"Merge failed: {e}")
 
   def merge_and_parse_cross_run_coverage(
       self, design_name: str, work_dir: str, runs: int, max_iterations: int,
@@ -425,10 +481,9 @@ class Verilator(Simulator):
             tb_stem = f"tb_llm_{design_name}_{run_idx}_{iter_idx}_{batch_idx}"
             artifact_plan = self.plan_artifacts(work_dir, tb_stem, sim_runs)
 
-            # Collect per-run coverage databases from the artifact plan
-            for cov_dat in artifact_plan.per_run_coverage_dbs:
-              if os.path.exists(cov_dat):
-                coverage_dats.append(cov_dat)
+            # Only collect the merged_coverage_db (single .dat file per testbench)
+            if os.path.exists(artifact_plan.merged_coverage_db):
+              coverage_dats.append(artifact_plan.merged_coverage_db)
 
       if not coverage_dats:
         logging.warning("No .dat files found for merging coverage.")

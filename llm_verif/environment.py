@@ -68,7 +68,7 @@ class Environment:
 
         self.design_module_name = self.get_design_name(self.top_design_file_path)
 
-        self.store = FileStore(env_options.output)
+        self.store: FileStore = FileStore(env_options.output)
 
         self.simulator_name = env_options.simulator
 

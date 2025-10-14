@@ -381,6 +381,67 @@ class QuestaSim(Simulator):
         """Get the file extension for QuestaSim coverage database files."""
         return ".ucdb"
 
+    def merge_and_parse_run_coverage(
+        self, design_name: str, work_dir: str, run_index: int, max_iterations: int,
+        batch_size: int, sim_runs: int, design_dir: str, use_store: bool
+    ) -> CoverageResponse:
+        """
+        Merge QuestaSim coverage for a specific run and parse the result.
+
+        This method uses ArtifactPlan to systematically find all coverage database files
+        for a specific run, then merges and parses them.
+
+        Args:
+            design_name: Name of the design module
+            work_dir: Working directory containing coverage files
+            run_index: Index of the current run
+            max_iterations: Maximum iterations per run
+            batch_size: Batch size per iteration
+            sim_runs: Number of simulation runs per testbench
+            design_dir: Design directory path (not used, kept for signature compatibility)
+            use_store: Whether using file store
+        Returns:
+            CoverageResponse: Response containing merged coverage data
+        """
+        try: 
+            # Collect all coverage database files using ArtifactPlan
+            coverage_dbs = []
+            for iter_idx in range(max_iterations):
+                for batch_idx in range(batch_size):
+                    tb_stem = f"tb_llm_{design_name}_{run_index}_{iter_idx}_{batch_idx}"
+                    artifact_plan = self.plan_artifacts(work_dir, tb_stem, sim_runs)
+
+                    # Collect per-run coverage databases from the artifact plan
+                    for cov_db in artifact_plan.per_run_coverage_dbs:
+                        if os.path.exists(cov_db):
+                            coverage_dbs.append(cov_db)
+
+            if not coverage_dbs:
+                logging.warning("No UCDB files found for merging coverage.")
+                return CoverageResponse(False, -1, "No coverage files found")
+
+            # Define output paths for merged coverage
+            log_name = f"{work_dir}/merged_coverage_{design_name}_run{run_index}"
+            merged_ucdb_path = f"{log_name}.ucdb"
+            merged_report_path = f"{log_name}_report.xml"
+
+            # Merge coverage
+            merge_output = self.generate_merged_coverage_report(
+                self.design_unit,
+                coverage_dbs,
+                merged_ucdb_path,
+                merged_report_path
+            )
+
+            logging.info(f"Merged {len(coverage_dbs)} coverage files successfully.")
+
+            # Parse merged coverage
+            merged_coverage, total_coverage = QuestaSim.parse_coverage_report(merged_report_path)
+            return CoverageResponse(True, 0, "Merged successfully", merged_coverage, total_coverage)
+        except Exception as e:
+            logging.error(f"Failed to generate merged coverage: {e}")
+            return CoverageResponse(False, -1, f"Merge failed: {e}")
+
     def merge_and_parse_cross_run_coverage(
         self, design_name: str, work_dir: str, runs: int, max_iterations: int,
         batch_size: int, sim_runs: int, design_dir: str, use_store: bool
@@ -404,8 +465,6 @@ class QuestaSim(Simulator):
         Returns:
             CoverageResponse: Response containing merged coverage data
         """
-        import logging
-
         try:
             # Collect all coverage database files using ArtifactPlan
             coverage_dbs = []

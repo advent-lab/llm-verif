@@ -234,7 +234,7 @@ def main():
         # Use simulator-agnostic merge method
         merge_result = llm.simulator.merge_and_parse_cross_run_coverage(
             design_name=environment.design_name,
-            work_dir=args.work_dir,
+            work_dir=environment.store.storage_path,
             runs=args.runs,
             max_iterations=args.max_iterations,
             batch_size=args.batch_size,

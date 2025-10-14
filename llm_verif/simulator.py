@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
 from pathlib import Path
 from subprocess import PIPE, TimeoutExpired, run
@@ -44,7 +44,7 @@ class CoverageResponse:
     success: bool = False
     error_code: int = -1
     error_message: str = ""
-    coverage_list: Sequence[Any] = []  # Simulator-specific: QuestaSim uses DU, Verilator uses FileCoverage
+    coverage_list: Sequence[Any] = field(default_factory=list)  # Simulator-specific: QuestaSim uses DU, Verilator uses FileCoverage
     total_coverage: float = 0.0
 
     # Error codes
@@ -162,6 +162,35 @@ class Simulator():
 
         Returns:
             str: File extension (e.g., '.ucdb' for QuestaSim, '.dat' for Verilator)
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+    
+    def merge_and_parse_run_coverage(
+        self, design_name: str, work_dir: str, run_idx: int, max_iterations: int,
+        batch_size: int, sim_runs: int, design_dir: str, use_store: bool
+    ) -> CoverageResponse:
+        """
+        Merge coverage for a specific run and parse the result.
+
+        This is a high-level method that handles file collection, merging, and parsing
+        in a simulator-agnostic way.
+
+        Args:
+            design_name: Name of the design module
+            work_dir: Working directory containing coverage files
+            run_idx: Index of the current run
+            max_iterations: Maximum iterations per run
+            batch_size: Batch size per iteration
+            sim_runs: Number of simulation runs per testbench
+            design_dir: Design directory path
+            use_store: Whether using file store
+
+        Returns:
+            CoverageResponse: Response containing merged coverage data
+
+        Raises:
+            FileNotFoundError: If no coverage files are found
+            RuntimeError: If merge or parse fails
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
