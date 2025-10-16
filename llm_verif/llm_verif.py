@@ -10,18 +10,22 @@ from llm_verif import __version__ as VERSION
 from llm_verif.environment import Environment
 from llm_verif.simulator import CoverageResponse
 from llm_verif.chatgpt_chat import ChatGPTChat
+from llm_verif.openai_backend import OpenAIBackend
 import argparse
 from llm_verif.record import Record
 from llm_verif.conversation_runner import ConversationRunner
 from llm_verif import prompt_templates
 from dotenv import load_dotenv
+import asyncio
 
 
 def main():
     parser = argparse.ArgumentParser(description="LLM Test Bench Generator Tool")
     parser.add_argument('--version', action='version', version=f'%(prog)s {VERSION}')
     parser.add_argument('--dotenv_path', type=str, required=True, help="Path to dotenv file containing required API keys and config.")
-    parser.add_argument('--backend', type=str, help="Backend to use for LLM.")
+    parser.add_argument('--backend', type=str, help="Backend to use for LLM. 'openai' for unified OpenAI-compatible backend (recommended), 'vllm' for legacy local vLLM.")
+    parser.add_argument('--base_url', type=str, help="Base URL for OpenAI-compatible API (e.g., 'http://localhost:8000/v1' for vLLM server). If not specified, defaults to OpenAI's API.")
+    parser.add_argument('--api_key', type=str, help="API key for authentication. Can also be set via OPENAI_API_KEY environment variable.")
     parser.add_argument('--simulator', type=str, default=None, choices=['verilator', 'questasim'], help="Simulator to use for compiling and simulating test benches.")
     parser.add_argument('-v', '--verbose', action='count', default=0, help="Increase verbosity level (can be repeated: -v, -vv, -vvv)")
 
@@ -167,6 +171,12 @@ def main():
     logger.info(f"Constrained random testing enabled: {args.crt}")
     args.simulator = resolve_config("simulator", default="verilator", cast=str)
     logger.info(f"Using simulator: {args.simulator}")
+    args.base_url = resolve_config("base_url", default=None, cast=str)
+    if args.base_url:
+        logger.info(f"Using custom API base URL: {args.base_url}")
+    args.api_key = resolve_config("api_key", default=None, cast=str)
+    if args.api_key:
+        logger.info("Using API key from command line/environment")
 
     environment = Environment(args)
     
@@ -192,31 +202,41 @@ def main():
     )
 
     if args.backend == "openai":
-
-        llm = ChatGPTChat(
+        # Use the unified OpenAI-compatible async backend
+        llm = OpenAIBackend(
             sim,
-            environment, 
+            environment,
             do_sample=not args.no_sampling,
-            temperature_function=args.temperature_function, 
+            temperature_function=args.temperature_function,
             temperature=args.temperature,
-            top_p=0.7, 
-            max_new_tokens=4098, 
-            timeout_seconds=1000, 
-            seed=args.seed
+            top_p=0.7,
+            max_new_tokens=4098,
+            timeout_seconds=1000,
+            seed=args.seed,
+            base_url=args.base_url,
+            api_key=args.api_key
         )
+        logger.info("Using unified OpenAI-compatible backend (async)")
 
     elif args.backend == "vllm":
+        # Legacy: local vLLM in-process engine
         from .llama3_chat import LlamaChat
+
+        logger.warning(
+            "Using legacy 'vllm' backend with in-process engine. "
+            "Consider migrating to 'openai' backend with vLLM server "
+            "(e.g., --backend=openai --base_url=http://localhost:8000/v1)"
+        )
 
         llm = LlamaChat(
             sim,
-            environment, 
+            environment,
             do_sample=not args.no_sampling,
-            temperature_function=args.temperature_function, 
+            temperature_function=args.temperature_function,
             temperature=args.temperature,
-            top_p=0.7, 
-            max_new_tokens=4098, 
-            timeout_seconds=1000, 
+            top_p=0.7,
+            max_new_tokens=4098,
+            timeout_seconds=1000,
             seed=args.seed
         )
 
@@ -224,11 +244,16 @@ def main():
         logging.error("No valid backend specified. Use --backend to select 'openai' or 'vllm'.")
         exit(1)
 
-    for run_index in range(args.runs):
-        logger.info(f"\n{'='*60}\nStarting Run {run_index}\n{'='*60}")
-        record.reset_run()
-        runner = ConversationRunner(llm, environment, record, args)
-        runner.run_conversation(run_index)
+    # Create async runner function
+    async def run_all_conversations():
+        for run_index in range(args.runs):
+            logger.info(f"\n{'='*60}\nStarting Run {run_index}\n{'='*60}")
+            record.reset_run()
+            runner = ConversationRunner(llm, environment, record, args)
+            await runner.run_conversation(run_index)
+
+    # Run the async conversations
+    asyncio.run(run_all_conversations())
 
     if args.merge_coverage:
         # Use simulator-agnostic merge method

@@ -102,7 +102,9 @@ llm_verif \
 | Argument | Description |
 |----------|-------------|
 | `--dotenv_path` | **[Required]** Path to dotenv file containing API keys and configuration |
-| `--backend` | **[Required]** LLM backend to use (`openai` or `vllm`) |
+| `--backend` | **[Required]** LLM backend to use (`openai` for unified async backend, `vllm` for legacy local engine) |
+| `--base_url` | Base URL for OpenAI-compatible API (e.g., `http://localhost:8000/v1` for vLLM server). Defaults to OpenAI's API if not specified |
+| `--api_key` | API key for authentication. Can also be set via `OPENAI_API_KEY` environment variable |
 | `--simulator` | **[Required]** Simulator to use (`verilator` or `questasim`) |
 | `--design, -d` | **[Required]** Path to the design directory |
 | `--compiler, -c` | **[Required]** Path to simulator compiler (e.g., Verilator or QuestaSim) |
@@ -128,6 +130,136 @@ llm_verif \
 | `--model` | LLM model name or path (default: gpt-4o) |
 | `--tokenizer` | Tokenizer for ConversationManager (default: meta-llama/Llama-3.3-70B-Instruct) |
 | `-v, -vv` | Increase verbosity: `-v` = INFO, `-vv` = DEBUG |
+---
+
+## 🔌 LLM Backend Configuration
+
+### Unified OpenAI-Compatible Backend (Recommended)
+
+The framework now uses a unified async backend that supports any OpenAI-compatible API endpoint. This provides maximum flexibility and better performance.
+
+#### Using OpenAI's API
+
+```bash
+llm_verif \
+    --backend openai \
+    --dotenv_path .env \
+    ...
+```
+
+Your `.env` file should contain:
+```bash
+OPENAI_API_KEY=sk-your-api-key-here
+```
+
+#### Using vLLM Server (Recommended for Local Models)
+
+vLLM provides an OpenAI-compatible server for fast local inference. This is our **recommended approach** for local models.
+
+**1. Install vLLM:**
+```bash
+pip install vllm
+```
+
+**2. Start vLLM server with AWQ-quantized Llama 3.3 70B (recommended):**
+
+For 2x A100 GPUs (our typical setup):
+```bash
+vllm serve casperhansen/llama-3.3-70b-instruct-awq \
+    --api-key your-secret-token \
+    --port 8000 \
+    --tensor-parallel-size 2 \
+    --gpu-memory-utilization 0.85 \
+    --quantization awq \
+    --max-model-len 32766
+```
+
+For other GPU configurations:
+- **4x GPUs**: Set `--tensor-parallel-size 4`
+- **8x GPUs**: Set `--tensor-parallel-size 8`
+- **Single GPU**: Set `--tensor-parallel-size 1` (may require smaller model or more aggressive quantization)
+
+**Server Options Explained:**
+- `--api-key`: Secret token for authentication (use a secure random string)
+- `--port`: Server port (default: 8000)
+- `--tensor-parallel-size`: Number of GPUs to use for model sharding
+- `--gpu-memory-utilization`: Fraction of GPU memory to use (0.85 = 85%)
+- `--quantization awq`: Use AWQ quantization (for `casperhansen` models)
+- `--max-model-len`: Maximum sequence length (adjust based on available memory)
+
+**3. Configure the framework to use your vLLM server:**
+```bash
+llm_verif \
+    --backend openai \
+    --base_url http://localhost:8000/v1 \
+    --api_key your-secret-token \
+    --model casperhansen/llama-3.3-70b-instruct-awq \
+    --tokenizer meta-llama/Llama-3.3-70B-Instruct \
+    --design /path/to/design \
+    --simulator verilator \
+    --compiler /path/to/verilator \
+    ...
+```
+
+Or via `.env` file:
+```bash
+OPENAI_BASE_URL=http://localhost:8000/v1
+OPENAI_API_KEY=your-secret-token
+MODEL=casperhansen/llama-3.3-70b-instruct-awq
+TOKENIZER=meta-llama/Llama-3.3-70B-Instruct
+BACKEND=openai
+```
+
+**Benefits of vLLM Server:**
+- **Fastest inference** with PagedAttention and optimized CUDA kernels
+- **Better resource management** - server runs independently, can be shared across experiments
+- **Standard OpenAI API** - same code works with OpenAI, vLLM, or any compatible server
+- **Production-ready** with async support and batching
+- **AWQ quantization** - 4-bit quantization for 70B models on consumer GPUs
+
+**Verifying Server is Running:**
+```bash
+curl http://localhost:8000/v1/models
+```
+
+Should return a list of available models.
+
+#### Using Other OpenAI-Compatible Servers
+
+The unified backend works with any OpenAI-compatible endpoint:
+
+**Local LLaMA.cpp server:**
+```bash
+--backend openai --base_url http://localhost:8080/v1
+```
+
+**Ollama:**
+```bash
+--backend openai --base_url http://localhost:11434/v1
+```
+
+**Custom inference servers:**
+```bash
+--backend openai --base_url https://your-server.com/v1
+```
+
+### Legacy vLLM Backend (Deprecated)
+
+The legacy `--backend vllm` option loads models in-process using vLLM. This is **deprecated** in favor of the unified async backend with vLLM server:
+
+```bash
+# Legacy approach (not recommended)
+llm_verif --backend vllm --model /path/to/model ...
+```
+
+**Why migrate?**
+- Legacy backend loads model in the same process (uses more memory)
+- No async support (blocking I/O)
+- Server approach allows better resource sharing and management
+- Standard API makes it easy to switch between providers
+
+**Migration:** Switch to `--backend openai` with `--base_url` pointing to your vLLM server.
+
 ---
 
 ## 🔁 Iterative Coverage Closure

@@ -109,16 +109,17 @@ class ModelChat:
         """
         del self.llm
 
-    def generate_response(self, conversation_history: ConversationManager, num_return_sequences: int = 1) -> tuple[str, int, float]:
+    def generate_response(self, conversation_history: ConversationManager, num_return_sequences: int = 1) -> tuple[list[str], int, float]:
         """
         Generate a response from the model given the conversation history.
 
         Args:
             conversation_history (ConversationManager): The conversation history as a ConversationManager instance.
+            num_return_sequences (int): Number of response sequences to generate.
 
         Returns:
-            tuple[str, int, float]: 
-                - The generated response as a string.
+            tuple[list[str], int, float]:
+                - The generated responses as a list of strings.
                 - The number of tokens in the response.
                 - The time taken to generate the response in seconds.
 
@@ -127,7 +128,32 @@ class ModelChat:
             Exception: For unexpected errors during text generation.
         """
 
-        return "", 0, 0.0
+        return [""], 0, 0.0
+
+    async def generate_response_async(self, conversation_history: ConversationManager, num_return_sequences: int = 1) -> tuple[list[str], int, float]:
+        """
+        Generate a response from the model given the conversation history (async version).
+
+        This is the preferred method for async-compatible backends. Subclasses implementing
+        async APIs should override this method.
+
+        Args:
+            conversation_history (ConversationManager): The conversation history as a ConversationManager instance.
+            num_return_sequences (int): Number of response sequences to generate.
+
+        Returns:
+            tuple[list[str], int, float]:
+                - The generated responses as a list of strings.
+                - The number of tokens in the response.
+                - The time taken to generate the response in seconds.
+
+        Raises:
+            ValueError: If the conversation history is empty or invalid.
+            Exception: For unexpected errors during text generation.
+        """
+        # Default implementation: call synchronous version
+        # Async-native backends should override this method
+        return self.generate_response(conversation_history, num_return_sequences)
 
     @staticmethod
     def convert_json_response_to_dict(generated_response: str) -> tuple[dict[str, Any], int]:
