@@ -112,13 +112,13 @@ class ConversationRunner:
         if not self.conversation:
             raise ValueError("ConversationManager is not initialized.")
 
-        print(prompt)
+        logging.info(f"Prompt: {prompt}")
         self.conversation.append_user_message(prompt, update_stack_pointer=set_stack_pointer)
         responses, tokens_generated, gen_time = self.llm.generate_response(
             self.conversation, num_return_sequences=1 if not json else batch_size
         )
-        print(responses)
-        print(f"Tokens / second: {tokens_generated / gen_time}\n")
+        logging.info(f"Responses: {responses}")
+        logging.info(f"Tokens / second: {tokens_generated / gen_time}")
 
         selected: CoverageResponse = CoverageResponse()
         if json:
@@ -192,8 +192,8 @@ class ConversationRunner:
 
         self.conversation = ConversationManager(self.tokenizer, prompt_templates.system_prompt(self.environment.design_specification, self.environment.module_header))
 
-        print("Length of conversation: ", self.conversation.length())
-        print("Stack pointer: ", self.conversation.stack_pointer)
+        logging.info(f"Length of conversation: {self.conversation.length()}")
+        logging.info(f"Stack pointer: {self.conversation.stack_pointer}")
 
         valid_iterations = 0
         iteration = 0
@@ -201,18 +201,18 @@ class ConversationRunner:
         # Stage 1: Generate verification plan (if testplan is enabled)
         if self.environment.testplan:
             testplan_prompt, testbench_prompt = prompt_templates.verif_and_testbench_prompt(self.environment.crt)
-            print(testplan_prompt)
-            print(testbench_prompt)
+            logging.info(f"Testplan prompt: {testplan_prompt}")
+            logging.info(f"Testbench prompt: {testbench_prompt}")
             cov = self.generate_and_evaluate(testplan_prompt, run_index, iteration, json=False)
             iteration += 1
         else:
             testbench_prompt = prompt_templates.first_testbench_prompt(
                 self.environment.design_specification, self.environment.module_header
             )
-            print(testbench_prompt)
+            logging.info(f"Testbench prompt: {testbench_prompt}")
 
-        print("Length of conversation: ", self.conversation.length())
-        print("Stack pointer: ", self.conversation.stack_pointer)
+        logging.info(f"Length of conversation: {self.conversation.length()}")
+        logging.info(f"Stack pointer: {self.conversation.stack_pointer}")
 
         # Stage 2: Generate test bench
         if cov.success:
@@ -223,8 +223,8 @@ class ConversationRunner:
             if cov.success:
                 valid_iterations += 1
 
-        print("Length of conversation: ", self.conversation.length())
-        print("Stack pointer: ", self.conversation.stack_pointer)
+        logging.info(f"Length of conversation: {self.conversation.length()}")
+        logging.info(f"Stack pointer: {self.conversation.stack_pointer}")
 
         # Iterative Refinement
         iteration += 1
@@ -251,7 +251,7 @@ class ConversationRunner:
                     self.llm.simulator,
                     self.args.work_dir
                 )
-            print(prompt)
+            logging.info(f"Iteration prompt: {prompt}")
 
             # This call adds 2 prompts to the conversation: the next user prompt and the response
             cov = self.generate_and_evaluate(
@@ -259,8 +259,8 @@ class ConversationRunner:
             )
 
             iteration += 1
-            print("Length of conversation: ", self.conversation.length())
-            print("Stack pointer: ", self.conversation.stack_pointer)
+            logging.info(f"Length of conversation: {self.conversation.length()}")
+            logging.info(f"Stack pointer: {self.conversation.stack_pointer}")
 
         # Merged Coverage Logic
         if self.args.merge_coverage:

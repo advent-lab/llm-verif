@@ -1,5 +1,6 @@
 # These are the supporting functions for writing evaluation scripts
 
+import logging
 import numpy as np
 import pandas as pd
 import time
@@ -133,7 +134,7 @@ class Record:
         if coverage.total_coverage >= self.max_cov:
             self.max_cov = coverage.total_coverage
 
-        print(self.df)
+        logging.debug(f"Updated dataframe:\n{self.df}")
 
     def reset_run(self):
         self.start_time = time.strftime("%H:%M:%S")
@@ -158,7 +159,7 @@ class Record:
             # Update the "average total coverage" column for all matching rows
             self.df.loc[self.df["run #"] == run_id, "average total coverage"] = average_coverage # type: ignore
 
-            print(self.df)
+            logging.debug(f"Updated run average total coverage:\n{self.df}")
 
     def update_all_average_total_coverage(self):
         if self.run_type == "RUN":
@@ -168,7 +169,7 @@ class Record:
             # Update the "average total coverage" column for all matching rows
             self.df["average total coverage"] = average_coverage
 
-            print(self.df)
+            logging.debug(f"Updated all average total coverage:\n{self.df}")
 
     def update_run_max_coverage(self, run_id: int):
         if self.run_type == "RUN":
@@ -198,7 +199,7 @@ class Record:
         if self.run_type == "RUN" and self.include_merge_coverage:
             self.df["cross run merged coverage"] = coverage.total_coverage
 
-        print(self.df)
+        logging.debug(f"Updated cross run merge coverage:\n{self.df}")
 
     def update_run_merge_coverage(self, coverage: CoverageResponse, run: int):
         """
@@ -210,5 +211,5 @@ class Record:
         if self.run_type == "RUN" and self.include_merge_coverage:
             self.df.loc[self.df['run #'] == run, 'run merged coverage'] = coverage.total_coverage
 
-        print(self.df)
+        logging.debug(f"Updated run merge coverage:\n{self.df}")
 
