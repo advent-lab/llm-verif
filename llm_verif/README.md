@@ -1,6 +1,10 @@
 # 🧠 LLM-Driven Verilog Testbench Generation and Coverage Closure
 
-This project leverages large language models (LLMs) to automatically generate Verilog testbenches from design specifications, iteratively refine them, and close coverage gaps using QuestaSim. It supports multi-turn prompting, testplan-guided generation, error recovery, and merging coverage across runs.
+This project leverages large language models (LLMs) to automatically generate Verilog testbenches from design specifications, iteratively refine them, and close coverage gaps using industry-standard simulators. It supports multi-turn prompting, testplan-guided generation, error recovery, and merging coverage across runs.
+
+**Supported Simulators:**
+- **Verilator** (open-source)
+- **QuestaSim/ModelSim** (commercial)
 
 ---
 
@@ -10,34 +14,35 @@ This project leverages large language models (LLMs) to automatically generate Ve
 llm_verif_dataset/
 ├── build_llm_venv.sh             # Helper script to build environment
 ├── CONTRIBUTING.md               # Instructions on contributing
-├── dashboard.json                # Dataset directory
-├── dashboard_scripts/            # Helper scripts for dataset
-├── data/                         # Dataset
-├── llm_verif
-│   ├── chatgpt_chat.py           # Extension of ModelChat Base Class for OpenAI API
-│   ├── conversation_manager.py   # ConversationManager class that manages the conversation
-│   ├── dashboard.py              # Dataset class that manages the dataset
-│   ├── environment.py            # Environment class that manages the environment
-│   ├── __init__.py
-│   ├── llama3_chat.py            # Extension of ModelChat Base class for local Llama models
-│   ├── llm_verif.py              # Main tool entry point
-│   ├── modelchat.py              # ModelChat base class
-│   ├── ollama_chat.py            # Extension of ModelChat for Ollama (deprecated)
-│   ├── prompt_templates.py       # Set of prompt templates
-│   ├── questasim.py              # Extension of Simulator for QuestaSim
-│   ├── README.md
-│   ├── record.py                 # Record class for recording data during runs
-│   ├── simulator.py              # Simulator base class
-│   ├── storage.py                # FileStore class for storing run artifacts
+├── dashboard.json                # Dataset configuration file
+├── dashboard_scripts/            # Helper scripts for dataset management
+├── data/                         # Dataset directory
+├── llm_verif/
+│   ├── __init__.py               # Package initialization
+│   ├── chatgpt_chat.py           # ChatGPT API implementation (extends ModelChat)
+│   ├── conversation_manager.py   # Manages conversation history and context
+│   ├── conversation_runner.py    # Orchestrates testbench generation workflow
+│   ├── dashboard.py              # Dataset management and loading
+│   ├── environment.py            # Environment configuration and design specs
+│   ├── lcovparser.py             # LCOV coverage report parser (for Verilator)
+│   ├── llama3_chat.py            # Local Llama model implementation (extends ModelChat)
+│   ├── llm_verif.py              # Main CLI entry point
+│   ├── metrics.py                # Coverage metrics and analysis
+│   ├── modelchat.py              # Abstract base class for LLM backends
+│   ├── prompt_templates.py       # Prompt templates for testbench generation
+│   ├── questasim.py              # QuestaSim simulator implementation (extends Simulator)
+│   ├── record.py                 # Records and tracks evaluation metrics
+│   ├── simulator.py              # Abstract base class for simulators
+│   ├── storage.py                # File storage manager for artifacts
 │   ├── util.py                   # Utility functions
-│   ├── VCS.py                    # Extension of Simulator for VCS (in progress)
-│   └── vector_store.py           # Vector store used for RAG
-├── pyproject.toml
-├── README.md
-├── requirements.in
-├── requirements.txt
-├── scripts/
-├── tests/
+│   ├── vector_store.py           # Vector store for RAG (document retrieval)
+│   └── verilator.py              # Verilator simulator implementation (extends Simulator)
+├── pyproject.toml                # Python project configuration
+├── README.md                     # Main project documentation
+├── requirements.in               # Direct dependencies
+├── requirements.txt              # Pinned dependencies
+├── scripts/                      # Helper scripts
+└── tests/                        # Test suite
 ```
 ---
 
@@ -75,9 +80,12 @@ Run the main evaluation script:
 
 ```bash
 llm_verif \
+    --dotenv_path .env \
+    --backend openai \
+    --simulator verilator \
     --design /path/to/design \
-    --compiler /path/to/questasim \
-    --generations 5 \
+    --compiler /path/to/verilator \
+    --runs 5 \
     --testplan \
     --merge-coverage \
     --temperature 0.3 \
@@ -85,58 +93,77 @@ llm_verif \
     --batch_size 3 \
     --max_iterations 12 \
     --max_valid_iter 8 \
-    --output ./logs
+    --sim_runs 20 \
+    --output ./logs \
+    -v  # Verbose output (use -vv for debug)
 ```
 
 #### Arguments:
 | Argument | Description |
 |----------|-------------|
-| `--design, -d` | Path to the design directory |
-| `--compiler, -c` | Path to QuestaSim installation |
-| `--generations, -g` | Number of independent testbench generation runs |
-| `--testplan` | Enable 2-stage generation: verification plan then testbench |
-| `--merge-coverage, -m` | Merge UCDBs into final report |
-| `--temperature, -t` | Sampling temperature |
-| `--temperature_function` | One of: `constant`, `logarithmic`, `capped_sigmoid` |
-| `--batch_size, -b` | Number of testbenches generated per prompt |
-| `--output, -o` | Directory to store logs and testbenches |
-| `--no_sampling` | Forces no logit sampling |
-| `--seed, -S` | Sets seed for generation |
-| `--remove_polluted_context` | Enables removing polluted context |
-| `--max_iterations` | Sets the max number of iterations per run |
-| `--max_valid_iterations` | Sets the max number of valid iterations per run |
-| `--id` | Sets the id for the run |
-| `--quantize, -q` | Set this flag if a quantized model is being used |
-| `--tokenizer` | Path to tokenizer if a separate tokenizer is used |
-| `--dotenv_path` | Path to dotenv config used for API models |
+| `--dotenv_path` | **[Required]** Path to dotenv file containing API keys and configuration |
+| `--backend` | **[Required]** LLM backend to use (`openai` or `vllm`) |
+| `--simulator` | **[Required]** Simulator to use (`verilator` or `questasim`) |
+| `--design, -d` | **[Required]** Path to the design directory |
+| `--compiler, -c` | **[Required]** Path to simulator compiler (e.g., Verilator or QuestaSim) |
+| `--id` | **[Required]** User-specified identifier for the run |
+| `--runs, -r` | Number of independent testbench generation runs (default: 1) |
+| `--work_dir, -w` | Working directory for testbenches and logs (default: ./work) |
+| `--output, -o` | Output directory for log files (default: output) |
+| `--testplan` | Enable 2-stage generation: verification plan then testbench (default: true) |
+| `--crt` | Enable constrained random testing (default: true) |
+| `--merge-coverage, -m` | Merge coverage reports into final report (default: true) |
+| `--temperature, -t` | Sampling temperature (default: 0.3) |
+| `--temperature_function` | Temperature function: `constant`, `logarithmic`, `capped_sigmoid` (default: constant) |
+| `--batch_size, -b` | Number of testbenches generated per prompt (default: 1) |
+| `--max_iterations` | Maximum number of iterations per run (default: 5) |
+| `--max_valid_iter` | Maximum number of successful iterations per run (default: 3) |
+| `--sim_runs` | Number of times to simulate constrained random testbenches (default: 20) |
+| `--no_sampling` | Disable LLM response sampling (default: false) |
+| `--seed, -S` | Random seed for reproducibility |
+| `--remove_polluted_context` | Enable removal of polluted context from conversation history (default: false) |
+| `--no_design_prompt` | Disable design prompt injection (default: false) |
+| `--zero_shot` | Enable zero-shot prompting (default: false) |
+| `--quantize, -q` | Enable model quantization (default: false) |
+| `--model` | LLM model name or path (default: gpt-4o) |
+| `--tokenizer` | Tokenizer for ConversationManager (default: meta-llama/Llama-3.3-70B-Instruct) |
+| `-v, -vv` | Increase verbosity: `-v` = INFO, `-vv` = DEBUG |
 ---
 
 ## 🔁 Iterative Coverage Closure
 
 Each run:
-1. Loads design spec and module header.
-2. Generates testbenches using LLM.
-3. Simulates via QuestaSim and measures statement coverage.
+1. Loads design spec and module header from the dashboard configuration.
+2. Generates testbenches using the configured LLM backend.
+3. Simulates via Verilator or QuestaSim and measures statement coverage.
 4. If coverage is below 100%, it prompts the LLM to improve coverage using:
-   - Missed lines in coverage reports
+   - Missed lines in coverage reports (from LCOV or UCDB)
    - Targeted design unit suggestions
-5. Optionally merges UCDBs across batches and runs.
+   - Error messages from compilation or simulation failures
+5. Optionally merges coverage reports across batches and runs.
 
 ---
 
 ## 📊 Output Files
 
-- **CSV Logs**: `<design>_evaluation6_<timestamp>.csv` contains metrics per iteration:
-  - Pass/fail, error codes
-  - Coverage percentage
+- **CSV Logs**: `<design>_evaluation_<timestamp>.csv` contains metrics per iteration:
+  - Pass/fail status, error codes
+  - Statement coverage percentage
   - Token counts and generation time
+  - Temperature and sampling parameters
+  - Run and iteration metadata
 - **Testbenches**: Stored in the output dir with pattern:
   ```
   tb_llm_<design>_<run>_<iter>_<batch>.v
   ```
-- **Coverage Reports**:
-  - `.ucdb` and `.txt` report per testbench
-  - `merged_coverage_<design>.ucdb` and report if merging is enabled
+- **Coverage Reports** (Verilator):
+  - `.dat` coverage database files
+  - `coverage.info` LCOV format files
+  - `coverage.txt` human-readable coverage reports
+- **Coverage Reports** (QuestaSim):
+  - `.ucdb` Unified Coverage Database files
+  - `.txt` human-readable coverage reports
+  - `merged_coverage_<design>.ucdb` if merging is enabled
 
 ---
 
@@ -166,15 +193,52 @@ Each run:
 
 ## 📤 Logging and Storage
 
-All generated files are moved to the `FileStore` directory specified via `--output`. The framework preserves:
-- Testbenches
-- Compile/simulation logs
-- Coverage files
+All generated files are stored in the `FileStore` directory specified via `--output`. The framework preserves:
+- Generated testbenches (.v files)
+- Compilation logs (_compile.log)
+- Simulation logs (_sim.log)
+- Coverage reports (.txt, .ucdb, .dat, .info files)
+- CSV evaluation metrics
+
+### Logging Levels
+
+The tool uses Python's logging framework with the following verbosity levels:
+- **No flag**: WARNING level - only warnings and errors
+- **`-v`**: INFO level - operational information and progress
+- **`-vv`**: DEBUG level - detailed debugging information including prompts and responses
+
+All print statements have been converted to appropriate logging calls for better control and filtering.
 
 ---
 
 ## 🧪 Testing and Debugging Tips
 
-- Run with `--batch_size 1` for isolated debugging
-- Check logs: `_compile.log`, `_sim.log`, `_report.txt`
-- Use `design_prompt()` to insert entire RTL context mid-run
+- Run with `--batch_size 1` for isolated debugging of single testbenches
+- Use `-vv` for debug-level logging to see full prompts and LLM responses
+- Check specific logs for failures:
+  - `<testbench>_compile.log` - compilation errors
+  - `<testbench>_sim.log` - simulation runtime errors
+  - `<testbench>_report.txt` - coverage analysis
+- The `design_prompt()` function injects full RTL context mid-run for better context
+- Set `--seed` for reproducible generations
+- Use `--max_iterations` and `--max_valid_iter` to control run length during testing
+
+---
+
+## 🆕 Recent Updates
+
+### Verilator Integration
+- **Full Verilator support**: Open-source alternative to commercial simulators
+- **LCOV parser** (`lcovparser.py`): Parses Verilator's LCOV coverage output
+- **Coverage merging**: Supports merging `.dat` files across batches and runs
+- **Unified interface**: Same CLI and workflow for both Verilator and QuestaSim
+
+### Logging Improvements
+- Converted all `print()` statements to proper logging calls
+- Configurable verbosity with `-v` and `-vv` flags
+- Better debugging and production deployment support
+
+### Configuration
+- Enhanced `.env` file support for all configuration options
+- Flexible CLI argument precedence over environment variables
+- Required vs. optional argument validation

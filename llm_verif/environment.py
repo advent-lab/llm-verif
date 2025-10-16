@@ -7,6 +7,7 @@ import os
 import re
 from argparse import Namespace
 import time
+import logging
 
 class Environment:
 
@@ -38,7 +39,7 @@ class Environment:
         self.design_specification_path = self.dataset.get_design_spec(self.design_name)
         self.design_specification = ''
         if not self.design_specification_path:
-            print("Error: No design specification avaliable for this design")
+            logging.error("No design specification available for this design")
             exit()
         elif isinstance(self.design_specification_path, list):
             # Here we assume the top item in the spec tag is the correct specification
@@ -55,7 +56,7 @@ class Environment:
 
         self.module_header = ''
         if not self.top_design_file_path:
-            print("Error: No design file(s) avaliable for this design")
+            logging.error("No design file(s) available for this design")
             exit()
         elif isinstance(self.top_design_file_path, list):
             # Here we assume the top item in the spec tag is the correct specification
@@ -67,7 +68,9 @@ class Environment:
 
         self.design_module_name = self.get_design_name(self.top_design_file_path)
 
-        self.store = FileStore(env_options.output)
+        self.store: FileStore = FileStore(env_options.output)
+
+        self.simulator_name = env_options.simulator
 
     def get_design_name(self, design_path: str) -> str:
         split_filename = os.path.split(design_path)[1].split('.')

@@ -1,4 +1,5 @@
 import os
+import logging
 import fitz  # PyMuPDF
 import pdfplumber
 import numpy as np
@@ -93,6 +94,6 @@ index, all_chunks = create_vector_store(directory)
 query = "Describe the RTL Router Design"
 relevant_chunks = retrieve_relevant_chunks(query, index, all_chunks)
 
-# Print the relevant chunks and their distances
+# Log the relevant chunks and their distances
 for chunk, distance in relevant_chunks:
-    print(f"Chunk: {chunk}\nDistance: {distance}\n")
+    logging.info(f"Chunk: {chunk}\nDistance: {distance}")

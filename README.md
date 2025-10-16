@@ -46,8 +46,10 @@ llm_verif/
 ### Prerequisites
 
 - Access to a Linux environment (e.g., Sol cluster).
-- [QuestaSim](https://www.mentor.com/products/fv/questa/) installed and accessible.
-- [Huggingface](https://huggingface.co/) account for model access.
+- **Simulator** (choose one or both):
+  - [Verilator](https://verilator.org/) (open-source, recommended for getting started)
+  - [QuestaSim](https://www.mentor.com/products/fv/questa/) (commercial)
+- [Huggingface](https://huggingface.co/) account for model access (if using local models).
 - Python 3.11 or later.
 
 ### Environment Setup
@@ -57,6 +59,24 @@ llm_verif/
    git clone https://github.com/advent-lab/llm-verif
    pip install -e llm_verif/
    ```
+
+2. **Install Verilator (for open-source simulator support):**
+
+   ```bash
+   # Install prerequisites
+   sudo apt-get install git perl python3 make autoconf g++ flex bison ccache
+   sudo apt-get install libgoogle-perftools-dev numactl perl-doc
+   sudo apt-get install libfl2 libfl-dev zlibc zlib1g zlib1g-dev
+
+   # Clone and build Verilator
+   git clone https://github.com/verilator/verilator
+   cd verilator
+   autoconf
+   ./configure
+   make -j$(nproc)
+   ```
+
+   After building, note the path to the Verilator binary (e.g., `/path/to/verilator/bin/verilator`). You'll pass this to the framework using `--compiler /path/to/verilator/bin/verilator`.
 
 ### Model Access
 
