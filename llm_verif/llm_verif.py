@@ -176,6 +176,9 @@ def main():
     if args.api_key:
         logger.info("Using API key from command line/environment")
 
+    os.environ['OPENAI_API_KEY'] = args.api_key
+    os.environ['API_KEY'] = args.api_key
+
     environment = Environment(args)
     
     if args.simulator == "questasim":

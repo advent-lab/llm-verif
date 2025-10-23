@@ -123,7 +123,7 @@ class OpenAIBackend(ModelChat):
         client_kwargs = {"api_key": api_key, "timeout": float(self.timeout_seconds)}
         if base_url:
             client_kwargs["base_url"] = base_url
-            logging.info(f"Using OpenAI-compatible API at: {base_url}")
+            logging.info(f"Using OpenAI-compatible API at: {base_url} {api_key}")
         else:
             logging.info("Using OpenAI API (https://api.openai.com/v1)")
 
