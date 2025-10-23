@@ -173,7 +173,7 @@ class OpenAIBackend(ModelChat):
                 messages=conversation,
                 temperature=self.temperature if self.do_sample else 0.0,
                 top_p=self.top_p if self.do_sample else 1.0,
-                max_completion_tokens=self.max_new_tokens,
+                max_tokens=self.max_new_tokens,
                 n=num_return_sequences,
             )
 
