@@ -96,10 +96,34 @@ llm_verif/
 
 ### Running Testbench Generation Jobs
 
-- See `scripts/run_job.sh` and `scripts/setup_configs.sh` for examples on how to configure and run the framework. You can also see `llm_verif/README.md` for a more detailed list of command line args to run the tools. Or, run:
+**Local/Interactive Mode:**
 ```bash
-llm_verif --help
-``` 
+llm_verif --help  # See all available options
+```
+
+**SLURM Cluster Mode (Recommended for Large-Scale Experiments):**
+
+For running vLLM-based experiments on SLURM clusters with automatic server management:
+
+1. Generate configuration files:
+   ```bash
+   bash scripts/setup_vllm_configs.sh
+   ```
+
+2. Edit `scripts/run_vllm_design.sh` to select designs and configurations
+
+3. Submit the job:
+   ```bash
+   sbatch scripts/run_vllm_design.sh
+   ```
+
+The SLURM script automatically:
+- Creates a standalone vLLM virtual environment (avoids dependency conflicts)
+- Starts vLLM inference server with optimal settings
+- Runs experiments across multiple designs and configurations
+- Manages cleanup and result archival
+
+See `llm_verif/README.md` for detailed command-line options and configuration details. 
 
 ## Data Points
 

@@ -260,6 +260,53 @@ llm_verif --backend vllm --model /path/to/model ...
 
 **Migration:** Switch to `--backend openai` with `--base_url` pointing to your vLLM server.
 
+### Running vLLM Experiments on SLURM Clusters
+
+For SLURM-based HPC environments, use `scripts/run_vllm_design.sh` which automates vLLM server setup and experiment execution.
+
+**Key Features:**
+- Automatically starts vLLM server with your GPU configuration
+- Creates standalone vLLM virtual environment (avoids dependency conflicts with llm_verif)
+- Manages server lifecycle (startup, health checks, graceful shutdown)
+- Processes multiple designs and configurations in batch
+
+**Quick Start:**
+
+1. **Generate config files** (creates `.env` files in `configs/`):
+   ```bash
+   bash scripts/setup_vllm_configs.sh
+   ```
+   **Important:** Ensure `BASE_URL=http://localhost:8000/v1` (use `http://`, not `https://`)
+
+2. **Edit script configuration** (`scripts/run_vllm_design.sh`):
+   - Set `designs` array (which hardware modules to test)
+   - Set `base_envs` array (which config files to use)
+   - Adjust `TENSOR_PARALLEL_SIZE` to match GPU count
+
+3. **Submit job**:
+   ```bash
+   sbatch scripts/run_vllm_design.sh
+   ```
+
+**SLURM Resource Settings:**
+- Default: 2x A100 GPUs, 64GB RAM, 12 hours
+- Modify `#SBATCH` directives in script header as needed
+- Match `TENSOR_PARALLEL_SIZE` variable to GPU count
+
+**Script Workflow:**
+1. Creates standalone `vllm-venv/` (isolated from llm_verif dependencies)
+2. Starts vLLM server on `http://localhost:8000/v1` with API key `test-key`
+3. Waits for server readiness (max 5 minutes)
+4. Creates llm_verif `venv/` and installs framework
+5. Runs experiments for each design/config combination
+6. Stops vLLM server and copies results to permanent storage
+
+**Troubleshooting:**
+- **vLLM fails to start**: Check `$SCRATCH_DIR/vllm_server.log`
+- **HTTPS/SSL errors**: Verify configs use `http://` not `https://`
+- **GPU OOM**: Reduce `--gpu-memory-utilization` or use smaller model
+- **Results location**: `results/vllm_run_${SLURM_JOB_ID}/`
+
 ---
 
 ## 🔁 Iterative Coverage Closure
