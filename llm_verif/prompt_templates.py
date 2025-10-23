@@ -1,8 +1,4 @@
-import re
 from llm_verif.questasim import CoverageResponse
-import os
-
-from llm_verif.simulator import DU
 
 json_format_str = '''Example response:
 {

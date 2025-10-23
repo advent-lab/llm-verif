@@ -9,7 +9,6 @@ import argparse
 
 from transformers import AutoTokenizer
 from llm_verif.environment import Environment
-from llm_verif.questasim import QuestaSim
 from llm_verif.simulator import CoverageResponse
 from llm_verif.modelchat import ModelChat
 import llm_verif.prompt_templates as prompt_templates
@@ -88,7 +87,7 @@ class ConversationRunner:
         except KeyError as e:
             return CoverageResponse(False, 4, f"Key error: {e}")
 
-    def generate_and_evaluate(
+    async def generate_and_evaluate(
         self, prompt: str, run: int, iteration: int, json: bool = True,
         batch_size: int = 1, set_stack_pointer: bool = False, sim_runs: int = 1
     ) -> CoverageResponse:
@@ -114,7 +113,7 @@ class ConversationRunner:
 
         logging.info(f"Prompt: {prompt}")
         self.conversation.append_user_message(prompt, update_stack_pointer=set_stack_pointer)
-        responses, tokens_generated, gen_time = self.llm.generate_response(
+        responses, tokens_generated, gen_time = await self.llm.generate_response_async(
             self.conversation, num_return_sequences=1 if not json else batch_size
         )
         logging.info(f"Responses: {responses}")
@@ -179,7 +178,7 @@ class ConversationRunner:
 
         return CoverageResponse(True, 0, "", [], 0)
 
-    def run_conversation(self, run_index: int):
+    async def run_conversation(self, run_index: int):
         """
         Execute a single run of test bench generation and coverage evaluation.
 
@@ -203,7 +202,7 @@ class ConversationRunner:
             testplan_prompt, testbench_prompt = prompt_templates.verif_and_testbench_prompt(self.environment.crt)
             logging.info(f"Testplan prompt: {testplan_prompt}")
             logging.info(f"Testbench prompt: {testbench_prompt}")
-            cov = self.generate_and_evaluate(testplan_prompt, run_index, iteration, json=False)
+            cov = await self.generate_and_evaluate(testplan_prompt, run_index, iteration, json=False)
             iteration += 1
         else:
             testbench_prompt = prompt_templates.first_testbench_prompt(
@@ -216,7 +215,7 @@ class ConversationRunner:
 
         # Stage 2: Generate test bench
         if cov.success:
-            cov = self.generate_and_evaluate(
+            cov = await self.generate_and_evaluate(
                 testbench_prompt, run_index, iteration, batch_size=self.environment.batch_size,
                 sim_runs=self.args.sim_runs
             )
@@ -254,7 +253,7 @@ class ConversationRunner:
             logging.info(f"Iteration prompt: {prompt}")
 
             # This call adds 2 prompts to the conversation: the next user prompt and the response
-            cov = self.generate_and_evaluate(
+            cov = await self.generate_and_evaluate(
                 prompt, run_index, iteration, batch_size=self.environment.batch_size
             )
 

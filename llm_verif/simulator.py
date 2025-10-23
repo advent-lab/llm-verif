@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-import os
 from pathlib import Path
 from subprocess import PIPE, TimeoutExpired, run
 from typing import Any, List, Sequence, Optional
