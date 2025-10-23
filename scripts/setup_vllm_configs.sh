@@ -19,11 +19,11 @@ for func in "${TEMPERATURE_FUNCTIONS[@]}"; do
         cat > "$FILE" <<EOF
 OPENAI_API_KEY=test-key
 API_KEY=test-key
-BASE_URL=https://localhost:8000/v1
+BASE_URL=http://localhost:8000/v1
 BACKEND=openai
 SIMULATOR=verilator
 COMPILER=/home/slowe8/verilator/bin
-MODEL_ID=casperhansen/llama-3.3-70b-instruct-awq
+MODEL=casperhansen/llama-3.3-70b-instruct-awq
 MERGE_COVERAGE=1
 SIM_RUNS=5
 MAX_ITERATIONS=3
