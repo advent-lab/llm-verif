@@ -13,23 +13,23 @@ designs=(
   # cvdp_agentic_memory_scheduler
   # cvdp_agentic_multiplexer
   # cvdp_agentic_rgb_color_space_conversion
-  # cvdp_agentic_sorter
+  cvdp_agentic_sorter
   # cvdp_agentic_ttc_lite
 	# cvdp_agentic_spi_complex_mult
 	# cvdp_agentic_poly_interpolator
 	# cvdp_agentic_lfsr
 	# cvdp_agentic_async_fifo_compute_ram_application
-	sha1_top
-	chacha_top
-	activation
-	cryptech_uart
-	fifo
-	float_adder
-	float_multiplier
+	# sha1_top
+	# chacha_top
+	# activation
+	# cryptech_uart
+	# fifo
+	# float_adder
+	# float_multiplier
 	pooling
-	simple_mat_mul
-	trng_top
-	vndecorrelator
+	# simple_mat_mul
+	# trng_top
+	# vndecorrelator
 )
 
 source llm_verif_dataset/venv/bin/activate
@@ -66,17 +66,17 @@ run_job() {
 
 	# Run and log output
 	echo "→ Running config $config_name for $design"
-	llm_verif --dotenv_path "$WORK_DIR/.env" > "$WORK_DIR/${design}.log" 2>&1
+	llm_verif --dotenv_path "$WORK_DIR/.env" --backend "openai" #> "$WORK_DIR/${design}.log" 2>&1
 }
 
-for design in "${designs[@]}"; do
-	for base_env in "${base_envs[@]}"; do
-		run_job "$design" "$base_env" &
-		((job_count++))
-		if (( job_count % MAX_JOBS == 0 )); then
-			echo "Waiting for batch of $MAX_JOBS to complete..."
-			wait
-		fi
-	done
-done
+# for design in "${designs[@]}"; do
+# 	for base_env in "${base_envs[@]}"; do
+# 		run_job "$design" "$base_env" &
+# 		((job_count++))
+# 		if (( job_count % MAX_JOBS == 0 )); then
+# 			echo "Waiting for batch of $MAX_JOBS to complete..."
+# 			wait
+# 		fi
+# 	done
 
+run_job sha1_top configs/base_env_constant_1_5_1.env

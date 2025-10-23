@@ -8,8 +8,6 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from llm_verif import __version__ as VERSION
 from llm_verif.environment import Environment
-from llm_verif.simulator import CoverageResponse
-from llm_verif.chatgpt_chat import ChatGPTChat
 from llm_verif.openai_backend import OpenAIBackend
 import argparse
 from llm_verif.record import Record

@@ -1,4 +1,3 @@
-from datetime import datetime
 from pathlib import Path
 import re
 from tracemalloc import start
@@ -11,7 +10,6 @@ from llm_verif.simulator import Simulator, CoverageResponse
 from llm_verif.environment import Environment
 from math import exp, log10
 import logging
-from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Union
 
 class ModelChat:

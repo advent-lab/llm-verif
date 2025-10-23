@@ -9,7 +9,6 @@ import argparse
 
 from transformers import AutoTokenizer
 from llm_verif.environment import Environment
-from llm_verif.questasim import QuestaSim
 from llm_verif.simulator import CoverageResponse
 from llm_verif.modelchat import ModelChat
 import llm_verif.prompt_templates as prompt_templates

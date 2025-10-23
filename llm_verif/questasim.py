@@ -1,11 +1,9 @@
-from subprocess import run, PIPE, TimeoutExpired
-import datetime
 import os
 import logging
 import shutil
 from llm_verif.simulator import ArtifactPlan, Simulator, CoverageResponse, DU
 import re
-from typing import Union, Dict, List
+from typing import List
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import List, Tuple
