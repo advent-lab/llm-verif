@@ -3,8 +3,8 @@
 This project leverages large language models (LLMs) to automatically generate Verilog testbenches from design specifications, iteratively refine them, and close coverage gaps using industry-standard simulators. It supports multi-turn prompting, testplan-guided generation, error recovery, and merging coverage across runs.
 
 **Supported Simulators:**
-- **Verilator** (open-source)
-- **QuestaSim/ModelSim** (commercial)
+- **Verilator** (open-source, **primary supported simulator**)
+- **QuestaSim/ModelSim** (commercial, also supported)
 
 ---
 
@@ -314,9 +314,9 @@ For SLURM-based HPC environments, use `scripts/run_vllm_design.sh` which automat
 Each run:
 1. Loads design spec and module header from the dashboard configuration.
 2. Generates testbenches using the configured LLM backend.
-3. Simulates via Verilator or QuestaSim and measures statement coverage.
+3. Simulates via Verilator (or QuestaSim) and measures statement coverage.
 4. If coverage is below 100%, it prompts the LLM to improve coverage using:
-   - Missed lines in coverage reports (from LCOV or UCDB)
+   - Missed lines in coverage reports (from LCOV for Verilator or UCDB for QuestaSim)
    - Targeted design unit suggestions
    - Error messages from compilation or simulation failures
 5. Optionally merges coverage reports across batches and runs.
@@ -335,14 +335,15 @@ Each run:
   ```
   tb_llm_<design>_<run>_<iter>_<batch>.v
   ```
-- **Coverage Reports** (Verilator):
-  - `.dat` coverage database files
-  - `coverage.info` LCOV format files
-  - `coverage.txt` human-readable coverage reports
-- **Coverage Reports** (QuestaSim):
-  - `.ucdb` Unified Coverage Database files
-  - `.txt` human-readable coverage reports
-  - `merged_coverage_<design>.ucdb` if merging is enabled
+- **Coverage Reports**:
+  - **Verilator** (primary):
+    - `.dat` coverage database files
+    - `coverage.info` LCOV format files
+    - `coverage.txt` human-readable coverage reports
+  - **QuestaSim** (also supported):
+    - `.ucdb` Unified Coverage Database files
+    - `.txt` human-readable coverage reports
+    - `merged_coverage_<design>.ucdb` if merging is enabled
 
 ---
 
@@ -406,11 +407,20 @@ All print statements have been converted to appropriate logging calls for better
 
 ## 🆕 Recent Updates
 
-### Verilator Integration
-- **Full Verilator support**: Open-source alternative to commercial simulators
+### Unified OpenAI-Compatible Backend
+- **Async-first architecture**: New unified async backend supporting any OpenAI-compatible API
+- **vLLM server integration**: Recommended approach for local models with fast inference
+- **AWQ quantization support**: Run 70B models on consumer GPUs with 4-bit quantization
+- **Flexible endpoints**: Works with OpenAI, vLLM, LLaMA.cpp, Ollama, and custom servers
+- **Legacy backend deprecated**: `--backend vllm` replaced by `--backend openai` with `--base_url`
+- **Better resource management**: Server runs independently, can be shared across experiments
+
+### Verilator as Primary Simulator
+- **Full Verilator support**: Open-source simulator, now the primary supported option
 - **LCOV parser** (`lcovparser.py`): Parses Verilator's LCOV coverage output
 - **Coverage merging**: Supports merging `.dat` files across batches and runs
 - **Unified interface**: Same CLI and workflow for both Verilator and QuestaSim
+- **QuestaSim still supported**: Commercial simulator remains available as an alternative
 
 ### Logging Improvements
 - Converted all `print()` statements to proper logging calls

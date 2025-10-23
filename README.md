@@ -25,7 +25,6 @@ This repository contains scripts, data, and workflows for generating and evaluat
 llm_verif/
 ├── data/                # Hardware modules and their simulation setups
 │   └── <module>/        # Each module (e.g., oh, dpretet_axi-crossbar)
-│       └── questa/      # QuestaSim project files and Makefiles
 ├── llm_veirf/           # Source files
 │   ├── __init.py__
 │   ├── llm_verif.py
@@ -46,9 +45,9 @@ llm_verif/
 ### Prerequisites
 
 - Access to a Linux environment (e.g., Sol cluster).
-- **Simulator** (choose one or both):
-  - [Verilator](https://verilator.org/) (open-source, recommended for getting started)
-  - [QuestaSim](https://www.mentor.com/products/fv/questa/) (commercial)
+- **Simulator**:
+  - [Verilator](https://verilator.org/) (open-source, **primary supported simulator**)
+  - [QuestaSim](https://www.mentor.com/products/fv/questa/) (commercial, also supported)
 - [Huggingface](https://huggingface.co/) account for model access (if using local models).
 - Python 3.11 or later.
 
