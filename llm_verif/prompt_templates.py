@@ -60,6 +60,14 @@ Generate only the testbench and no additional words.
 The module name of the testbench should be tb_llm.
 You can use either Verilog or SystemVerilog syntax and features. Do not generate any UVM code.
 If you use SystemVerilog classes, declare them before the top-level testbench module.
+
+IMPORTANT - VERILATOR COMPATIBILITY REQUIREMENTS:
+- DO NOT use $urandom_seed() - Verilator does NOT support this function
+- Use $urandom() or $urandom_range() for randomization instead
+- Avoid complex $display formatting (keep it simple)
+- Only use synthesizable constructs
+- Do not use simulator-specific PLI calls
+
 Provide the generated testbench in a JSON format as shown below. You should put the generated testbench into the "test bench" tag and any additional comments into the "comments" tag. Ensure that there is only one testbench within the JSON formatted output.\n
 Below are a specification for the design you are trying to verify and a module header for the top-level module of the design. Use this information to generate the testbench.
 Module Header:
