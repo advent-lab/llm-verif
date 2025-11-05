@@ -1,0 +1,470 @@
+Testplan
+Testpoints
+Stage V1 Testpoints
+dma_memory_smoke
+Test: dma_memory_smoke
+
+Smoke test in which random DMA operations are performed with ‘memory-to-memory’ mode
+
+Stimulus:
+
+Configure DMA
+Randomize DMA memory region base and limit
+Randomize source and destination address space IDs and address pointers such that all valid source and destination combinations are covered at least once
+Randomize Total transfer width and transaction size
+Update DMAC.op_code and disable hardware_handshake mode
+Start DMA operation by setting DMAC.GO bit
+Wait for TLUL transactions on the output interface
+Respond with data from the TLUL agent in the testbench
+Wait for the operation to complete
+Repeat the operation randomly with different source and destination parameters
+Checking:
+
+Check that the data presented at the source TLUL interface appears unchanged on the destination TLUL interface
+Check for the assertion of PLIC interrupt if INTR_ENABLE.int_enable else check for DMAC.DONE after every iteration
+Check for any spurious requests from the remaining TLUL interfaces
+Check if the number of requests on TLUL agent matches the expected data size
+Check if DMAC.busy bit is set throughout the operation in each iteration
+dma_handshake_smoke
+Test: dma_handshake_smoke
+
+Smoke test in which ‘hardware handshake’ DMA operations are performed
+
+Stimulus:
+
+Configure DMA
+Randomize DMA memory region base and limit
+Randomize source and destination address space IDs and address pointers such that all valid source and destination combinations are covered at least once
+Randomize total transfer width and transaction sizes
+Program DMAC.op_code and enable ‘hardware handshake’ mode
+Start DMA operation by setting DMAC.GO bit
+Assert Low Speed IO (LSIO) interrupt
+Wait for TLUL transaction on the output interface
+Respond with random number of data items from TLUL agent in the testbench
+Deassert LSIO interrupt
+Wait for the operation to complete
+Repeat the copy operation with different source and destination parameters
+Checking:
+
+Check if DMA operation is completed successfully
+Check that the data presented at the source TLUL interface appears unchanged on the destination TLUL interface
+Check for assertion of PLIC interrupt if INTR_ENABLE.int_enable else check for DMAC.DONE after every iteration
+Check if the number of requests on TLUL agent matches the expected data size
+Check if STATUS.busy bit is set until ‘hardware handshake’ mode is disabled
+Check if STATUS.done is set after LSIO interrupt is deasserted
+dma_generic_smoke
+Test: dma_generic_smoke
+
+Smoke test with both ‘memory-to-memory’ and ‘hardware handshaking’ transfers.
+
+Stimulus:
+
+FW allocates DMA enabled Memory Space for the data movement
+FW configures Source Address and ASID
+FW configures Destination Address and ASID
+FW completes other configuration such as: i) Operation Size ii) Opcode
+FW triggers the DMA operation
+FW either i) Poll for completion ii) Waits for Completion Interrupt
+Reset memory contents at the end of iteration
+csr_hw_reset
+Test: dma_csr_hw_reset
+
+Verify the reset values as indicated in the RAL specification.
+
+Write all CSRs with a random value.
+Apply reset to the DUT as well as the RAL model.
+Read each CSR and compare it against the reset value. it is mandatory to replicate this test for each reset that affects all or a subset of the CSRs.
+It is mandatory to run this test for all available interfaces the CSRs are accessible from.
+Shuffle the list of CSRs first to remove the effect of ordering.
+csr_rw
+Test: dma_csr_rw
+
+Verify accessibility of CSRs as indicated in the RAL specification.
+
+Loop through each CSR to write it with a random value.
+Read the CSR back and check for correctness while adhering to its access policies.
+It is mandatory to run this test for all available interfaces the CSRs are accessible from.
+Shuffle the list of CSRs first to remove the effect of ordering.
+csr_bit_bash
+Test: dma_csr_bit_bash
+
+Verify no aliasing within individual bits of a CSR.
+
+Walk a 1 through each CSR by flipping 1 bit at a time.
+Read the CSR back and check for correctness while adhering to its access policies.
+This verify that writing a specific bit within the CSR did not affect any of the other bits.
+It is mandatory to run this test for all available interfaces the CSRs are accessible from.
+Shuffle the list of CSRs first to remove the effect of ordering.
+csr_aliasing
+Test: dma_csr_aliasing
+
+Verify no aliasing within the CSR address space.
+
+Loop through each CSR to write it with a random value
+Shuffle and read ALL CSRs back.
+All CSRs except for the one that was written in this iteration should read back the previous value.
+The CSR that was written in this iteration is checked for correctness while adhering to its access policies.
+It is mandatory to run this test for all available interfaces the CSRs are accessible from.
+Shuffle the list of CSRs first to remove the effect of ordering.
+csr_mem_rw_with_rand_reset
+Test: dma_csr_mem_rw_with_rand_reset
+
+Verify random reset during CSR/memory access.
+
+Run csr_rw sequence to randomly access CSRs
+If memory exists, run mem_partial_access in parallel with csr_rw
+Randomly issue reset and then use hw_reset sequence to check all CSRs are reset to default value
+It is mandatory to run this test for all available interfaces the CSRs are accessible from.
+regwen_csr_and_corresponding_lockable_csr
+Tests:
+
+dma_csr_rw
+dma_csr_aliasing
+Verify regwen CSR and its corresponding lockable CSRs.
+
+Randomly access all CSRs
+Test when regwen CSR is set, its corresponding lockable CSRs become read-only registers
+Note:
+
+If regwen CSR is HW read-only, this feature can be fully tested by common CSR tests - csr_rw and csr_aliasing.
+If regwen CSR is HW updated, a separate test should be created to test it.
+This is only applicable if the block contains regwen and locakable CSRs.
+
+Stage V2 Testpoints
+dma_memory_region_lock
+Test: dma_memory_region_lock
+
+Test to check DMA memory region lock functionality
+
+Stimulus:
+
+Configure DMA
+Randomize DMA memory region base and limit
+Randomize source and destination address space IDs and address pointers such that all valid source and destination combinations are covered at least once
+Randomize Total transfer width and transaction size
+Lock DMA memory configuration registers
+Program DMAC register with OP code and randomize ‘hardware handshake’ mode enable bit
+Start DMA operation by setting DMAC.GO bit
+Randomly change the DMA memory region base and limit
+Wait for the operation to complete
+Reset the design by asserting rst_n
+Repeat DMA operation without locking the DMA memory configuration registers
+Checking:
+
+Check that DMA operation is completed successfully
+Check for assertion of interrupt if INTR_ENABLE.int_enable else check for DMAC.DONE after every iteration
+Check if writes to DMA memory region and base values are ignored until range_regwen.regwen is cleared
+Check if the range_regwen.regwen is set to MuBi4True after deassertion of reset
+dma_memory_tl_error
+Test: dma_memory_stress
+
+Test to check TLUL error behavior on DMA interfaces
+
+Stimulus:
+
+Configure DMA to perform a copy operation with different source and destination parameters in ‘memory-to-memory’ mode
+Start DMA operation by setting DMAC.GO bit
+Respond with an error on either source or destination TLUL interface request
+Wait for PLIC interrupt assertion if INTR_ENABLE.int_enable is set else poll for DMAC.ABORTED bit
+Checking:
+
+Check if STATUS.error bit is set (This indicates DMA operation is aborted)
+Check that there are no TLUL transactions on source and destination interfaces after error response
+Check if DMA generates an alert
+dma_handshake_tl_error
+Test: dma_handshake_stress
+
+Test to check TLUL error behavior on DMA interfaces with ‘hardware handshake’ mode
+
+Stimulus:
+
+Configure DMA to perform a copy operation with different source and destination parameters in hardware_handshake mode
+Start DMA operation by setting DMAC.GO bit
+Respond with an error on either source or destination TLUL interface request
+Wait for PLIC interrupt assertion if INTR_ENABLE.int_enable is set else poll for DMAC.DONE bit
+Checking:
+
+Check if STATUS.error bit is set (This indicates DMA operation is aborted)
+Check that there are no TLUL transactions on source and destination interfaces after error response
+Check if DMA generates an alert
+dma_handshake_stress
+Test: dma_handshake_stress
+
+Stress test in which hardware handshake DMA operations are performed. Goal is to achieve maximum possible coverage of DMA configuration space in ‘hardware handshake’ mode
+
+Stimulus:
+
+Configure DMA
+Randomize DMA memory region base and limit
+Randomize source and destination address space IDs and address pointers such that all valid source and destination combinations are covered at least once
+Randomize total transfer width and transaction size
+Randomize DMAC.data_direction
+Randomize DMAC.FIFO_addr_auto_increment_enable and DMAC.memory_addr_auto_increment_enable
+Program DMAC register with OP code and enable ‘hardware handshake’ mode
+Start DMA operation by setting DMAC.GO bit
+Start DMA operation by setting DMAC.GO bit
+Assert Low Speed IO (LSIO) interrupt
+Wait for TLUL transaction on the output interface
+Respond with random number of data items from TLUL agent in the testbench
+Deassert LSIO interrupt
+Wait for the operation to complete
+Checking:
+
+Check if DMA operation is completed successfully in each iteration
+Check if DMAC.GO bit is not set until the DMA operation is complete
+Check if STATUS.busy bit is set until ‘hardware handshake’ mode is disabled
+Check if STATUS.done is set after LSIO interrupt is deasserted
+dma_memory_stress
+Test: dma_memory_stress
+
+Stress test in which random DMA operations are performed with ‘memory-to-memory’ mode. Goal is to achieve maximum possible coverage of DMA configuration space in ‘memory-to-memory’ mode
+
+Stimulus:
+
+Configure DMA
+Randomize DMA memory region base and limit
+Randomize source and destination address space IDs and address pointers
+Randomize Total transfer width and transaction size
+Program DMAC register with OP code and disable ‘hardware handshake’ mode
+Start DMA operation by setting DMAC.GO bit
+Wait for the operation to complete
+Repeat operation with different source and destination addresses
+Checking:
+
+Check that DMA operation is completed successfully
+Check that the number of TLUL requests matches the expected data size
+Check that the data presented at the source TLUL interface appears unchanged on the destination TLUL interface
+Check if STATUS.busy bit is set until the copy operation is complete
+Check if STATUS.done bit is set after the copy operation
+dma_generic_stress
+Test: dma_generic_stress
+
+Stress test which combines dma_memory_stress and dma_handshake_stress to ensure that both ‘memory-to-memory’ and ‘hardware handshaking’ modes are exercised together without intervening resets.
+
+dma_handshake_mem_buffer_overflow
+Test: dma_handshake_stress
+
+Test to check DMA memory buffer threshold and limit behavior with ‘hardware handshake’ mode
+
+Stimulus:
+
+Configure DMA for ‘hardware handshake’ mode
+Set memory_buffer_addr_auto_increment
+Start DMA operation by setting DMAC.GO bit
+Assert Low Speed IO (LSIO) interrupt
+Wait for TLUL transaction on the output interface
+Deassert LSIO interrupt
+Wait for the operation to complete
+Repeat the operation with different source and destination parameters
+Checking:
+
+Check if DMA operation is completed successfully in each iteration
+Check if DMAC.GO bit is set until the DMA operation is complete
+Check if STATUS.busy bit is set until ‘hardware handshake’ mode is disabled
+Check if STATUS.done is set after LSIO interrupt is deasserted
+Check if PLIC interrupt is asserted when memory_buffer_auto_increment is enabled
+dma_abort
+Test: dma_abort
+
+Test to check DMAC.abort functionality
+
+Stimulus:
+
+Configure DMA to perform a copy operation randomly with different source and destination parameters
+Randomly enable hardware_handshake mode
+Start DMA operation
+Abort DMA operation before completion by setting DMAC.abort
+Wait for PLIC interrupt assertion if INTR_ENABLE.int_enable is set else poll for DMAC.DONE bit
+Repeat operation with different source and destination parameters
+Checking:
+
+Check if STATUS.aborted bit is set (This indicates DMA operation is aborted)
+Check if there all outstanding transactions on OT internal TLUL interface are complete
+dma_stress_all
+Test: dma_stress_all
+
+Run the other tests in random order while injecting TL errors and running automated CSR tests in parallel.
+
+alert_test
+Test: dma_alert_test
+
+Verify common alert_test CSR that allows SW to mock-inject alert requests.
+
+Enable a random set of alert requests by writing random value to alert_test CSR.
+Check each alert_tx.alert_p pin to verify that only the requested alerts are triggered.
+During alert_handshakes, write alert_test CSR again to verify that: If alert_test writes to current ongoing alert handshake, the alert_test request will be ignored. If alert_test writes to current idle alert handshake, a new alert_handshake should be triggered.
+Wait for the alert handshakes to finish and verify alert_tx.alert_p pins all sets back to 0.
+Repeat the above steps a bunch of times.
+intr_test
+Test: dma_intr_test
+
+Verify common intr_test CSRs that allows SW to mock-inject interrupts.
+
+Enable a random set of interrupts by writing random value(s) to intr_enable CSR(s).
+Randomly “turn on” interrupts by writing random value(s) to intr_test CSR(s).
+Read all intr_state CSR(s) back to verify that it reflects the same value as what was written to the corresponding intr_test CSR.
+Check the cfg.intr_vif pins to verify that only the interrupts that were enabled and turned on are set.
+Clear a random set of interrupts by writing a randomly value to intr_state CSR(s).
+Repeat the above steps a bunch of times.
+tl_d_oob_addr_access
+Test: dma_tl_errors
+
+Access out of bounds address and verify correctness of response / behavior
+
+tl_d_illegal_access
+Test: dma_tl_errors
+
+Drive unsupported requests via TL interface and verify correctness of response / behavior. Below error cases are tested bases on the TLUL spec
+
+TL-UL protocol error cases
+invalid opcode
+some mask bits not set when opcode is PutFullData
+mask does not match the transfer size, e.g. a_address = 0x00, a_size = 0, a_mask = 'b0010
+mask and address misaligned, e.g. a_address = 0x01, a_mask = 'b0001
+address and size aren’t aligned, e.g. a_address = 0x01, a_size != 0
+size is greater than 2
+OpenTitan defined error cases
+access unmapped address, expect d_error = 1
+write a CSR with unaligned address, e.g. a_address[1:0] != 0
+write a CSR less than its width, e.g. when CSR is 2 bytes wide, only write 1 byte
+write a memory with a_mask != '1 when it doesn’t support partial accesses
+read a WO (write-only) memory
+write a RO (read-only) memory
+write with instr_type = True
+tl_d_outstanding_access
+Tests:
+
+dma_csr_hw_reset
+dma_csr_rw
+dma_csr_aliasing
+dma_same_csr_outstanding
+Drive back-to-back requests without waiting for response to ensure there is one transaction outstanding within the TL device. Also, verify one outstanding when back- to-back accesses are made to the same address.
+
+tl_d_partial_access
+Tests:
+
+dma_csr_hw_reset
+dma_csr_rw
+dma_csr_aliasing
+dma_same_csr_outstanding
+Access CSR with one or more bytes of data. For read, expect to return all word value of the CSR. For write, enabling bytes should cover all CSR valid fields.
+
+Stage V2S Testpoints
+dma_illegal_addr_range
+Tests:
+
+dma_generic_stress
+dma_handshake_stress
+dma_mem_enabled
+Test to check DMA hardware enforced security check for illegal source or destination address
+
+Stimulus:
+
+Configure DMA
+Update DMA memory region base and limit
+Update Source and Destination address pointers and address space IDs such that the address source or destination address is outside the DMA memory region
+Configure DMA with total transfer width and transaction size
+Enable ‘hardware handshake’ mode and direction randomly
+Start DMA operation
+Wait for interrupt assertion if INTR_ENABLE.int_enable is set else poll for STATUS.abort bit
+Checking:
+
+Check if STATUS.aborted bit is set (This indicates DMA operation is aborted)
+Check if DMA generates an alert
+dma_config_lock
+Test: dma_config_lock
+
+Attempt to change the configuration registers whilst the DMA controller is active. The majority of the configuration registers are protected using the CFG_REGWEN write enable register. Since the enable is controlled exclusively by the hardware itself, the standard CSR tests are unable to test that it operates correctly.
+
+Stimulus:
+
+Configure and start the DUT performing a long transfer.
+Choose one or more random configuration registers that should be protected by CFG_REGWEN.
+Whilst the DUT is still operating, attempt to invert the contents of the protected registers.
+Checking:
+
+Check the value of the CFG_REGWEN register before and after starting the DMA transfer.
+Check that the contents of the chosen configuration registers do not change.
+Check the value of the CFG_REGWEN register after the transfer has completed.
+tl_intg_err
+Tests:
+
+dma_tl_intg_err
+dma_sec_cm
+Verify that the data integrity check violation generates an alert.
+
+Randomly inject errors on the control, data, or the ECC bits during CSR accesses. Verify that triggers the correct fatal alert.
+Inject a fault at the onehot check in u_reg.u_prim_reg_we_check and verify the corresponding fatal alert occurs
+Covergroups
+dma_config_cg
+Cover the following configuration registers when starting a transfer (i.e., when writing the go bit of the CONTROL register):
+Source and destination address
+Source and destination address space ID (ASID)
+DMA-enabled memory range base and limit
+Total data size
+Chunk data size
+Transfer width
+Control register fields:
+opcode
+hardware handshake enable
+memory buffer auto increment enable
+FIFO auto increment enable
+data direction
+initial transfer
+exclude the go bit because it’s used to sample this CG
+exclude the abort bit because when aborting the internal state of the DMA is much more relevant than the values in the configuration registers
+Cross coverage:
+source address and source ASID
+destination address and destination ASID
+opcode, source and destination ASIDs, hardware handshake enable, and data direction
+opcode, chunk data size, source and destination ASIDs, and data direction
+opcode, total data size, transfer width, and data direction
+opcode, hardware handshake enable, chunk data size, transfer width, and data direction
+opcode, hardware handshake enable, memory buffer auto increment enable, FIFO auto increment enable, and data direction
+opcode, hardware handshake enable, data direction, and initial transfer
+source and destination address, DMA-enabled memory range base and limit, and data direction
+source and destination address alignment, total data size alignment, and transfer width
+memory buffer auto increment enable, data direction, and the results of (destination address + total data size)
+dma_error_code_cg
+Cover all fields of the error code register.
+
+dma_interrupt_cg
+Cover the following configuration registers when starting a transfer (i.e., when writing the go bit of the CONTROL register):
+handshake interrupt enable
+interrupt source clearing enablement
+interrupt source clearing bus selection
+Cross coverage:
+handshake interrupt enable, interrupt source clearing enablement, and interrupt source clearing bus selection
+dma_intr_src_cg
+Cover the interrupt-clearing address and write values, as observed on the TL-UL buses rather than in the configuration that was chosen:
+interrupt source clearing address alignment; required bins:
+bits [3:2] - all four permutations.
+interrupt source clearing write values; required bins:
+all zeros
+not all zeros
+Cross coverage:
+handshake interrupt enable, interrupt source clearing enablement, and interrupt source clearing address alignment
+handshake interrupt enable, interrupt source clearing enablement, and interrupt source clearing write values
+dma_status_cg
+Cover all fields of the status register.
+
+dma_tlul_error_cg
+Cover TL-UL error responses differentiated between TL-UL ports and cross them with the following configuration values:
+
+source and destination ASID and data direction
+regwen_val_when_new_value_written_cg
+Cover each lockable reg field with these 2 cases:
+
+When regwen = 1, a different value is written to the lockable CSR field, and a read occurs after that.
+When regwen = 0, a different value is written to the lockable CSR field, and a read occurs after that.
+This is only applicable if the block contains regwen and locakable CSRs.
+
+tl_errors_cg
+Cover the following error cases on TL-UL bus:
+
+TL-UL protocol error cases.
+OpenTitan defined error cases, refer to testpoint tl_d_illegal_access.
+tl_intg_err_cg
+Cover all kinds of integrity errors (command, data or both) and cover number of error bits on each integrity check.
+
+Cover the kinds of integrity errors with byte enabled write on memory if applicable: Some memories store the integrity values. When there is a subword write, design re-calculate the integrity with full word data and update integrity in the memory. This coverage ensures that memory byte write has been issued and the related design logic has been verfied.
