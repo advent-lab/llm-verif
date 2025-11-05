@@ -51,11 +51,10 @@ Perform a thorough pre-simulation review analyzing:
      * Module instantiation of DUT
      * Signal declarations for all DUT ports
 
-2. **Randomization Quality**:
+2. **Randomization Quality** (OPTIONAL - info level only):
    - Are random values generated ($urandom, $urandom_range, randomize())?
-   - Is randomization range appropriate for signal widths?
-   - Are constraints missing where needed?
-   - Is random seed set for reproducibility?
+   - Note: Even simple sequential or fixed patterns are acceptable for initial testing
+   - Randomization is nice-to-have, not required for approval
 
 3. **Verilator Compatibility** (CRITICAL):
    - ❌ FORBIDDEN: $urandom_seed() - Verilator does NOT support this
@@ -73,10 +72,10 @@ Perform a thorough pre-simulation review analyzing:
    - Missing timing controls in sequential logic
    - Unrealistic delays (too long or too short)
 
-5. **Coverage Strategy**:
-   - Does stimulus exercise different input values?
-   - Are edge cases attempted (0, max values, transitions)?
-   - Is test duration sufficient for coverage goals?
+5. **Coverage Strategy** (LENIENT - info level only):
+   - Does stimulus exercise at least some input values?
+   - Note: Perfect coverage isn't required; simulation will reveal gaps
+   - Any reasonable attempt at stimulus is acceptable
 
 6. **Best Practices**:
    - Clear variable naming
@@ -84,11 +83,13 @@ Perform a thorough pre-simulation review analyzing:
    - Proper use of initial vs. always blocks
    - Appropriate use of delays
 
-**IMPORTANT**: Be strict but not overly pedantic. Focus on errors that WILL cause:
+**IMPORTANT**: Be lenient and focus ONLY on errors that WILL cause:
 - Compilation failure (especially Verilator incompatibility - use of $urandom_seed is CRITICAL ERROR)
-- Simulation crashes
-- Timeouts (missing $finish is CRITICAL)
-- Zero coverage (no stimulus)
+- Simulation crashes or timeouts (missing $finish is CRITICAL)
+
+Minor issues like suboptimal randomization, missing comments, or style preferences should be
+marked as "info" only and should NOT prevent approval. The goal is to catch showstoppers, not
+to achieve perfection. Remember: a working testbench is better than waiting for a perfect one.
 
 **VERILATOR NOTE**: This testbench will be compiled with Verilator. Any use of $urandom_seed()
 or other unsupported PLI calls MUST be flagged as CRITICAL and trigger "reject" recommendation.
@@ -115,16 +116,18 @@ missing_finish, missing_clock, missing_reset, syntax_error, infinite_loop, timeo
 poor_randomization, insufficient_stimulus, missing_ports, timing_issue, best_practice,
 verilator_incompatible, unsupported_pli
 
-**Score Guidance**:
-- 90-100: Excellent, ready for simulation → **approve** (0-1 info issues only)
-- 80-89: Good with minor issues → **approve** (only info/warning issues)
-- 60-79: Significant issues but fixable → **revise** (warnings + some critical)
-- 0-59: Major problems, regenerate → **reject** (multiple critical issues)
+**Score Guidance** (BE LENIENT):
+- 80-100: Good enough, approve it → **approve** (minor issues are OK)
+- 60-79: Has issues but will likely work → **approve** (let simulation test it)
+- 40-59: Significant issues but fixable → **revise** (send to Refiner)
+- 0-39: Critical showstoppers only → **reject** (multiple critical compilation/timeout issues)
 
-**Recommendation Decision Tree**:
-- **approve**: score >= 80 AND no critical issues → proceed to simulation
-- **revise**: score 60-79 OR has critical but fixable issues → send to Refiner agent
-- **reject**: score < 60 OR has unfixable critical issues → regenerate with Generator
+**Recommendation Decision Tree** (BIAS TOWARD APPROVAL):
+- **approve**: score >= 60 AND no CRITICAL issues → proceed to simulation (minor issues OK!)
+- **revise**: score 40-59 OR has 1 fixable critical issue → send to Refiner agent
+- **reject**: score < 40 AND has multiple critical issues → regenerate with Generator
+
+Remember: Simulation will provide real feedback. Don't block on theoretical concerns!
 
 Be precise and actionable in your feedback. This review saves expensive simulation time!
 """

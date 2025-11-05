@@ -47,8 +47,13 @@ async def grader_agent(state: VerificationState, llm_backend) -> Dict[str, Any]:
 
     sim_results = state.get("simulation_results", {})
 
+    # Log simulation results summary
+    coverage = sim_results.get("coverage", 0.0)
+    success = sim_results.get("success", False)
+    logging.info(f"[Grader Agent] Simulation result: {'SUCCESS' if success else 'FAILED'}, coverage: {coverage:.2f}%")
+
     # Skip if simulation failed
-    if not sim_results.get("success", False):
+    if not success:
         logging.info("[Grader Agent] Simulation failed, skipping grading")
         return {
             "grading_results": {
@@ -59,15 +64,27 @@ async def grader_agent(state: VerificationState, llm_backend) -> Dict[str, Any]:
             }
         }
 
+    # Log context
+    iteration = state.get("iteration", 0)
+    max_coverage = state.get("max_coverage", 0.0)
+    coverage_history = state.get("coverage_history", [])
+    logging.info(f"[Grader Agent] Context: iteration {iteration}, max coverage: {max_coverage:.2f}%")
+    if len(coverage_history) >= 2:
+        recent_improvement = coverage_history[-1] - coverage_history[-2]
+        logging.info(f"[Grader Agent] Recent improvement: {recent_improvement:+.2f}%")
+
     # Build grading prompt
     prompt = build_grading_prompt(
         state["design_spec"],
         state.get("current_testbench", ""),
         sim_results,
-        state.get("max_coverage", 0.0),
-        state.get("coverage_history", []),
-        state.get("iteration", 0)
+        max_coverage,
+        coverage_history,
+        iteration
     )
+
+    logging.info(f"[Grader Agent] Built grading prompt (length: {len(prompt)} chars)")
+    logging.debug(f"[Grader Agent] Prompt preview: {prompt[:300]}...")
 
     try:
         logging.info("[Grader Agent] Calling LLM for assessment...")
@@ -86,22 +103,58 @@ async def grader_agent(state: VerificationState, llm_backend) -> Dict[str, Any]:
             )
             response_text = response.choices[0].message.content
             tokens_used = response.usage.total_tokens if hasattr(response, 'usage') else 0
+            logging.debug(f"[Grader Agent] Response preview: {response_text[:300]}...")
         else:
             response_text = "{}"
             tokens_used = 0
+            logging.warning("[Grader Agent] No LLM backend available, using fallback")
 
         # Parse grading
         grading = _parse_grading_response(response_text)
+
+        # Log parsing success
+        if "error" in grading:
+            logging.warning(f"[Grader Agent] Response parsing had issues: {grading.get('error', 'Unknown')}")
+        else:
+            logging.info("[Grader Agent] Successfully parsed grading response")
 
         grade = grading.get("overall_grade", "C")
         quality = grading.get("quality_score", 50)
         continue_flag = grading.get("continue_iteration", True)
         plateau = grading.get("plateau_detected", False)
 
+        # Log detailed results
         logging.info(
             f"[Grader Agent] Grade: {grade} "
             f"(quality: {quality}/100, continue: {continue_flag}, plateau: {plateau})"
         )
+
+        # Log reasoning
+        if "reasoning" in grading:
+            logging.info(f"[Grader Agent] Reasoning: {grading['reasoning']}")
+
+        # Log dimension scores if present
+        if "dimension_scores" in grading:
+            logging.info(f"[Grader Agent] Dimension scores:")
+            for dim, score in grading["dimension_scores"].items():
+                logging.info(f"[Grader Agent]   - {dim}: {score}")
+
+        # Log specific improvements
+        improvements = grading.get("specific_improvements", [])
+        if improvements:
+            logging.info(f"[Grader Agent] Specific improvements ({len(improvements)}):")
+            for i, imp in enumerate(improvements[:3], 1):  # Log first 3
+                logging.info(f"[Grader Agent]   {i}. {imp}")
+            if len(improvements) > 3:
+                logging.info(f"[Grader Agent]   ... and {len(improvements) - 3} more")
+
+        # Log coverage gap analysis
+        if "coverage_gap_analysis" in grading:
+            logging.info(f"[Grader Agent] Coverage gaps: {grading['coverage_gap_analysis']}")
+
+        # Warn about plateau
+        if plateau:
+            logging.warning("[Grader Agent] PLATEAU DETECTED - Progress stalled!")
 
         return {
             "grading_results": grading,

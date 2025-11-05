@@ -46,6 +46,8 @@ async def critic_agent(state: VerificationState, llm_backend) -> Dict[str, Any]:
         }
 
     code = state.get("current_testbench", "")
+
+    # Log what we're reviewing
     if not code:
         logging.warning("[Critic Agent] No testbench to review!")
         return {
@@ -57,12 +59,25 @@ async def critic_agent(state: VerificationState, llm_backend) -> Dict[str, Any]:
             }
         }
 
+    # Log testbench details
+    code_lines = code.count('\n')
+    code_length = len(code)
+    logging.info(f"[Critic Agent] Reviewing testbench: {code_lines} lines, {code_length} chars")
+
+    # Check for obvious issues before LLM call
+    has_finish = '$finish' in code
+    has_module_inst = 'DUT' in code or state.get("design_module_name", "") in code
+    logging.info(f"[Critic Agent] Quick check: $finish={'✓' if has_finish else '✗'}, module_inst={'✓' if has_module_inst else '✗'}")
+
     # Build critique prompt
     prompt = build_critique_prompt(
         state["design_spec"],
         code,
         state.get("verification_plan", {})
     )
+
+    logging.info(f"[Critic Agent] Built critique prompt (length: {len(prompt)} chars)")
+    logging.debug(f"[Critic Agent] Prompt preview: {prompt[:300]}...")
 
     try:
         logging.info("[Critic Agent] Calling LLM for code review...")
@@ -82,22 +97,52 @@ async def critic_agent(state: VerificationState, llm_backend) -> Dict[str, Any]:
             )
             response_text = response.choices[0].message.content
             tokens_used = response.usage.total_tokens if hasattr(response, 'usage') else 0
+            logging.debug(f"[Critic Agent] Response preview: {response_text[:300]}...")
         else:
             response_text = "{}"
             tokens_used = 0
+            logging.warning("[Critic Agent] No LLM backend available, using fallback")
 
         # Parse critique
         critique = _parse_critique_response(response_text)
+
+        # Log parsing success
+        if "error" in critique:
+            logging.warning(f"[Critic Agent] Response parsing had issues: {critique.get('error', 'Unknown')}")
+        else:
+            logging.info("[Critic Agent] Successfully parsed critique response")
 
         score = critique.get("critique_score", 50)
         recommendation = critique.get("recommendation", "approve")
         issues_count = len(critique.get("issues", []))
         critical_count = sum(1 for issue in critique.get("issues", []) if issue.get("severity") == "critical")
+        warning_count = sum(1 for issue in critique.get("issues", []) if issue.get("severity") == "warning")
 
+        # Log detailed results
         logging.info(
             f"[Critic Agent] Review complete: {recommendation.upper()} "
-            f"(score: {score}/100, {issues_count} issues, {critical_count} critical)"
+            f"(score: {score}/100, issues: {critical_count} critical, {warning_count} warning, {issues_count} total)"
         )
+
+        # Log reasoning
+        if "reasoning" in critique:
+            logging.info(f"[Critic Agent] Reasoning: {critique['reasoning']}")
+
+        # Log critical issues in detail
+        if critical_count > 0:
+            logging.warning(f"[Critic Agent] CRITICAL ISSUES FOUND:")
+            for issue in critique.get("issues", []):
+                if issue.get("severity") == "critical":
+                    logging.warning(f"[Critic Agent]   - [{issue.get('category', 'unknown')}] {issue.get('description', 'N/A')}")
+                    if "suggestion" in issue:
+                        logging.info(f"[Critic Agent]     Suggestion: {issue['suggestion']}")
+
+        # Log warnings if present
+        if warning_count > 0 and critical_count == 0:
+            logging.info(f"[Critic Agent] Warnings found (non-blocking):")
+            for issue in critique.get("issues", [])[:3]:  # Log first 3 warnings
+                if issue.get("severity") == "warning":
+                    logging.info(f"[Critic Agent]   - {issue.get('description', 'N/A')}")
 
         # Update metrics
         critic_rejections = state.get("critic_rejections", 0)

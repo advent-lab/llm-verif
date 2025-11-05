@@ -44,6 +44,11 @@ async def planner_agent(state: VerificationState, llm_backend) -> Dict[str, Any]
     # Build planning prompt
     plan_prompt = verification_plan_prompt()
 
+    # Log prompt details
+    logging.info(f"[Planner Agent] Built planning prompt (length: {len(plan_prompt)} chars)")
+    logging.debug(f"[Planner Agent] System prompt preview: {sys_prompt[:200]}...")
+    logging.debug(f"[Planner Agent] Planning prompt preview: {plan_prompt[:200]}...")
+
     try:
         # Call LLM
         logging.info("[Planner Agent] Calling LLM for verification plan...")
@@ -71,11 +76,27 @@ async def planner_agent(state: VerificationState, llm_backend) -> Dict[str, Any]
             tokens_used = 0
 
         logging.info(f"[Planner Agent] Received response ({tokens_used} tokens)")
+        logging.debug(f"[Planner Agent] Response preview: {response_text[:300]}...")
 
         # Parse plan (extract JSON or use full text)
         plan = _parse_plan_response(response_text)
 
-        logging.info(f"[Planner Agent] Plan generated with {len(plan.get('objectives', []))} objectives")
+        # Log parsed plan details
+        objectives = plan.get('objectives', [])
+        scenarios = plan.get('scenarios', [])
+        logging.info(f"[Planner Agent] Plan generated with {len(objectives)} objectives and {len(scenarios)} scenarios")
+        if objectives:
+            logging.info(f"[Planner Agent] Objectives:")
+            for i, obj in enumerate(objectives[:3], 1):  # Log first 3
+                logging.info(f"[Planner Agent]   {i}. {obj}")
+            if len(objectives) > 3:
+                logging.info(f"[Planner Agent]   ... and {len(objectives) - 3} more")
+        if scenarios:
+            logging.info(f"[Planner Agent] Test scenarios:")
+            for i, scen in enumerate(scenarios[:3], 1):  # Log first 3
+                logging.info(f"[Planner Agent]   {i}. {scen}")
+            if len(scenarios) > 3:
+                logging.info(f"[Planner Agent]   ... and {len(scenarios) - 3} more")
 
         return {
             "verification_plan": plan,

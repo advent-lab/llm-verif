@@ -8,6 +8,7 @@ report.txt
 
 # VSCode ignores
 .vscode/
+.claude
 
 # QuestaSim ignores
 *work/
