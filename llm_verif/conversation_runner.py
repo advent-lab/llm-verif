@@ -189,7 +189,23 @@ class ConversationRunner:
         top_p = 0.7
         cov = CoverageResponse(True, 0, "")
 
-        self.conversation = ConversationManager(self.tokenizer, prompt_templates.system_prompt(self.environment.design_specification, self.environment.module_header))
+        # Point 1: Use RAG-enhanced system prompt if RAG is enabled
+        if self.environment.enable_rag and self.environment.vector_store:
+            logging.info("Using RAG-enhanced system prompt")
+            system_prompt = prompt_templates.system_prompt_rag(
+                module_header=self.environment.module_header,
+                vector_store=self.environment.vector_store,
+                module_name=self.environment.design_module_name,
+                top_k=self.environment.rag_top_k
+            )
+        else:
+            logging.info("Using standard system prompt")
+            system_prompt = prompt_templates.system_prompt(
+                self.environment.design_specification,
+                self.environment.module_header
+            )
+
+        self.conversation = ConversationManager(self.tokenizer, system_prompt)
 
         logging.info(f"Length of conversation: {self.conversation.length()}")
         logging.info(f"Stack pointer: {self.conversation.stack_pointer}")
@@ -236,10 +252,24 @@ class ConversationRunner:
                 first_success = False
                 valid_iterations += 1
                 if not self.environment.no_design_prompt:
-                    # Add design prompt to end of conversation
-                    self.conversation.update_system_prompt(
-                        prompt_templates.system_prompt(self.environment.design_specification, self.environment.module_header, self.environment.all_design_file_paths)
-                    )
+                    # Point 2: Use RAG-based design retrieval if enabled
+                    if self.environment.enable_rag and self.environment.vector_store:
+                        logging.info("Using RAG-enhanced design context based on coverage gaps")
+                        design_context = prompt_templates.design_prompt_rag(
+                            coverage_response=cov,
+                            vector_store=self.environment.vector_store,
+                            top_k_per_gap=2,
+                            coverage_threshold=90.0
+                        )
+                        if design_context:
+                            # Append design context as system message
+                            self.conversation.append_system_context(design_context)
+                    else:
+                        # Original behavior: inject all design files
+                        logging.info("Using standard design prompt with all design files")
+                        self.conversation.update_system_prompt(
+                            prompt_templates.system_prompt(self.environment.design_specification, self.environment.module_header, self.environment.all_design_file_paths)
+                        )
 
             if not cov.success:
                 prompt = prompt_templates.error_prompt(cov.error_code, cov.error_message)
@@ -250,6 +280,19 @@ class ConversationRunner:
                     self.llm.simulator,
                     self.args.work_dir
                 )
+
+                # Point 3: For RAG mode, also inject targeted design context for each iteration
+                if self.environment.enable_rag and self.environment.vector_store and not self.environment.no_design_prompt:
+                    design_context = prompt_templates.design_prompt_rag(
+                        coverage_response=cov,
+                        vector_store=self.environment.vector_store,
+                        top_k_per_gap=2,
+                        coverage_threshold=90.0
+                    )
+                    if design_context:
+                        logging.info("Injecting RAG-based design context for iteration")
+                        self.conversation.append_system_context(design_context)
+
             logging.info(f"Iteration prompt: {prompt}")
 
             # This call adds 2 prompts to the conversation: the next user prompt and the response

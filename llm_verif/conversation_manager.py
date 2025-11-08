@@ -32,6 +32,21 @@ class ConversationManager:
     def update_system_prompt(self, system_prompt: str):
         self.conversation[0]["content"] = system_prompt
 
+    def append_system_context(self, context: str):
+        """
+        Append system-level context (e.g., RAG-retrieved design chunks) to the conversation.
+        This is inserted as a system message to provide additional context without
+        disrupting the user/assistant conversation flow.
+
+        Args:
+            context: The context string to append as a system message
+        """
+        if not context or not context.strip():
+            return
+
+        # Insert system context message before the last message (which should be user or assistant)
+        self.conversation.append({"role": "system", "content": context})
+
     def _token_count(self, prompt: str):
         return len(self.tokenizer(prompt, return_tensors="pt")["input_ids"][0]) # type: ignore
     
