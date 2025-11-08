@@ -11,7 +11,7 @@ report.txt
 .claude
 
 # QuestaSim ignores
-*work/
+work/
 *transcript
 
 # Byte-compiled / optimized / DLL files
