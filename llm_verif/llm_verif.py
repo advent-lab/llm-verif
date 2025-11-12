@@ -38,6 +38,7 @@ def main():
     parser.add_argument('-S', '--seed', type=int, help="Random seed for reproducibility.")
     parser.add_argument('-m', '--merge-coverage', action='store_true', default=None, help="Merge coverage reports.")
     parser.add_argument('--testplan', action='store_true', default=None, help="Enable generating a test plan before generating any test benches.")
+    parser.add_argument('--testplan_batch', type=int, help="Batch generate N testplans and synthesize them into one comprehensive testplan.")
     parser.add_argument('--remove_polluted_context', action='store_true', default=None, help='Enable the removal of polluted content from the conversation history')
     parser.add_argument('--max_iterations', type=int, help="Maximum number of iterations for iterative refinement.")
     parser.add_argument('--max_valid_iter', type=int, help="Maximum number of successful iterations")
@@ -143,6 +144,8 @@ def main():
     logger.info(f"Merging coverage reports: {args.merge_coverage}")
     args.testplan = resolve_config("testplan", default=True, cast=str_to_bool)
     logger.info(f"Generating test plan: {args.testplan}")
+    args.testplan_batch = resolve_config("testplan_batch", default=1, cast=int)
+    logger.info(f"Testplan batch count: {args.testplan_batch}")
     args.remove_polluted_context = resolve_config("remove_polluted_context", default=False, cast=str_to_bool)
     logger.info(f"Removing polluted context: {args.remove_polluted_context}")
     args.max_iterations = resolve_config("max_iterations", default=5, cast=int)
@@ -196,6 +199,7 @@ def main():
         identifier=args.id, 
         temp_func=args.temperature_function, 
         testplan=args.testplan, 
+        testplan_batch=args.testplan_batch,
         batch_size=args.batch_size, 
         remove_polluted_context=args.remove_polluted_context, 
         run_type="RUN", 
@@ -257,12 +261,14 @@ def main():
     asyncio.run(run_all_conversations())
 
     if args.merge_coverage:
+        # Get actual maximum iteration count from recorded data
+        actual_max_iterations = record.get_max_iteration_count()
         # Use simulator-agnostic merge method
         merge_result = llm.simulator.merge_and_parse_cross_run_coverage(
             design_name=environment.design_name,
             work_dir=environment.store.storage_path,
             runs=args.runs,
-            max_iterations=args.max_iterations,
+            max_iterations=actual_max_iterations,
             batch_size=args.batch_size,
             sim_runs=args.sim_runs,
             design_dir=args.design,

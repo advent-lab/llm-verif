@@ -133,57 +133,165 @@ int success = p.randomize() with {{x < y}};
 Remember that when you use System Verilog classes for the testcases, you should create an interface, instantiate the interface, connect the right signals to it, and pass the handle to the interface to the class object.
 ''' + json_format_str
 
-def verification_plan_prompt() -> str:
-	prompt = f"""You are a hardware verification expert. Your task is to generate a *comprehensive* and *structured* verification plan for a SystemVerilog testbench that targets the design described below.
+def verification_plan_prompt(design_specification: str, module_header: str) -> str:
+	prompt = f"""You are a hardware verification expert. Your task is to generate a comprehensive and structured verification plan for a SystemVerilog testbench that targets the design described below.
+Module Header:
+```verilog
+{module_header}
+```
+Design Specification:
+{design_specification}
 
 Objective
-Generate a detailed verification plan that will achieve full statement coverage of the design. Focus on thorough test scenario planning, including normal, boundary, corner, and illegal input cases where applicable. This is **stage 1** of a two-stage testbench generation process.
+Generate a detailed verification plan that will achieve full statement coverage of the design. Focus on thorough test scenario planning, including normal, boundary, corner, and illegal input cases where applicable. This is **stage 1** of a two-stage testbench generation process where each feature will be verified individually.
+
+CRITICAL: You must identify and list distinct features in a numbered format.
 
 Guidelines for a Good Verification Plan
 A strong verification plan should:
-- Identify **test objectives** derived from functional and structural elements of the design in the specification.
-- Include **test scenarios** organized by functionality, interface, or behavior.
-- Target all **control paths**, **edge conditions**, and **expected behaviors** (e.g., valid/invalid inputs, reset behavior, concurrent conditions).
-- Explicitly mention which statements or coverage goals are exercised by each scenario.
-- Include **justification** for how each test contributes to coverage.
-- Optionally recommend **checkers** or **assertions** if useful for complex conditions.
+- Identify individual features of the design that can be tested independently
+- List features in a numbered format (Feature 1, Feature 2, etc.)
+- For each feature, provide test objectives derived from functional and structural elements
+- Include test scenarios organized by functionality, interface, or behavior
+- Target all control paths, edge conditions, and expected behaviors (e.g., valid/invalid inputs, reset behavior, concurrent conditions)
+- Explicitly mention which statements or coverage goals are exercised by each scenario
+- Include justification for how each test contributes to coverage
+- Optionally recommend checkers or assertions if useful for complex conditions
+- **Be creative** - explore diverse scenarios and interesting interactions that exercise the design
+- Think strategically about what stimulus patterns would expose different behaviors and code paths
+
 
 Output Format
-Return the verification plan in a structured format like:
+Return the verification plan with features clearly numbered. For each feature, provide MULTIPLE STIMULUS TESTPOINTS that comprehensively cover that feature.
+
+**Feature N: [Feature Name]**
 
 Test Objective: [Goal]
 
 Description: [What feature/behavior is being tested]
 
-Stimulus: [Inputs or sequences required to exercise it]
+Stimulus Testpoints: [List of stimulus scenarios covering this feature - describe the nature/strategy of stimulus]
+- Testpoint 1: [Describe the type of stimulus or scenario]
+- Testpoint 2: [Another stimulus strategy or condition to test]
+- Testpoint 3: [A corner case or boundary scenario]
+- Testpoint 4: [Additional test scenario as needed]
+- [Add more testpoints as needed - be creative and thorough]
 
-Expected Outcome: [What the DUT should do]
+Expected Outcome: [What the DUT should do for these testpoints]
 
 Coverage Goal: [Statements/branches/scenarios covered]
 
 Notes: [Optional rationale or dependencies]
 
-List multiple such entries, grouped where appropriate by:
+Key Principles for Stimulus Testpoints:
+- Think creatively about different stimulus patterns that could exercise various code paths
+- Focus on the **strategy** and **purpose** of each testpoint rather than exact implementation details
+- Consider different categories: normal operation, boundary conditions, corner cases, error scenarios, timing variations, concurrent operations
+- Aim to explore the design space broadly to maximize coverage
+- You have flexibility in how you describe testpoints - be strategic and thoughtful
 
-Interface behavior
+Example verification plan structure:
+**Feature 1: FIFO Write Operations**
+Test Objective: Verify FIFO write functionality achieves full coverage of write logic
+Description: Test FIFO write path with various fill levels and operational scenarios
+Stimulus Testpoints:
+- Testpoint 1: Write operations when FIFO is empty
+- Testpoint 2: Continuous back-to-back writes to stress the write path
+- Testpoint 3: Writing until FIFO reaches full capacity
+- Testpoint 4: Attempted writes when FIFO is already full
+- Testpoint 5: Write operations combined with reset conditions
+- Testpoint 6: Writes with varying inter-transaction delays and timing patterns
+- Testpoint 7: Any other creative scenarios you think would improve coverage
+Expected Outcome: FIFO correctly handles all write scenarios, updates internal state, and manages full/overflow conditions
+Coverage Goal: Write logic, pointer management, full detection, overflow handling, reset behavior
+Notes: Explore both normal operation and stress/edge scenarios
 
-Control flow paths
-
-Data path/logic scenarios
-
-Special conditions (reset, edge cases, assertions)
+Remember: The goal is comprehensive coverage through creative and diverse test scenarios. You decide the best approach to exercise all aspects of the design.
 
 Begin writing the verification plan now:
 """
 	return prompt
 
+def synthesize_testplans_prompt(testplans: list[str]) -> str:
+	"""
+	Generate a prompt to synthesize multiple testplans into one comprehensive plan.
+	
+	Args:
+		testplans: List of generated testplan strings
+	
+	Returns:
+		A prompt asking the LLM to synthesize all testplans into one
+	"""
+	prompt = f"""You are a hardware verification expert. You have been given {len(testplans)} different verification plans for the same design. Your task is to synthesize these plans into ONE comprehensive, cohesive verification plan that includes ALL unique features from all plans.
+
+
+Here are the {len(testplans)} verification plans:
+
+"""
+	
+	for i, testplan in enumerate(testplans, 1):
+		prompt += f"\n{'='*80}\n"
+		prompt += f"VERIFICATION PLAN {i} of {len(testplans)}:\n"
+		prompt += f"{'='*80}\n\n"
+		prompt += testplan
+		prompt += "\n\n"
+	
+	prompt += f"""
+{'='*80}
+
+Synthesize all {len(testplans)} plans above into ONE comprehensive verification while following these instructions:
+
+1. Review all {len(testplans)} verification plans provided
+2. Identify all unique features across all plans (eliminate duplicates)
+3. Merge similar features intelligently, combining their test objectives and stimulus testpoints
+4. Create a single, well-organized verification plan with ALL unique features numbered sequentially
+5. Ensure each feature follows the stimulus testpoint format:
+   - **Feature N: [Feature Name]**
+   - Test Objective: [Goal]
+   - Description: [What feature/behavior is being tested]
+   - Stimulus Testpoints: [List of stimulus scenarios covering this feature]
+     * Testpoint 1: [Describe the type of stimulus or scenario]
+     * Testpoint 2: [Another stimulus strategy or condition]
+     * [More testpoints as needed - be creative and thorough]
+   - Expected Outcome: [What the DUT should do]
+   - Coverage Goal: [Statements/branches/scenarios covered]
+   - Notes: [Optional rationale or dependencies]
+
+6. When merging features, combine all unique stimulus testpoints from different plans
+7. Focus on the **strategy** and **purpose** of testpoints rather than overly specific implementation details
+8. Order features logically (e.g., basic functionality first, then advanced features)
+9. Be creative and thorough to ensure maximum coverage of the design - you have flexibility in how to approach the testing
+
+"""
+	
+	return prompt
+
+def feature_testbench_prompt(feature_description: str, feature_number: int, total_features: int, design_specification: str | None = None, module_header: str | None = None) -> str:
+	"""
+	Generate a prompt for creating a testbench for a specific feature.
+	"""
+	return f'''Now we are generating testbenches for individual features identified in the verification plan.
+
+You are focusing on Feature {feature_number} of {total_features}:
+
+{feature_description}
+
+CRITICAL INSTRUCTIONS for this feature-specific testbench:
+1. Use the testpoints above as a guide for the types of stimulus scenarios to implement
+2. You have determine in how you implement each testpoint - decide the specific sequences, values, and timing
+3. Your goal is to achieve maximum coverage for this feature - be strategic in your stimulus generation
+4. Cover the scenarios mentioned in the testpoints, but feel free to add variations or additional patterns you think would improve coverage
+5. Think deepely about different ways to exercise the design logic related to this feature
+
+''' + first_testbench_prompt(design_specification, module_header)
+
 # This function returns two prompts
 # The first prompt should be used to generate the verification plan
 # The second prompt should be used to generate the test bench after the verification plan is generated
 # The second prompt assumes that conversation histroy is being provided to the LLM in addition to the second prompt
-def verif_and_testbench_prompt(crt: bool = True) -> tuple[str, str]:
-    p1 = verification_plan_prompt()
-    p2 = '''Now we are in the second stage of the verification process.''' + first_testbench_prompt() if crt else zero_shot_prompt() + json_format_str
+def verif_and_testbench_prompt(design_specification: str, module_header: str, crt: bool = True) -> tuple[str, str]:
+    p1 = verification_plan_prompt(design_specification, module_header)
+    p2 = '''Now we are in the second stage of the verification process.''' + first_testbench_prompt(design_specification, module_header) if crt else zero_shot_prompt() + json_format_str
     return (p1, p2)
 
 def error_prompt(error_code: int, error_message: str) -> str:
@@ -195,9 +303,18 @@ Here are some additional guidelines for the test bench: \n
 Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n''' + json_format_str
 	
 	elif error_code == 2:
-		return f'''The generated test bench failed to simulate. Use the following error message to fix the errors Use the same JSON format for the new testbench. Error Message:\n{error_message}\nProvide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Ensure that there is only one testbench within the JSON formatted output.\n
+		return f'''The generated test bench failed to simulate. Use the following error message to fix the errors. Use the same JSON format for the new testbench. Error Message:\n{error_message}\nProvide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Ensure that there is only one testbench within the JSON formatted output.\n
 Here are some additional guidelines for the test bench: \n
-Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n''' + json_format_str
+1. Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n
+2. CRITICAL: If you used any checking logic (if-statements comparing output signals to hardcoded expected values), REMOVE ALL OF IT. The testbench should ONLY provide stimulus (input signals). Do NOT check outputs. Do NOT have any "expected" values hardcoded in your testbench.\n
+3. If you used $fatal, $error, or assertion statements that halt simulation, REMOVE them or replace with $display for informational purposes only.\n
+4. Your testbench should focus on exercising the DUT with various input patterns. Let the coverage metrics determine correctness, not hardcoded checks.\n
+5. Common fixes for simulation errors:\n
+   - Remove all "if (output_signal != expected_value)" checks\n
+   - Remove all "$fatal" or "$error" calls that check outputs\n
+   - Keep only stimulus generation and $display statements for observability\n
+   - Ensure all always blocks have proper sensitivity lists or use always @(*)\n
+   - Check for race conditions between clock and data assignments\n''' + json_format_str
 	
 	elif error_code == 3:
 		return f'''The generated test bench took to long to simulate and timed out. Try to shorten the testbench. Use the same JSON format for the new testbench. Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Ensure that there is only one testbench within the JSON formatted output.\n

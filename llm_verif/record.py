@@ -7,7 +7,7 @@ import time
 from llm_verif.questasim import CoverageResponse
 
 class Record:
-    def __init__(self, design_name: str, identifier: str, temp_func: str, testplan: bool, batch_size: int, remove_polluted_context: bool, run_type: str = "RUN", include_merge_coverage: bool = False):
+    def __init__(self, design_name: str, identifier: str, temp_func: str, testplan: bool, testplan_batch: int, batch_size: int, remove_polluted_context: bool, run_type: str = "RUN", include_merge_coverage: bool = False):
         """
         Initialize the Record object.
 
@@ -15,6 +15,7 @@ class Record:
             design_name (str): Name of the design being evaluated.
             temp_func (string): The type of temperature function
             testplan (bool): Indicates whether this run features a testplan
+            testplan_batch (int): Number of testplans to batch generate and synthesize
             batch_size (int): The batch size (best of 5)
             remove_polluted_context: Whether or not polluted context is being removed 
             run_type (str): Type of run ("RUN" or "EVAL").
@@ -25,6 +26,7 @@ class Record:
         self.include_merge_coverage = include_merge_coverage
         self.temp_func = temp_func
         self.testplan = testplan
+        self.testplan_batch = testplan_batch
         self.batch_size = batch_size
         self.remove_polluted_context = remove_polluted_context
         self.identifier = identifier
@@ -39,11 +41,13 @@ class Record:
             "ID",
             "temperature func",
             "testplan",
+            "testplan_batch",
             "b5",
             "remove polluted contxt",
             "run #",
             "iteration #",
             "batch #",
+            "feature",
             "temperature",
             "top_p",
             "pass",
@@ -88,7 +92,7 @@ class Record:
         self.tokens_generated = 0
         self.generation_time = 0.0
 
-    def update_dataframe(self, coverage: CoverageResponse, temperature: float, top_p: float, run: int, iteration: int, batch_num: int, tokens: int, time: float):
+    def update_dataframe(self, coverage: CoverageResponse, temperature: float, top_p: float, run: int, iteration: int, batch_num: int, tokens: int, time: float, feature: str = "N/A"):
         """
         Update the dataframe with a new record.
 
@@ -100,6 +104,7 @@ class Record:
             iteration (int): Iteration index.
             tokens (int): Tokens generated in the response.
             time (float): Time taken for the generation.
+            feature (str): Feature being tested (default "N/A").
         """
         self.tokens_generated = tokens
         self.generation_time = time
@@ -111,11 +116,13 @@ class Record:
             "ID": self.identifier,
             "temperature func": self.temp_func,
             "testplan": 1 if self.testplan == True else 0,
+            "testplan_batch": self.testplan_batch,
             "b5": 1 if self.batch_size > 1 else 0,
             "remove polluted contxt": 1 if self.remove_polluted_context == True else 0,
             "run #": run,
             "iteration #": iteration,
             "batch #": batch_num,
+            "feature": feature,
             "temperature": temperature,
             "top_p": top_p,
             "pass": 1 if coverage.success else 0,
@@ -212,4 +219,10 @@ class Record:
             self.df.loc[self.df['run #'] == run, 'run merged coverage'] = coverage.total_coverage
 
         logging.debug(f"Updated run merge coverage:\n{self.df}")
+
+    def get_max_iteration_count(self) -> int:
+        if self.df.empty:
+            return 0
+        max_iter = int(self.df["iteration #"].max())
+        return max_iter + 1  # Convert from 0-indexed to count
 

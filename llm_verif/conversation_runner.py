@@ -4,6 +4,7 @@ ConversationRunner class for managing test bench generation and coverage evaluat
 
 import logging
 import os
+import re
 from typing import Optional
 import argparse
 
@@ -87,9 +88,131 @@ class ConversationRunner:
         except KeyError as e:
             return CoverageResponse(False, 4, f"Key error: {e}")
 
+    async def batch_generate_testplans(self, testplan_prompt: str, batch_count: int) -> str:
+        logging.info(f"===== BATCH GENERATING {batch_count} TESTPLANS =====")
+        
+        generated_testplans = []
+        for batch_idx in range(batch_count):
+            logging.info(f"\n===== Generating Testplan {batch_idx + 1} of {batch_count} ======\n")
+            self.conversation.append_user_message(testplan_prompt, update_stack_pointer=False)
+            responses, tokens_generated, gen_time = await self.llm.generate_response_async(
+                self.conversation, num_return_sequences=1
+            )
+            batch_testplan = responses[0]
+            generated_testplans.append(batch_testplan)
+            logging.info(f"\n===== Testplan {batch_idx + 1} =====")
+            logging.info(batch_testplan)
+            logging.info(f"===================================\n")
+            
+            # Remove user message to keep conversation clean
+            self.conversation.conversation.pop()
+        
+        # Synthesize all testplans into one
+        logging.info(f"===== Synthesizing {batch_count} Testplans =====")
+        
+        synthesis_prompt = prompt_templates.synthesize_testplans_prompt(generated_testplans)
+        self.conversation.append_user_message(synthesis_prompt, update_stack_pointer=False)
+        responses, tokens_generated, gen_time = await self.llm.generate_response_async(
+            self.conversation, num_return_sequences=1
+        )
+        synthesized_testplan = responses[0]
+        
+        logging.info("\n===== SYNTHESIZED VERIFICATION PLAN =====")
+        logging.info(synthesized_testplan)
+        logging.info("===================================\n")
+        self.conversation.append_assistant_message(synthesized_testplan, slice=False)
+        
+        # Save the synthesized testplan to file
+        testplan_file = os.path.join(self.environment.work_dir, "testplan.txt")
+        with open(testplan_file, 'w') as f:
+            f.write(synthesized_testplan)
+        logging.info(f"===== Synthesized testplan saved to: {testplan_file}\n")
+        
+        return synthesized_testplan
+
+    def parse_features_from_testplan(self, testplan_text: str) -> list[dict]:
+        """
+        Parse features from testplan text.
+
+        Returns:
+            list[dict]: List of feature dictionaries with 'short_name' and 'full_desc' keys.
+        """
+        features = []
+
+        # Primary pattern: Look for **Feature N: Name** headers
+        feature_pattern = r'\*\*Feature\s+(\d+):\s*([^\n]+)\*\*'
+        matches = re.finditer(feature_pattern, testplan_text, re.IGNORECASE | re.MULTILINE)
+
+        feature_positions = []
+        for match in matches:
+            feature_num = match.group(1)
+            feature_name = match.group(2).strip()
+            start_pos = match.start()
+            feature_positions.append((feature_num, feature_name, start_pos))
+
+        # Extract full feature text between consecutive feature headers
+        if feature_positions:
+            for i, (num, name, start) in enumerate(feature_positions):
+                # Determine end position (start of next feature or end of text)
+                end = feature_positions[i + 1][2] if i + 1 < len(feature_positions) else len(testplan_text)
+
+                # Extract full feature description including all testpoints
+                feature_text = testplan_text[start:end].strip()
+
+                # Create both short name and full description
+                features.append({
+                    'short_name': f"Feature {num}: {name}",
+                    'full_desc': feature_text
+                })
+
+        # Fallback 1: Try alternate patterns if primary pattern fails
+        if not features:
+            patterns = [
+                r'Feature\s+(\d+):\s*([^\n]+)',          # Feature N: Name
+                r'(\d+)\.\s+Feature:\s*([^\n]+)',        # N. Feature: Name
+            ]
+
+            for pattern in patterns:
+                matches = list(re.finditer(pattern, testplan_text, re.IGNORECASE | re.MULTILINE))
+                if matches:
+                    for i, match in enumerate(matches):
+                        num, name = match.group(1), match.group(2).strip()
+                        start = match.start()
+                        end = matches[i + 1].start() if i + 1 < len(matches) else len(testplan_text)
+                        feature_text = testplan_text[start:end].strip()
+
+                        features.append({
+                            'short_name': f"Feature {num}: {name}",
+                            'full_desc': feature_text
+                        })
+                    break
+
+        # Fallback 2: Split by Test Objective if no features found
+        if not features:
+            objective_pattern = r'Test Objective:\s*([^\n]+)'
+            objectives = re.findall(objective_pattern, testplan_text, re.MULTILINE)
+            if objectives:
+                # This is a rough fallback - just use feature names
+                for i, obj in enumerate(objectives):
+                    short = f"Feature {i+1}: {obj.strip()}"
+                    features.append({
+                        'short_name': short,
+                        'full_desc': short
+                    })
+
+        # Final fallback: Treat entire testplan as one feature
+        if not features:
+            full = "Feature 1: Complete Design Verification\n" + testplan_text
+            features.append({
+                'short_name': "Feature 1: Complete Design Verification",
+                'full_desc': full
+            })
+
+        return features
+
     async def generate_and_evaluate(
         self, prompt: str, run: int, iteration: int, json: bool = True,
-        batch_size: int = 1, set_stack_pointer: bool = False, sim_runs: int = 1
+        batch_size: int = 1, set_stack_pointer: bool = False, sim_runs: int = 1, feature: str = "N/A"
     ) -> CoverageResponse:
         """
         Generate a test bench and evaluate its coverage.
@@ -102,6 +225,7 @@ class ConversationRunner:
             batch_size (int): Number of responses to generate.
             set_stack_pointer (bool): Whether to set the stack pointer.
             sim_runs (int): Number of simulation runs.
+            feature (str): Feature being tested (for tracking).
 
         Returns:
             CoverageResponse: The best coverage response from the batch.
@@ -129,7 +253,7 @@ class ConversationRunner:
                 if isinstance(response, CoverageResponse):
                     self.record.update_dataframe(
                         response, self.llm.temperature, self.llm.top_p, run, iteration, i,
-                        tokens_generated, gen_time
+                        tokens_generated, gen_time, feature
                     )
 
             self.record.write_to_csv(csv_path)
@@ -160,7 +284,7 @@ class ConversationRunner:
                 for i, response in enumerate(coverage_responses):
                     self.record.update_dataframe(
                         response, self.llm.temperature, self.llm.top_p, run, iteration, i,
-                        tokens_generated, gen_time
+                        tokens_generated, gen_time, feature
                     )
 
                 selected = max_coverage[2]
@@ -189,92 +313,244 @@ class ConversationRunner:
         top_p = 0.7
         cov = CoverageResponse(True, 0, "")
 
-        self.conversation = ConversationManager(self.tokenizer, prompt_templates.system_prompt(self.environment.design_specification, self.environment.module_header))
+        self.conversation = ConversationManager(
+            self.tokenizer, 
+            prompt_templates.system_prompt(
+                self.environment.design_specification,
+                self.environment.module_header
+            )
+        )
 
         logging.info(f"Length of conversation: {self.conversation.length()}")
         logging.info(f"Stack pointer: {self.conversation.stack_pointer}")
 
         valid_iterations = 0
         iteration = 0
+        features = []
+        testplan_text = ""
 
         # Stage 1: Generate verification plan (if testplan is enabled)
         if self.environment.testplan:
-            testplan_prompt, testbench_prompt = prompt_templates.verif_and_testbench_prompt(self.environment.crt)
+            testplan_prompt = prompt_templates.verification_plan_prompt(
+                self.environment.design_specification, self.environment.module_header
+            )
             logging.info(f"Testplan prompt: {testplan_prompt}")
-            logging.info(f"Testbench prompt: {testbench_prompt}")
-            cov = await self.generate_and_evaluate(testplan_prompt, run_index, iteration, json=False)
+
+            # Batch generate multiple testplans (MAX: 10)
+            testplan_batch_count = self.args.testplan_batch if self.args.testplan_batch > 1 and self.args.testplan_batch <= 10 else 1
+
+            if testplan_batch_count > 1:
+                testplan_text = await self.batch_generate_testplans(testplan_prompt, testplan_batch_count)
+            else:
+                # Single testplan generation (original behavior)
+                self.conversation.append_user_message(testplan_prompt, update_stack_pointer=False)
+                responses, tokens_generated, gen_time = await self.llm.generate_response_async(
+                    self.conversation, num_return_sequences=1
+                )
+                testplan_text = responses[0]
+                logging.info("\n===== VERIFICATION PLAN =====")
+                logging.info(testplan_text)
+                logging.info("===================================\n")
+                self.conversation.append_assistant_message(testplan_text, slice=False)
+                
+                # Save the testplan to work dir
+                testplan_file = os.path.join(self.environment.work_dir, "testplan.txt")
+                with open(testplan_file, 'w') as f:
+                    f.write(testplan_text)
+                logging.info(f"===== Testplan saved to: {testplan_file}\n")
+            
+            # Parse features from the testplan (works for both single and synthesized)
+            features = self.parse_features_from_testplan(testplan_text)
+            logging.info(f"\n===== Identified {len(features)} Features =====")
+            for i, feature in enumerate(features, 1):
+                logging.info(f"  {i}. {feature['short_name']}")
+            logging.info("=========================================\n")
+            
             iteration += 1
         else:
+            # No testplan - use original single testbench approach
             testbench_prompt = prompt_templates.first_testbench_prompt(
                 self.environment.design_specification, self.environment.module_header
             )
             logging.info(f"Testbench prompt: {testbench_prompt}")
+            features = ["Single Testbench (No Feature-Based Testing)"]
 
         logging.info(f"Length of conversation: {self.conversation.length()}")
         logging.info(f"Stack pointer: {self.conversation.stack_pointer}")
 
-        # Stage 2: Generate test bench
-        if cov.success:
-            cov = await self.generate_and_evaluate(
-                testbench_prompt, run_index, iteration, batch_size=self.environment.batch_size,
-                sim_runs=self.args.sim_runs
-            )
-            if cov.success:
-                valid_iterations += 1
+        # Feature-based testbench generation
+        if self.environment.testplan and features:
+            for feature_idx, feature in enumerate(features):
+                logging.info(f"\n====== GENERATING TESTBENCH FOR: {feature['short_name']}")
 
-        logging.info(f"Length of conversation: {self.conversation.length()}")
-        logging.info(f"Stack pointer: {self.conversation.stack_pointer}")
+                # Generate feature-specific testbench prompt (use full description for LLM context)
+                feature_prompt = prompt_templates.feature_testbench_prompt(
+                    feature['full_desc'],
+                    feature_idx + 1,
+                    len(features),
+                    self.environment.design_specification,
+                    self.environment.module_header
+                )
 
-        # Iterative Refinement
-        iteration += 1
-        first_success = True
-        while (self.record.max_cov < 100 and iteration <= self.args.max_iterations
-               and valid_iterations < self.args.max_valid_iter):
+                # Generate and evaluate testbench for this feature (use short name for CSV)
+                cov = await self.generate_and_evaluate(
+                    feature_prompt,
+                    run_index,
+                    iteration,
+                    batch_size=self.environment.batch_size,
+                    sim_runs=self.args.sim_runs,
+                    feature=feature['short_name']
+                )
+                
+                # Retry logic for failed feature testbenches
+                feature_attempt = 1  # We already made 1 attempt above
 
-            # The stack pointer should point to the last user message
-            if cov.error_code == 0 and first_success:
-                first_success = False
-                valid_iterations += 1
-                if not self.environment.no_design_prompt:
-                    # Add design prompt to end of conversation
-                    self.conversation.update_system_prompt(
-                        prompt_templates.system_prompt(self.environment.design_specification, self.environment.module_header, self.environment.all_design_file_paths)
+                while not cov.success and feature_attempt < self.args.max_iterations:
+                    feature_attempt += 1
+                    logging.info(f"\n===== {feature['short_name']} attempt {feature_attempt} FAILED. Retrying with error feedback...\n")
+
+                    iteration += 1
+
+                    # Generate error-specific prompt based on the failure type
+                    error_retry_prompt = prompt_templates.error_prompt(cov.error_code, cov.error_message)
+
+                    # Add context about the feature we're still trying to test (use full description)
+                    feature_context = f"\nReminder: You are generating a testbench for {feature['full_desc']}. Focus on this specific feature.\n\n"
+                    error_retry_prompt = feature_context + error_retry_prompt
+
+                    # Retry with error feedback (use short name with attempt number for CSV)
+                    cov = await self.generate_and_evaluate(
+                        error_retry_prompt,
+                        run_index,
+                        iteration,
+                        batch_size=self.environment.batch_size,
+                        sim_runs=self.args.sim_runs,
+                        feature=f"{feature['short_name']} (Attempt {feature_attempt})"
                     )
 
-            if not cov.success:
-                prompt = prompt_templates.error_prompt(cov.error_code, cov.error_message)
-            else:
-                prompt = prompt_templates.iter_prompt(
-                    cov,
-                    self.environment.design_module_name,
-                    self.llm.simulator,
-                    self.args.work_dir
+                    if cov.success:
+                        logging.info(f"===== {feature['short_name']} testbench successful on attempt {feature_attempt} - Coverage: {cov.total_coverage}%")
+                        break
+
+                # Track successful feature testbenches
+                if cov.success:
+                    valid_iterations += 1
+                    if feature_attempt == 1:
+                        logging.info(f"===== {feature['short_name']} testbench successful - Coverage: {cov.total_coverage}%")
+                else:
+                    logging.info(f"===== {feature['short_name']} testbench failed after {feature_attempt} attempts - Error: {cov.error_message}")
+                
+                iteration += 1
+                
+                # Check if we should stop early due to max_valid_iter
+                if valid_iterations >= self.args.max_valid_iter:
+                    logging.info(f"\n===== Reached max_valid_iter={self.args.max_valid_iter}. Stopping feature testing.")
+                    logging.info(f"===== Tested {feature_idx + 1} out of {len(features)} features.\n")
+                    break
+
+                logging.info(f"Length of conversation: {self.conversation.length()}")
+                logging.info(f"Stack pointer: {self.conversation.stack_pointer}")
+
+            # Merge coverage across all features
+            # Use simulator-agnostic merge_and_parse_run_coverage with actual iteration count
+            if self.args.merge_coverage:
+                try:
+                    merged_response = self.llm.simulator.merge_and_parse_run_coverage(
+                        design_name=self.environment.design_name,
+                        work_dir=self.environment.store.storage_path if self.environment.store else self.args.design,
+                        run_idx=run_index,
+                        max_iterations=iteration,  # Use actual iteration count reached
+                        batch_size=self.environment.batch_size,
+                        sim_runs=self.args.sim_runs,
+                        design_dir=self.args.design,
+                        use_store=self.environment.store is not None
+                    )
+                    
+                    logging.info("Feature-based merged coverage generated successfully.")
+                    logging.info(f"\n====== TOTAL COVERAGE ACROSS ALL FEATURES: {merged_response.total_coverage}%")
+                    self.record.update_run_merge_coverage(merged_response, run_index)
+                except Exception as e:
+                    logging.error(f"===== Failed to generate merged feature coverage: {e}")
+        else:
+            # Original single testbench approach (no features)
+            if cov.success or not self.environment.testplan:
+                cov = await self.generate_and_evaluate(
+                    testbench_prompt if not self.environment.testplan else prompt_templates.first_testbench_prompt(
+                        self.environment.design_specification, self.environment.module_header
+                    ), 
+                    run_index, 
+                    iteration, 
+                    batch_size=self.environment.batch_size, 
+                    sim_runs=self.args.sim_runs, 
+                    feature="Single Testbench"
                 )
-            logging.info(f"Iteration prompt: {prompt}")
+                if cov.success:
+                    valid_iterations += 1
 
-            # This call adds 2 prompts to the conversation: the next user prompt and the response
-            cov = await self.generate_and_evaluate(
-                prompt, run_index, iteration, batch_size=self.environment.batch_size
-            )
+        logging.info(f"Length of conversation: {self.conversation.length()}")
+        logging.info(f"Stack pointer: {self.conversation.stack_pointer}")
 
-            iteration += 1
-            logging.info(f"Length of conversation: {self.conversation.length()}")
-            logging.info(f"Stack pointer: {self.conversation.stack_pointer}")
+        # Iterative Refinement (only for non-testplan mode)
+        iteration += 1
+        first_success = True
+        if not self.environment.testplan:
+            while (self.record.max_cov < 100 and iteration <= self.args.max_iterations
+                   and valid_iterations < self.args.max_valid_iter):
 
-        # Merged Coverage Logic
-        if self.args.merge_coverage:
-            merged_response = self.llm.simulator.merge_and_parse_run_coverage(
-                design_name=self.environment.design_name,
-                work_dir=self.environment.store.storage_path,
-                run_idx=run_index,
-                max_iterations=self.args.max_iterations,
-                batch_size=self.environment.batch_size,
-                sim_runs=self.args.sim_runs,
-                design_dir=self.args.design,
-                use_store=True
-            )
+                # The stack pointer should point to the last user message
+                if cov.error_code == 0 and first_success:
+                    first_success = False
+                    valid_iterations += 1
+                    if not self.environment.no_design_prompt:
+                        # Add design prompt to end of conversation
+                        self.conversation.update_system_prompt(
+                            prompt_templates.system_prompt(
+                                self.environment.design_specification,
+                                self.environment.module_header,
+                                self.environment.all_design_file_paths
+                            )
+                        )
 
-            self.record.update_run_merge_coverage(merged_response, run_index)
+                if not cov.success:
+                    prompt = prompt_templates.error_prompt(cov.error_code, cov.error_message)
+                else:
+                    prompt = prompt_templates.iter_prompt(
+                        cov,
+                        self.environment.design_module_name,
+                        self.llm.simulator,
+                        self.args.work_dir
+                    )
+                logging.info(f"Iteration prompt: {prompt}")
+
+                # This call adds 2 prompts to the conversation: the next user prompt and the response
+                cov = await self.generate_and_evaluate(
+                    prompt, run_index, iteration, batch_size=self.environment.batch_size, feature="Iterative Refinement"
+                )
+
+                iteration += 1
+                logging.info(f"Length of conversation: {self.conversation.length()}")
+                logging.info(f"Stack pointer: {self.conversation.stack_pointer}")
+
+        # Merged Coverage Logic (only for non-testplan mode)
+        # For testplan mode, feature-based merging already happened above
+        if self.args.merge_coverage and not self.environment.testplan:
+            try:
+                merged_response = self.llm.simulator.merge_and_parse_run_coverage(
+                    design_name=self.environment.design_name,
+                    work_dir=self.environment.store.storage_path if self.environment.store else self.args.design,
+                    run_idx=run_index,
+                    max_iterations=iteration,
+                    batch_size=self.environment.batch_size,
+                    sim_runs=self.args.sim_runs,
+                    design_dir=self.args.design,
+                    use_store=self.environment.store is not None
+                )
+                
+                logging.info("Merged coverage generated successfully.")
+                self.record.update_run_merge_coverage(merged_response, run_index)
+
+            except Exception as e:
+                logging.error(f"Failed to generate merged coverage: {e}")
 
         # Final Write to CSV
         self.record.update_run_max_coverage(run_index)
