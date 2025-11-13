@@ -1,4 +1,72 @@
 {
+    "dpretet_axi-crossbar": {
+        "verif": [
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_crossbar_top.sv"
+        ],
+        "verif_context": [],
+        "design": [
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_crossbar_top.sv"
+        ],
+        "design_context": [
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_checker.sv",
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_mst_if.sv",
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_mst_switch.sv",
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_pipeline.sv",
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_round_robin.sv",
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_round_robin_core.sv",
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_scfifo.sv",
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_scfifo_ram.sv",
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_slv_if.sv",
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_slv_switch.sv",
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_switch_top.sv"
+        ],
+        "spec": [
+            "$(BASE_DIR)/dpretet_axi-crossbar/spec/spec.md"
+        ],
+        "makefile": [
+            "$(BASE_DIR)/dpretet_axi-crossbar/questa/Makefile"
+        ],
+        "tags": [
+            "hand-curated",
+            "MIT License"
+        ],
+        "github_link": "https://github.com/dpretet/axi-crossbar",
+        "license": "$(BASE_DIR)/dpretet_axi-crossbar/LICENSE"
+    },
+    "dpretet_axi-crossbar_lite": {
+        "verif": [
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_crossbar_lite_top.sv"
+        ],
+        "verif_context": [],
+        "design": [
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_crossbar_lite_top.sv"
+        ],
+        "design_context": [
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_checker.sv",
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_mst_if.sv",
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_mst_switch.sv",
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_pipeline.sv",
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_round_robin.sv",
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_round_robin_core.sv",
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_scfifo.sv",
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_scfifo_ram.sv",
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_slv_if.sv",
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_slv_switch.sv",
+            "$(BASE_DIR)/dpretet_axi-crossbar/rtl/axicb_switch_top.sv"
+        ],
+        "spec": [
+            "$(BASE_DIR)/dpretet_axi-crossbar/spec/spec.md"
+        ],
+        "makefile": [
+            "$(BASE_DIR)/dpretet_axi-crossbar/questa/Makefile"
+        ],
+        "tags": [
+            "hand-curated",
+            "MIT License"
+        ],
+        "github_link": "https://github.com/dpretet/axi-crossbar",
+        "license": "$(BASE_DIR)/dpretet_axi-crossbar/LICENSE"
+    },
     "activation": {
         "verif": [],
         "verif_context": [],
@@ -14,7 +82,9 @@
         ]
     },
     "cvdp_agentic_async_fifo_compute_ram_application": {
-        "design": ["$(BASE_DIR)/cvdp_agentic_async_fifo_compute_ram_application/rtl/async_fifo.sv"],
+        "design": [
+            "$(BASE_DIR)/cvdp_agentic_async_fifo_compute_ram_application/rtl/async_fifo.sv"
+        ],
         "design_context": [
             "$(BASE_DIR)/cvdp_agentic_async_fifo_compute_ram_application/rtl/fifo_memory.sv",
             "$(BASE_DIR)/cvdp_agentic_async_fifo_compute_ram_application/rtl/load_memory.sv",
@@ -26,13 +96,19 @@
     },
     "cvdp_agentic_lfsr": {
         "spec": "$(BASE_DIR)/cvdp_agentic_lfsr/docs/8Bit_lfsr_spec.md",
-        "design": ["$(BASE_DIR)/cvdp_agentic_lfsr/rtl/lfsr_8bit.sv"],
-	"design_context": [],
-        "verif": ["$(BASE_DIR)/cvdp_agentic_lfsr/verif/lfsr_8bit_tb.sv"]
+        "design": [
+            "$(BASE_DIR)/cvdp_agentic_lfsr/rtl/lfsr_8bit.sv"
+        ],
+        "design_context": [],
+        "verif": [
+            "$(BASE_DIR)/cvdp_agentic_lfsr/verif/lfsr_8bit_tb.sv"
+        ]
     },
     "cvdp_agentic_poly_interpolator": {
         "spec": "$(BASE_DIR)/cvdp_agentic_poly_interpolator/docs/poly_filter.md",
-        "design": ["$(BASE_DIR)/cvdp_agentic_poly_interpolator/rtl/poly_filter.sv"],
+        "design": [
+            "$(BASE_DIR)/cvdp_agentic_poly_interpolator/rtl/poly_filter.sv"
+        ],
         "design_context": [
             "$(BASE_DIR)/cvdp_agentic_poly_interpolator/rtl/adder_tree.sv",
             "$(BASE_DIR)/cvdp_agentic_poly_interpolator/rtl/coeff_ram.sv",
@@ -41,85 +117,115 @@
     },
     "cvdp_agentic_spi_complex_mult": {
         "spec": "$(BASE_DIR)/cvdp_agentic_spi_complex_mult/docs/specification.md",
-        "design": ["$(BASE_DIR)/cvdp_agentic_spi_complex_mult/rtl/spi_top.sv"],
+        "design": [
+            "$(BASE_DIR)/cvdp_agentic_spi_complex_mult/rtl/spi_top.sv"
+        ],
         "design_context": [
             "$(BASE_DIR)/cvdp_agentic_spi_complex_mult/rtl/spi_master.sv",
             "$(BASE_DIR)/cvdp_agentic_spi_complex_mult/rtl/spi_complex_mult.sv"
         ],
-        "verif": ["$(BASE_DIR)/cvdp_agentic_spi_complex_mult/verif/spi_complex_mult_tb.sv"]
+        "verif": [
+            "$(BASE_DIR)/cvdp_agentic_spi_complex_mult/verif/spi_complex_mult_tb.sv"
+        ]
     },
     "cvdp_agentic_ttc_lite": {
         "verif": "$(BASE_DIR)/cvdp_agentic_ttc_lite/verif/ttc_counter_lite_tb.sv",
-        "design": ["$(BASE_DIR)/cvdp_agentic_ttc_lite/rtl/ttc_counter_lite.sv"],
+        "design": [
+            "$(BASE_DIR)/cvdp_agentic_ttc_lite/rtl/ttc_counter_lite.sv"
+        ],
         "design_context": [],
         "spec": "$(BASE_DIR)/cvdp_agentic_ttc_lite/docs/specification.md"
     },
     "cvdp_agentic_sorter": {
         "verif": "$(BASE_DIR)/cvdp_agentic_sorter/verif/order_matching_engine_testbench.sv",
-        "design": ["$(BASE_DIR)/cvdp_agentic_sorter/rtl/sorting_engine.sv"],
+        "design": [
+            "$(BASE_DIR)/cvdp_agentic_sorter/rtl/sorting_engine.sv"
+        ],
         "design_context": [],
         "spec": "$(BASE_DIR)/cvdp_agentic_sorter/docs/specification.md"
     },
     "cvdp_agentic_rgb_color_space_conversion": {
-        "design": ["$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/rtl/rgb_color_space_hsv.sv"],
+        "design": [
+            "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/rtl/rgb_color_space_hsv.sv"
+        ],
         "design_context": [],
         "spec": "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/docs/specification.md"
     },
     "cvdp_agentic_multiplexer": {
         "verif": "$(BASE_DIR)/cvdp_agentic_multiplexer/verif/multiplexer_tb.sv",
-        "design": ["$(BASE_DIR)/cvdp_agentic_multiplexer/rtl/multiplexer.sv"],
+        "design": [
+            "$(BASE_DIR)/cvdp_agentic_multiplexer/rtl/multiplexer.sv"
+        ],
         "design_context": [],
         "spec": "$(BASE_DIR)/cvdp_agentic_multiplexer/docs/multiplexer_specification.md"
     },
     "cvdp_agentic_memory_scheduler": {
-        "design": ["$(BASE_DIR)/cvdp_agentic_memory_scheduler/rtl/memory_scheduler.sv"],
+        "design": [
+            "$(BASE_DIR)/cvdp_agentic_memory_scheduler/rtl/memory_scheduler.sv"
+        ],
         "design_context": [],
         "spec": "$(BASE_DIR)/cvdp_agentic_memory_scheduler/docs/specs.md"
     },
     "cvdp_agentic_fixed_arbiter": {
         "verif": "$(BASE_DIR)/cvdp_agentic_fixed_arbiter/verif/fixed_priority_arbiter_tb.sv",
-        "design": ["$(BASE_DIR)/cvdp_agentic_fixed_arbiter/rtl/fixed_priority_arbiter.sv"],
+        "design": [
+            "$(BASE_DIR)/cvdp_agentic_fixed_arbiter/rtl/fixed_priority_arbiter.sv"
+        ],
         "design_context": [],
         "spec": "$(BASE_DIR)/cvdp_agentic_fixed_arbiter/docs/specification.md"
     },
     "cvdp_agentic_dual_port_memory": {
         "verif": "$(BASE_DIR)/cvdp_agentic_dual_port_memory/verif/tb.sv",
-        "design": ["$(BASE_DIR)/cvdp_agentic_dual_port_memory/rtl/dual_port_memory.sv"],
+        "design": [
+            "$(BASE_DIR)/cvdp_agentic_dual_port_memory/rtl/dual_port_memory.sv"
+        ],
         "design_context": [],
         "spec": "$(BASE_DIR)/cvdp_agentic_dual_port_memory/docs/specification.md"
     },
     "cvdp_agentic_door_lock": {
-        "design": ["$(BASE_DIR)/cvdp_agentic_door_lock/rtl/door_lock.sv"],
+        "design": [
+            "$(BASE_DIR)/cvdp_agentic_door_lock/rtl/door_lock.sv"
+        ],
         "design_context": [],
         "spec": "$(BASE_DIR)/cvdp_agentic_door_lock/docs/specification.md"
     },
     "cvdp_agentic_cont_adder": {
         "verif": "$(BASE_DIR)/cvdp_agentic_cont_adder/verif/continuous_adder_tb.sv",
-        "design": ["$(BASE_DIR)/cvdp_agentic_cont_adder/rtl/continuous_adder.sv"],
+        "design": [
+            "$(BASE_DIR)/cvdp_agentic_cont_adder/rtl/continuous_adder.sv"
+        ],
         "design_context": [],
         "spec": "$(BASE_DIR)/cvdp_agentic_cont_adder/docs/continuous_adder_specification.md"
     },
     "cvdp_cic_decimator": {
-        "design": ["$(BASE_DIR)/cvdp_cic_decimator/rtl/cic_decimator.sv"],
+        "design": [
+            "$(BASE_DIR)/cvdp_cic_decimator/rtl/cic_decimator.sv"
+        ],
         "design_context": [],
         "spec": "$(BASE_DIR)/cvdp_cic_decimator/docs/specs.md"
     },
     "cvdp_agentic_caesar_cipher": {
         "verif": "$(BASE_DIR)/cvdp_agentic_caesar_cipher/verif/caesar_cipher_tb.sv",
-        "design": ["$(BASE_DIR)/cvdp_agentic_caesar_cipher/rtl/caesar_cipher.sv"],
+        "design": [
+            "$(BASE_DIR)/cvdp_agentic_caesar_cipher/rtl/caesar_cipher.sv"
+        ],
         "design_context": [],
         "spec": "$(BASE_DIR)/cvdp_agentic_caesar_cipher/docs/specification.md"
     },
     "cvdp_agentic_byte_enable_ram": {
-        "design": ["$(BASE_DIR)/cvdp_agentic_byte_enable_ram/rtl/custom_byte_enable_ram.sv"],
+        "design": [
+            "$(BASE_DIR)/cvdp_agentic_byte_enable_ram/rtl/custom_byte_enable_ram.sv"
+        ],
         "design_context": [],
         "spec": "$(BASE_DIR)/cvdp_agentic_byte_enable_ram/docs/specs.md"
     },
     "cvdp_agentic_alu": {
-	    "verif": "$(BASE_DIR)/cvdp_agentic_alu/verif/alu_core_tb.sv",
-	    "design": ["$(BASE_DIR)/cvdp_agentic_alu/rtl/alu_core.sv"],
-	    "design_context": [],
-	    "spec": "$(BASE_DIR)/cvdp_agentic_alu/docs/alu_core_specification.md"
+        "verif": "$(BASE_DIR)/cvdp_agentic_alu/verif/alu_core_tb.sv",
+        "design": [
+            "$(BASE_DIR)/cvdp_agentic_alu/rtl/alu_core.sv"
+        ],
+        "design_context": [],
+        "spec": "$(BASE_DIR)/cvdp_agentic_alu/docs/alu_core_specification.md"
     },
     "float_adder": {
         "verif": [],
@@ -195,7 +301,7 @@
             "$(BASE_DIR)/simple_mat_mul/questa/Makefile"
         ]
     },
-    "lab4-fitbit_tracker":{
+    "lab4-fitbit_tracker": {
         "verif": [],
         "verif_context": [],
         "design": [],
@@ -476,15 +582,16 @@
         "verif": [
             "$(BASE_DIR)/trng_csprng/verif/tb_csprng.v"
         ],
-        "verif_context": [
+        "design_context": [
             "$(BASE_DIR)/trng_csprng/design_context/chacha_core.v",
             "$(BASE_DIR)/trng_csprng/design_context/chacha_qr.v",
+            "$(BASE_DIR)/trng_csprng/design_context/chacha.v",
             "$(BASE_DIR)/trng_csprng/design_context/trng_csprng_fifo.v"
         ],
         "design": [
             "$(BASE_DIR)/trng_csprng/design/trng_csprng.v"
         ],
-        "design_context": [],
+        "verif_context": [],
         "spec": [
             "$(BASE_DIR)/trng_csprng/spec/spec.md"
         ],
@@ -1752,6 +1859,7 @@
         "verif_context": [
             "$(BASE_DIR)/SD-card-controller_top/design_context/wb_master_behavioral.v",
             "$(BASE_DIR)/SD-card-controller_top/design_context/wb_master32.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/wb_model_defines.h",
             "$(BASE_DIR)/SD-card-controller_top/design_context/wb_slave_behavioral.v",
             "$(BASE_DIR)/SD-card-controller_top/design_context/sdModel.v",
             "$(BASE_DIR)/SD-card-controller_top/design_context/sd_crc_16.v",
@@ -1762,23 +1870,24 @@
             "$(BASE_DIR)/SD-card-controller_top/design/sdc_controller.v"
         ],
         "design_context": [
-            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_data_serial_host.v",
-            "$(BASE_DIR)/SD-card-controller_top/design_context/generic_dpram.v",
-            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_controller_wb.v",
-            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_cmd_serial_host.v",
-            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_data_xfer_trig.v",
-            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_crc_16.v",
-            "$(BASE_DIR)/SD-card-controller_top/design_context/monostable_domain_cross.v",
-            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_wb_sel_ctrl.v",
-            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_clock_divider.v",
             "$(BASE_DIR)/SD-card-controller_top/design_context/bistable_domain_cross.v",
-            "$(BASE_DIR)/SD-card-controller_top/design_context/edge_detect.v",
-            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_fifo_filler.v",
-            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_data_master.v",
-            "$(BASE_DIR)/SD-card-controller_top/design_context/generic_fifo_dc_gray.v",
             "$(BASE_DIR)/SD-card-controller_top/design_context/byte_en_reg.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/edge_detect.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/generic_dpram.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/generic_fifo_dc_gray.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/monostable_domain_cross.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_clock_divider.v",
             "$(BASE_DIR)/SD-card-controller_top/design_context/sd_cmd_master.v",
-            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_crc_7.v"
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_cmd_serial_host.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_controller_wb.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_crc_16.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_crc_7.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_data_master.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_data_serial_host.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_data_xfer_trig.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_defines.h",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_fifo_filler.v",
+            "$(BASE_DIR)/SD-card-controller_top/design_context/sd_wb_sel_ctrl.v"
         ],
         "spec": [
             "$(BASE_DIR)/SD-card-controller_top/spec/spec.txt"
@@ -1814,31 +1923,33 @@
         "github_link": "https://github.com/Archfx/TrafficLightController",
         "license": ""
     },
-    "trng2": {
+    "trng_mixer": {
         "verif": [
-            "$(BASE_DIR)/trng2/verif/tb_mixer.v"
+            "$(BASE_DIR)/trng_mixer/verif/tb_mixer.v"
         ],
         "verif_context": [],
         "design": [
-            "$(BASE_DIR)/trng2/design/trng_mixer.v"
+            "$(BASE_DIR)/trng_mixer/design/trng_mixer.v"
         ],
         "design_context": [
-            "$(BASE_DIR)/trng2/design_context/sha512_h_constants.v",
-            "$(BASE_DIR)/trng2/design_context/sha512_core.v",
-            "$(BASE_DIR)/trng2/design_context/sha512_k_constants.v",
-            "$(BASE_DIR)/trng2/design_context/sha512_w_mem.v"
+            "$(BASE_DIR)/trng_mixer/design_context/sha512.v",
+            "$(BASE_DIR)/trng_mixer/design_context/sha512_core.v",
+            "$(BASE_DIR)/trng_mixer/design_context/sha512_h_constants.v",
+            "$(BASE_DIR)/trng_mixer/design_context/sha512_k_constants.v",
+            "$(BASE_DIR)/trng_mixer/design_context/sha512_w_mem.v"
         ],
         "spec": [
-            "$(BASE_DIR)/trng2/spec/spec.md"
+            "$(BASE_DIR)/trng_mixer/spec/spec.md"
         ],
         "makefile": [
-            "$(BASE_DIR)/trng2/questa/Makefile"
+            "$(BASE_DIR)/trng_mixer/questa/Makefile"
         ],
         "tags": [
-            "hand-curated"
+            "hand-curated",
+            "3-Clause BSD License"
         ],
         "github_link": "https://github.com/secworks/trng",
-        "license": ""
+        "license": "$(BASE_DIR)/trng_mixer/LICENSE"
     },
     "SD-card-controller_cmd_master": {
         "verif": [
@@ -1934,5 +2045,141 @@
         ],
         "github_link": "https://github.com/yuxuanZh/SystemVerilog",
         "license": ""
+    },
+    "nontrivial_mips": {
+        "verif": [
+            "$(BASE_DIR)/nontrivial_mips/verif/nontrivial_mips_tb.sv"
+        ],
+        "verif_context": [],
+        "design": [
+            "$(BASE_DIR)/nontrivial_mips/design/mycpu_top.v"
+        ],
+        "design_context": [
+            "$(BASE_DIR)/nontrivial_mips/design/nontrivial_mips_impl.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/cpu_defs.svh",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/cpu_core.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/ctrl.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/except.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/fetch/instr_fetch.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/fetch/pc_generator.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/fetch/branch_predictor.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/fetch/btb.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/fetch/bht.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/fetch/ras.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/fetch/multi_queue.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/decode/decode_and_issue.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/decode/decoder.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/decode/decode_branch.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/decode/instr_issue.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/decode/register_forward.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/decode/fpu_register_forward.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/exec/instr_exec.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/exec/branch_resolver.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/exec/multi_cycle_exec.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/exec/delayed_exec.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/exec/fpu_exec.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/exec/float2int.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/exec/count_bit.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/exec/div_uu.v",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/exec/resolve_delayslot.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/exec/hilo_forward.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/exec/cp0_forward.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/exec/delayed_register_forward.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/mem/instr_mem.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/mem/dbus_mux.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/cp0/cp0.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/cp0/cp0_write_mask.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/mmu/mmu.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/mmu/tlb.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/mmu/tlb_lookup.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/regs/regfile.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/regs/hilo.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cpu/regs/ll_bit.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cache/icache.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cache/dcache.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cache/dcache_pass.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cache/dcache_fifo.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cache/cache_controller.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/cache/plru.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/utils/dual_port_ram.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/utils/single_port_ram.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/utils/fifo_v3.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/utils/lfsr.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/utils/reset_synchronizer.v",
+            "$(BASE_DIR)/nontrivial_mips/design/utils/iobuf_helper.svh",
+            "$(BASE_DIR)/nontrivial_mips/design/common_defs.svh",
+            "$(BASE_DIR)/nontrivial_mips/design/compile_options.svh",
+            "$(BASE_DIR)/nontrivial_mips/design/nontrivial_mips.v",
+            "$(BASE_DIR)/nontrivial_mips/design/soc_top.sv",
+            "$(BASE_DIR)/nontrivial_mips/design/asic/asic.sv"
+        ],
+        "spec": [
+            "$(BASE_DIR)/nontrivial_mips/spec/spec.md"
+        ],
+        "makefile": [
+            "$(BASE_DIR)/nontrivial_mips/questa/Makefile"
+        ],
+        "tags": [
+            "hand-curated",
+            "MIT License"
+        ],
+        "github_link": "https://github.com/trivialmips/nontrivial-mips",
+        "license": "$(BASE_DIR)/nontrivial_mips/LICENSE"
+    },
+    "async_fifo": {
+        "verif": [
+            "$(BASE_DIR)/async_fifo/verif/async_fifo_unit_test.sv"
+        ],
+        "verif_context": [
+            "$(BASE_DIR)/async_fifo/verif/svut_h.sv"
+        ],
+        "design": [
+            "$(BASE_DIR)/async_fifo/design/async_fifo.v"
+        ],
+        "design_context": [
+            "$(BASE_DIR)/async_fifo/design/fifomem.v",
+            "$(BASE_DIR)/async_fifo/design/sync_r2w.v",
+            "$(BASE_DIR)/async_fifo/design/sync_w2r.v",
+            "$(BASE_DIR)/async_fifo/design/rptr_empty.v",
+            "$(BASE_DIR)/async_fifo/design/wptr_full.v"
+        ],
+        "spec": [
+            "$(BASE_DIR)/async_fifo/spec/README.md"
+        ],
+        "makefile": [
+            "$(BASE_DIR)/async_fifo/questa/Makefile"
+        ],
+        "tags": [
+            "hand-curated",
+            "MIT License"
+        ],
+        "github_link": "https://github.com/dpretet/async_fifo",
+        "license": "$(BASE_DIR)/async_fifo/LICENSE"
+    },
+    "sdram_controller": {
+        "verif": [
+            "$(BASE_DIR)/sdram_controller/verif/sdram_controller_tb.v"
+        ],
+        "verif_context": [
+            "$(BASE_DIR)/sdram_controller/verif/vlog_tb_utils.v"
+        ],
+        "design": [
+            "$(BASE_DIR)/sdram_controller/design/sdram_controller.v"
+        ],
+        "design_context": [
+            "$(BASE_DIR)/sdram_controller/design/fifo.v",
+            "$(BASE_DIR)/sdram_controller/design/double_click.v",
+            "$(BASE_DIR)/sdram_controller/design/dnano_interface.v"
+        ],
+        "spec": [
+            "$(BASE_DIR)/sdram_controller/spec/readme.md"
+        ],
+        "makefile": [
+            "$(BASE_DIR)/sdram_controller/questa/Makefile"
+        ],
+        "tags": [
+            "hand-curated"
+        ],
+        "github_link": "https://github.com/stffrdhrn/sdram-controller"
     }
 }

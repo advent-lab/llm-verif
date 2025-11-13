@@ -373,7 +373,7 @@ class QuestaSim(Simulator):
     
 
     def vlog_builder(self, tb_path: str, data_point: dict) -> str:
-        return f"vlog -sv +cover=s {tb_path} {' '.join(data_point['design'])} {' '.join(data_point['design_context'])}"
+        return f"vlog -sv +cover=s {' '.join(data_point['design_context'])} {' '.join(data_point['design'])} {tb_path}"
 
     def get_coverage_file_extension(self) -> str:
         """Get the file extension for QuestaSim coverage database files."""

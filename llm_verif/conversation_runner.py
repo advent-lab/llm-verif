@@ -189,7 +189,11 @@ class ConversationRunner:
         top_p = 0.7
         cov = CoverageResponse(True, 0, "")
 
-        self.conversation = ConversationManager(self.tokenizer, prompt_templates.system_prompt(self.environment.design_specification, self.environment.module_header))
+        self.conversation = ConversationManager(
+            self.tokenizer,
+            prompt_templates.system_prompt(self.environment.design_specification, self.environment.module_header),
+            max_input_tokens=self.args.max_context_tokens
+        )
 
         logging.info(f"Length of conversation: {self.conversation.length()}")
         logging.info(f"Stack pointer: {self.conversation.stack_pointer}")

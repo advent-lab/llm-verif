@@ -51,6 +51,7 @@ def main():
     parser.add_argument("--sim_runs", type=int, help="Number of times constrained random testbench should be simulated.")
     parser.add_argument("--zero_shot", action='store_true', default=None, help="Enable zero-shot prompting.")
     parser.add_argument("--crt", action='store_true', default=None, help="Enable constrained random testing.")
+    parser.add_argument("--max_context_tokens", type=int, help="Maximum number of tokens for context window (default: 32000).")
 
     args = parser.parse_args()
 
@@ -175,6 +176,8 @@ def main():
     args.api_key = resolve_config("api_key", default=None, cast=str)
     if args.api_key:
         logger.info("Using API key from command line/environment")
+    args.max_context_tokens = resolve_config("max_context_tokens", default=32000, cast=int)
+    logger.info(f"Maximum context tokens: {args.max_context_tokens}")
 
     os.environ['OPENAI_API_KEY'] = args.api_key
     os.environ['API_KEY'] = args.api_key
