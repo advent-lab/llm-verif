@@ -25,7 +25,7 @@ module order_matching_engine_testbench;
   //-------------------------------------------------------------------------
   // Instantiate the DUT
   //-------------------------------------------------------------------------
-  order_matching_engine #(.PRICE_WIDTH(PRICE_WIDTH))
+  sorting_engine #(.PRICE_WIDTH(PRICE_WIDTH))
     dut (
       .clk(clk),
       .rst(rst),

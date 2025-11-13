@@ -1,6 +1,7 @@
 QUESTA_ROOT ?= /mnt/vault0/tools/Intel/intelFPGA_pro/23.4/questa_fe/bin
 DATASET_ROOT ?= /mnt/vault0/ehilaneh/llm_verif_dataset/data_points/
-BASE_DIR ?= $(DATASET_ROOT)SD-card-controller_wb
+BASE_DIR ?= $(shell cd .. && pwd)
+COVERAGE ?= bcs
 
 all: worklib compile sim 
 
@@ -10,11 +11,11 @@ worklib:
 
 compile:
 	echo "compiling design files and test bench files"
-	$(QUESTA_ROOT)/vlog -cover bcs $(BASE_DIR)/verif/sd_controller_wb_tb.sv $(BASE_DIR)/design/sd_controller_wb.v $(BASE_DIR)/design_context/byte_en_reg.v   
+	$(QUESTA_ROOT)/vlog -sv -cover $(COVERAGE) $(BASE_DIR)/verif/sd_controller_wb_tb.sv $(BASE_DIR)/design/sd_controller_wb.v $(BASE_DIR)/design_context/byte_en_reg.v   
 
 compile_design:
 	echo "compiling design files"
-	$(QUESTA_ROOT)/vlog -cover bcs $(BASE_DIR)/design/sd_controller_wb.v $(BASE_DIR)/design_context/byte_en_reg.v   
+	$(QUESTA_ROOT)/vlog -sv -cover $(COVERAGE) $(BASE_DIR)/design/sd_controller_wb.v $(BASE_DIR)/design_context/byte_en_reg.v   
 
 sim: 
 	echo "simulating test bench and generating .ucdb coverate report"

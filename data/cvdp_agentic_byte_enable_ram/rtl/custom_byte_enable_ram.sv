@@ -30,12 +30,6 @@ module custom_byte_enable_ram
   logic                  en_b_reg;
   logic [XLEN/8-1:0]     be_b_reg;
   logic [XLEN-1:0]       data_in_b_reg;
-  
-  initial begin
-    for (int i = 0; i < LINES; i++) begin
-      ram[i] <= '0;
-    end
-  end
 
   always_ff @(posedge clk) begin
     addr_a_reg    <= addr_a;
