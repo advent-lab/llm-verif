@@ -1,5 +1,6 @@
 QUESTA_ROOT ?= /mnt/vault0/tools/Intel/intelFPGA_pro/23.4/questa_fe/bin
-BASE_DIR ?= /mnt/vault0/asbabbit/ml_for_hdl/llm_verif_dataset/data_points
+BASE_DIR ?= $(shell cd ../.. && pwd)
+COVERAGE ?= bcs
 PROJECT_DIR ?= $(BASE_DIR)/oh
 PROJECT_FILES ?=  $(PROJECT_DIR)/edma/dv/dut_edma.v $(PROJECT_DIR)/edma/hdl/edma.v $(PROJECT_DIR)/edma/hdl/edma_dp.v $(PROJECT_DIR)/edma/hdl/edma_regmap.vh $(PROJECT_DIR)/edma/hdl/packet2emesh.v $(PROJECT_DIR)/edma/hdl/edma_regs.v $(PROJECT_DIR)/edma/hdl/oh_mux3.v $(PROJECT_DIR)/edma/hdl/emesh2packet.v $(PROJECT_DIR)/edma/hdl/edma_ctrl.v
 
@@ -11,7 +12,7 @@ worklib:
 
 compile:
 	echo "compiling design files"
-	$(QUESTA_ROOT)/vlog -cover bcs $(PROJECT_FILES)
+	$(QUESTA_ROOT)/vlog -sv -cover $(COVERAGE) $(PROJECT_FILES)
 
 sim: 
 	echo "simulating test bench and generating .ucdb coverage report"

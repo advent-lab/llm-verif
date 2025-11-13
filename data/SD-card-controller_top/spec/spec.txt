@@ -1,6 +1,1187 @@
- sd_wb_sel_ctrl.v                                             
+# SD-card-controller-spec
 
- Description                                                  
- Module resposible for controlling wb_sel signal of the       
- master wishbone if. Handles unaligned access to wishbone     
- bus.  emory    
+*Converted from PDF: SD-card-controller-spec.pdf*
+
+---
+
+
+## Page 1
+
+SD Card Controller IP
+
+Specification
+
+Marek Czerski
+
+Saturday 25th June, 2022
+
+1
+
+---
+
+
+## Page 2
+
+List of Figures
+
+1 SoC with SD Card IP core . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+
+2 Wishbone SD Card Controller IP Core interface. . . . . . . . . . . . . . . . . . . . 8
+
+3 Interrupt generation scheme . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+
+2
+
+---
+
+
+## Page 3
+
+List of Tables
+
+1 Signals description . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+
+2 List of registers . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+
+3 Argument register . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+
+4 Command register . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12
+
+5 Response register 0-3 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12
+
+6 Data xfer timeout register . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12
+
+7 Control register . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+
+8 Command xfer timeout register . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+
+9 Clock divider register. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+
+10 Software reset register . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+
+11 Software reset register . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+
+12 Capabilities information register . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+
+13 Command events status register. . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+
+14 Command transaction events enable register . . . . . . . . . . . . . . . . . . . . . . 14
+
+15 Data transaction events status register . . . . . . . . . . . . . . . . . . . . . . . . . 15
+
+16 Data transaction events enable register . . . . . . . . . . . . . . . . . . . . . . . . . 15
+
+17 Block size register . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+
+18 Block count register . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+
+19 DMA destination / source register . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+
+3
+
+---
+
+
+## Page 4
+
+1 Introduction
+
+This document describes the multimedia card (MMC) / secure digital (SD) card controller ip core
+
+- Wishbone SD Card Controller IP Core.
+
+1.1 Purpose of the IP core
+
+The Wishbone SD Card Controller IP Core is MMC/SD communication controller designed to be
+
+used in System-on-Chip (img. 1). IP core provides simple interface for any MCU with Wishbone
+
+bus. The communication between the MMC/SD card controller and MMC/SD card is performed
+
+according to the MMC/SD protocol.
+
+Figure 1: SoC with SD Card IP core
+
+1.2 Features
+
+The MMC/SD card controller provides following features:
+
+(cid:136) 1- or 4-bit MMC/SD mode (does not support SPI mode),
+
+(cid:136) 32-bit Wishbone interface,
+
+(cid:136) DMA engine for data transfers,
+
+(cid:136) Interrupt generation on completion of data and command transactions,
+
+(cid:136) Configurable data transfer block size,
+
+(cid:136) Support for any command code (including multiple data block transfer),
+
+(cid:136) Support for R1, R1b, R2(136-bit), R3, R6 and R7 responses.
+
+4
+
+**Figures on this page:**
+
+- *Figure 1: SoC with SD Card IP core 1.2 Features*
+
+
+---
+
+
+## Page 5
+
+2 Usage
+
+This chapter describes usage of the IP core.
+
+2.1 Directory structure
+
+Wishbone SD Card Controller IP Core comes with following directory structure:
+
+.
+
+bench
+
+verilog
+
+doc
+
+references
+
+src
+
+rtl
+
+verilog
+
+sim
+
+rtl sim
+
+bin
+
+log
+
+modelsim
+
+sw
+
+example
+
+syn
+
+quartus
+
+bin
+
+run
+
+src
+
+bench/verilog - verilog testbench sources,
+
+doc - documentation files,
+
+doc/src - documentation LATEXsources,
+
+rtl/verilog - ip core verilog sources,
+
+sim/rtl sim/bin - binaries required for simulation,
+
+sim/rtl sim/log - log files created during simulation,
+
+sim/rtl sim/modelsim - modelsim simulation specific files and makefile,
+
+sw/example - bare metal example application for or1k,
+
+syn/quartus/bin - synthesis makefile and scripts for quartus example project,
+
+syn/quartus/run - synthesis execution directory,
+
+syn/quartus/src - example project sources.
+
+2.2 Simulation
+
+To start simulation just enter to sim/rtl_sim/modelsim directory and type make:
+
+#> cd sim/rtl_sim/run
+
+#> make
+
+5
+
+---
+
+
+## Page 6
+
+Every testbench is written in SystemVerilog (mostly due to use of assert keyword). Every
+
+testbench is self checking. Test error are represented by assert failures. Every testbench starts by
+
+displaying:
+
+# testbench_name start ...
+
+and ends by displaying:
+
+# testbench_name finish ...
+
+Ifnoassertsaredisplayedbetweentheselines,thetestpasses. Belowisanexampleofpassingtest:
+
+...
+
+some compilation output
+
+...
+
+# sd_cmd_master_tb start ...
+
+# sd_cmd_master_tb finish ...
+
+# ** Note: $finish : ../../../bench/verilog/sd_cmd_master_tb.sv(385)
+
+# Time: 3620 ps Iteration: 0 Instance: /sd_cmd_master_tb
+
+Below is an example of failing test:
+
+...
+
+some compilation output
+
+...
+
+# sd_cmd_master_tb start ...
+
+# ** Error: Assertion error.
+
+# Time: 3280 ps Scope: sd_cmd_master_tb File: ../../../bench/verilog/
+
+sd_cmd_master_tb.sv Line: 376
+
+# sd_cmd_master_tb finish ...
+
+# ** Note: $finish : ../../../bench/verilog/sd_cmd_master_tb.sv(385)
+
+# Time: 3620 ps Iteration: 0 Instance: /sd_cmd_master_tb
+
+2.2.1 Simulation makefile targets
+
+The default simulation target is to run all testbenches from bench/verilog directory that ends
+
+with _.sv. Other simulation targets are:
+
+clean - remove all simulation output files,
+
+print testbenches - lists all available testbenches,
+
+modelsim - compiles all sources and launches modelsim (see 2.2.2),
+
+* tb - compiles and executes given testbench. All items listed by the print_testbenches target
+
+can be executed this way,
+
+* tb gui - same as *_tb target, only instead of executing simulation in command-line, launches
+
+modelsim.
+
+2.2.2 Simulation makefile environment variables
+
+Simulation makefile uses couple of environment variables to setup simulation:
+
+6
+
+---
+
+
+## Page 7
+
+MODELSIM DIR - modelsim installation directory (\$(MODELSIM_DIR)/bin/vsim should be a valid
+
+path),
+
+VCD - when set to 1 - all waveforms are dumped to sim/rtl_sim/out/*.vcd files; when set to 0 -
+
+no waveforms are dumped (0 is default),
+
+V -whensetto1-enablesverboseoutput;whensetto0-normalsimulationoutput(0isdefault).
+
+2.3 Synthesis
+
+Forthe purposeof synthesis verification thereis an exampleFPGA project made forAltera Quar-
+
+tus. To start synthesis just enter to syn/quartus/run directory and type make:
+
+#> cd syn/quartus/run
+
+#> make
+
+Exampleprojectconsistofallverilogsourcesfromrtl/verilogdirectoryandsyn/quartus/src/
+
+sdc_controller_top.v source file. The purpose of the additional verilog file is to instantiate the
+
+Wishbone SD Card Controller IP Core and register all inputs/outputs to/from the core. This
+
+makes timing verification more accurate.
+
+2.3.1 Synthesis makefile targets
+
+The default synthesis target is to synthesize the project and create .sof file in syn/quartus/run
+
+directory. Other synthesis targets are:
+
+clean - remove all synthesis output files,
+
+print config - prints projects configuration of FPGA device,
+
+project - creates quartus project files (.qpf and .qsf),
+
+quartus - creates quartus project files and launches quartus IDE.
+
+2.3.2 Synthesis makefile environment variables
+
+Synthesis makefile uses couple of environment variables to setup synthesis:
+
+QUARTUS DIR - quartus installation directory (\$(QUARTUS_DIR)/bin/quartus should be a valid
+
+path),
+
+FPGA FAMILY - name of the FPGA device family,
+
+FPGA PART - name of the FPGA device,
+
+V -whensetto1-enablesverboseoutput;whensetto0-normalsimulationoutput(0isdefault).
+
+7
+
+---
+
+
+## Page 8
+
+3 HDL interface
+
+IP core has very simple interface:
+
+Figure 2: Wishbone SD Card Controller IP Core interface
+
+Wishbone slave interface provides access from CPU to all IP core registers (see 4.1). It must
+
+be connected to CPU data master. Wishbone master interface provides access for DMA engine
+
+to RAM (see 3.2). It must be connected to RAM memory slave. Interrupts signals provides
+
+mechanism to notify the CPU about finished transactions (data and command transfers). They
+
+are not necessary for proper operation (if You don’t want to use interrupts). MMC/SD card
+
+interfaceprovidescommunicationwithexternalMMC/SDcards. Itmustbeconnectedtoexternal
+
+pins of the FPGA which are connected to MMC/SD card connector. Because those external pins
+
+are bidirectional, IP core provides inputs, outputs and output enables for these signals. Table 1
+
+presents all IP core signals with descriptions.
+
+3.1 Clock consideration
+
+IP core needs two clock sources. First one is for Wishbone bus operation (wb clk i). There are
+
+no constraints for this clock. Second one is for MMC/SD interface operation (sd clk i pad).
+
+sd clk i pad is used to drive sd clk o pad output, which is the external MMC/SD card clock
+
+source, through internal clock divider. This clock divider is able to divide sd clk i pad clock by
+
+2, 4, 6, 8, ... etc. (2*n where n = [1..256]). sd clk o pad clock frequency depends on MMC/SD
+
+specification. To fully utilize the transmission bandwidth sd clk o pad should be able to perform
+
+at 25MHz frequency which imposes constraint of minimum 50MHz on sd clk i pad clock. Clock
+
+inputs wb clk i and sd clk i pad can be sourced by the same signal.
+
+3.2 DMA engine
+
+DMA engine is used to lower the CPU usage during data transactions1. DMA starts its operation
+
+immediately after successful end of any read or write command transactions2 3. During write
+
+transactions, data is fetched from RAM automatically, starting from known address. This address
+
+has to be configured by the CPU before sending any write command. Similarly, during read
+
+1DatatransactionreferstoanytrafficonthedatalinesofMMC/SDcardinterface.
+
+2Commandtransactionreferstoanytrafficonthecommandline.
+
+3Readorwritecommandrefertocommandwithdatapayloadsuchasblockread(CMD17)orblockwrite(CMD24).
+
+8
+
+**Figures on this page:**
+
+- *Figure 2: Wishbone SD Card Controller IP Core interface*
+
+
+---
+
+
+## Page 9
+
+Table 1: Signals description
+
+name direction width description
+
+Wishbone common signals
+
+wb clk i input 1 clock for both master and slave wishbone transactions
+
+wb rst i input 1 reset for whole IP core
+
+Wishbone slave signals
+
+wb dat i input 32 data input
+
+wb dat o output 32 data output
+
+wb adr i input 32 address
+
+wb sel i input 4 byte select
+
+wb we i input 1 write enable
+
+wb cyc i input 1 cycle flag
+
+wb stb i input 1 strobe
+
+wb ack o output 1 acknowledge flag
+
+Wishbone master signals
+
+m wb dat o output 32 data output
+
+m wb dat i input 32 data input
+
+m wb adr o output 32 address
+
+m wb sel o output 4 byte select
+
+m wb we o output 1 write enable
+
+m wb cyc o output 1 cycle flag
+
+m wb stb o output 1 strobe
+
+m wb ack i input 1 acknowledge flag
+
+m wb cti o output 3 cycle type identifier (always 000)
+
+m wb bte o output 2 burst type (always 00)
+
+MMC/SD signals
+
+sd cmd dat i input 1 command line input
+
+sd cmd out o output 1 command line output
+
+sd cmd oe o output 1 command line output enable
+
+sd dat dat i input 4 data line inputs
+
+sd dat out o output 4 data line outputs
+
+sd dat oe o output 1 data line outputs enable
+
+sd clk o pad output 1 clock for external MMC/SD card
+
+sd clk i pad input 1 clock for MMC/SD interface
+
+Interrupts
+
+int cmd output 1 command transaction finished interrupt
+
+int data output 1 data transaction finished interrupt
+
+9
+
+
+| name | direction | width | description |
+|---|---|---|---|
+
+
+| input | 1 |
+|---|---|
+| input | 1 |
+
+
+| input | 32 |
+|---|---|
+| output | 32 |
+| input | 32 |
+| input | 4 |
+| input | 1 |
+| input | 1 |
+| input | 1 |
+| output | 1 |
+
+
+| output | 32 |
+|---|---|
+| input | 32 |
+| output | 32 |
+| output | 4 |
+| output | 1 |
+| output | 1 |
+| output | 1 |
+| input | 1 |
+| output | 3 |
+| output | 2 |
+
+
+| input | 1 |
+|---|---|
+| output | 1 |
+| output | 1 |
+| input | 4 |
+| output | 4 |
+| output | 1 |
+| output | 1 |
+| input | 1 |
+
+
+| output | 1 |
+|---|---|
+| output | 1 |
+
+
+
+---
+
+
+## Page 10
+
+transactions, data is written to RAM automatically, starting from known address. This address
+
+alsohastobeconfiguredbytheCPUbeforesendinganyreadcommand. Becausedatatransmission
+
+is half-duplex, read and write addresses are placed in the same configuration register. Function of
+
+this register depends on the command to be sent.
+
+3.3 Interrupt generation
+
+Interruptsareusefulwhenpollingtechniqueisnotanoption. Therearetwointerruptsources. One
+
+to notify the end of the command transaction (int cmd signal) and one to notify the end of the
+
+data transaction (int data signal). Both interrupts has active high logic. All events that trigger
+
+eachinterruptscanbemasked(see4.1)andtherefore,donotparticipateininterruptgeneration(see
+
+3).
+
+Figure 3: Interrupt generation scheme
+
+3.3.1 Command transaction events
+
+Commandtransactionendinterruptisdrivenbythecommandtransactionevents. Theeventsare:
+
+completion - transaction completed successfully,
+
+error - transaction completed with error (one or more of the following events occurred),
+
+timeout - timeout error (the card did not respond in a timely fashion),
+
+wrong crc - crc check error (crc calculated from received response data did not match to the crc
+
+field of the response),
+
+wrong index - index check error (response consists of wrong index field value).
+
+3.3.2 Data transaction events
+
+Data transaction end interrupt is driven by the data transaction events. The events are:
+
+completion - transaction completed successfully,
+
+wrong crc -crccheckerror(incaseofwritetransaction,crcreceivedinresponsetowritetransac-
+
+tion was different than one calculated by the core; in case of read transaction, crc calculated
+
+from received data did not match to the crc field of received data),
+
+fifo error - internal fifo error (in case of write transaction, tx fifo became empty before all data
+
+was send; in case of read transaction, rx fifo became full; both cases are caused by to slow
+
+wishbone bus or wishbone bus been busy for to long)).
+
+10
+
+**Figures on this page:**
+
+- *Figure 3: Interrupt generation scheme 3.3.1 Command transaction events*
+
+
+---
+
+
+## Page 11
+
+4 Software interface
+
+Access to IP core registers is provided through Wishbone slave interface.
+
+4.1 IP Core registers
+
+Table 2: List of registers
+
+name address access description
+
+argument 0x00 RW command argument
+
+command 0x04 RW command transaction configuration
+
+response0 0x08 R bits 31-0 of the response
+
+response1 0x0C R bits 63-32 of the response
+
+response2 0x10 R bits 95-64 of the response
+
+response3 0x14 R bits 119-96 of the response
+
+data timeout 0x18 RW data xfer timeout configuration
+
+control 0x1C RW IP core control settings
+
+cmd timeout 0x20 RW command xfer timeout configuration
+
+clock divider 0x24 RW MMC/SD interface clock divider
+
+reset 0x28 RW software reset
+
+voltage 0x2C R power control information
+
+capabilities 0x30 R capabilities information
+
+cmd event status 0x34 RW command transaction events status / clear
+
+cmd event enable 0x38 RW command transaction events enable
+
+data event status 0x3C RW data transaction events status / clear
+
+data event enable 0x38 RW data transaction events enable
+
+blkock size 0x44 RW read / write block transfer size
+
+blkock count 0x48 RW read / write block count
+
+dst src address 0x60 RW DMA destination / source address
+
+4.1.1 Argument register
+
+Write operation to this register triggers command transaction (command register has to be con-
+
+figured before writing to this register).
+
+Table 3: Argument register
+
+bit # reset value access description
+
+[31:0] 0x00000000 RW command argument value.
+
+4.1.2 Command register
+
+This register configures all aspects of command to be sent.
+
+11
+
+
+| name | address | access | description |
+|---|---|---|---|
+|  | 0x00 | RW |  |
+|  | 0x04 | RW |  |
+|  | 0x08 | R |  |
+|  | 0x0C | R |  |
+|  | 0x10 | R |  |
+|  | 0x14 | R |  |
+|  | 0x18 | RW |  |
+|  | 0x1C | RW |  |
+|  | 0x20 | RW |  |
+|  | 0x24 | RW |  |
+|  | 0x28 | RW |  |
+|  | 0x2C | R |  |
+|  | 0x30 | R |  |
+|  | 0x34 | RW |  |
+|  | 0x38 | RW |  |
+|  | 0x3C | RW |  |
+|  | 0x38 | RW |  |
+|  | 0x44 | RW |  |
+|  | 0x48 | RW |  |
+|  | 0x60 | RW |  |
+
+
+| bit # | reset value | access | description |
+|---|---|---|---|
+|  | 0x00000000 | RW |  |
+
+
+
+**Figures on this page:**
+
+- *figured before writing to this register).*
+
+
+---
+
+
+## Page 12
+
+Table 4: Command register
+
+bit # reset value access description
+
+[31:14] reserved
+
+[13:8] 0x00 RW command index
+
+[7] reserved
+
+data transfer specification. 0x0 - no data transfer;
+
+0x1 - triggers read data transaction after command
+
+[6:5] 0x0 RW
+
+transaction; 0x2 - triggers write data transaction af-
+
+ter command transaction
+
+[4] 0x0 RW check response for correct command index
+
+[3] 0x0 RW check response crc
+
+check for busy signal after command transaction (if
+
+[2] 0x0 RW busy signal will be asserted after command transac-
+
+tion,corewillwaitforaslongasbusysignalremains)
+
+response check configuration. 0x0 - don’t wait for
+
+[1:0] 0x0 RW response; 0x1-waitforshortresponse(48-bits); 0x2
+
+- wait for long response (136-bits)
+
+4.1.3 Response register 0-3
+
+Response registers 0-3 contains response data bits after end of successful command transaction (if
+
+bits 1-0 of command register were configured to wait for response).
+
+Table 5: Response register 0-3
+
+bit # reset value access description
+
+[31:0] 0x00000000 R response data bits
+
+4.1.4 Data xfer timeout register
+
+Data timeout register configures data transaction watchdog counter. If any data transaction will
+
+last longer than configured timeout, interrupt will be generated. Value in timeout register repre-
+
+sents the number of sd clk o pad clock cycles. Register value is calculated by following formula:
+
+timeout[s]∗frequencysd clk i pad[Hz]
+
+REG= (1)
+
+(2∗(clock devider+1))
+
+Table 6: Data xfer timeout register
+
+bit # reset value access description
+
+[31:24] reserved
+
+[23:0] 0x0 RW timeout value (when 0 - timeout is disabled)
+
+12
+
+
+| bit # | reset value | access | description |
+|---|---|---|---|
+|  |  |  |  |
+|  | 0x00 | RW |  |
+|  |  |  |  |
+|  | 0x0 | RW |  |
+|  | 0x0 | RW |  |
+|  | 0x0 | RW |  |
+|  | 0x0 | RW |  |
+|  | 0x0 | RW |  |
+
+
+| bit # | reset value | access | description |
+|---|---|---|---|
+|  | 0x00000000 | R |  |
+
+
+| bit # | reset value | access | description |
+|---|---|---|---|
+|  |  |  |  |
+|  | 0x0 | RW |  |
+
+
+
+---
+
+
+## Page 13
+
+4.1.5 Control register
+
+Table 7: Control register
+
+bit # reset value access description
+
+[31:1] reserved
+
+MMC/SD bus width; 0x0 - 1-bit operation; 0x1 -
+
+[0] 0x0 RW
+
+4-bit operation
+
+4.1.6 Command xfer timeout register
+
+Command timeout register configures command transaction watchdog counter. If any command
+
+transaction will last longer than configured timeout, interrupt will be generated. Value in time-
+
+out register represents the number of sd clk o pad clock cycles. Register value is calculated by
+
+following formula:
+
+timeout[s]∗frequencysd clk i pad[Hz]
+
+REG= (2)
+
+(2∗(clock devider+1))
+
+Table 8: Command xfer timeout register
+
+bit # reset value access description
+
+[31:16] reserved
+
+[15:0] 0x0 RW timeout value (when 0 - timeout is disabled)
+
+4.1.7 Clock divider register
+
+Clock divider register control division of sd clk i pad signal frequency. Output of this divider is
+
+routed to MMC/SD interface clock domain. Register value is calculated by following formula:
+
+frequencysd clk i pad[Hz]
+
+REG= −1 (3)
+
+2∗frequencysd clk i pad[Hz]
+
+Table 9: Clock divider register
+
+bit # reset value access description
+
+[31:8] reserved
+
+[7:0] 0x0 RW divider ratio
+
+4.1.8 Software reset register
+
+Table 10: Software reset register
+
+bit # reset value access description
+
+[31:1] reserved
+
+[0] 0x0 RW reset; 0x0 - no reset; 0x1 - reset applied
+
+4.1.9 Voltage information register
+
+This register contains the value of power supply voltage expressed in mV. It is read-only register
+
+and its value is configured in HDL.
+
+13
+
+
+| bit # | reset value | access | description |
+|---|---|---|---|
+|  |  |  |  |
+|  | 0x0 | RW |  |
+
+
+| bit # | reset value | access | description |
+|---|---|---|---|
+|  |  |  |  |
+|  | 0x0 | RW |  |
+
+
+| bit # | reset value | access | description |
+|---|---|---|---|
+|  |  |  |  |
+|  | 0x0 | RW |  |
+
+
+| bit # | reset value | access | description |
+|---|---|---|---|
+|  |  |  |  |
+|  | 0x0 | RW |  |
+
+
+
+---
+
+
+## Page 14
+
+Table 11: Software reset register
+
+bit # reset value access description
+
+[31:0] R power supply voltage [mV]
+
+4.1.10 Capabilities information register
+
+Table 12: Capabilities information register
+
+bit # reset value access description
+
+[31:0] reserved
+
+4.1.11 Command events status register
+
+This register holds all pending event flags related to command transactions. Write operation to
+
+this register clears all flags.
+
+Table 13: Command events status register
+
+bit # reset value access description
+
+[31:5] reserved
+
+[4] 0x0 RW index error event
+
+[3] 0x0 RW crc error event
+
+[2] 0x0 RW timeout error event
+
+[1] 0x0 RW error event (logic sum of all error events)
+
+[0] 0x0 RW command transaction successful completion event
+
+4.1.12 Command transaction events enable register
+
+This register acts as event and mask. To enable given event, corresponding bit must be set to 1.
+
+Table 14: Command transaction events enable register
+
+bit # reset value access description
+
+[31:5] reserved
+
+[4] 0x0 RW enable index error event
+
+[3] 0x0 RW enable crc error event
+
+[2] 0x0 RW enable timeout error event
+
+[1] 0x0 RW enable error event
+
+enable command transaction successful completion
+
+[0] 0x0 RW
+
+event
+
+4.1.13 Data transaction events status register
+
+This register holds all pending event flags related to data transactions. Write operation to this
+
+register clears all flags.
+
+14
+
+
+| bit # | reset value | access | description |
+|---|---|---|---|
+|  |  | R |  |
+
+
+| bit # | reset value | access | description |
+|---|---|---|---|
+|  |  |  |  |
+
+
+| bit # | reset value | access | description |
+|---|---|---|---|
+|  |  |  |  |
+|  | 0x0 | RW |  |
+|  | 0x0 | RW |  |
+|  | 0x0 | RW |  |
+|  | 0x0 | RW |  |
+|  | 0x0 | RW |  |
+
+
+| bit # | reset value | access | description |
+|---|---|---|---|
+|  |  |  |  |
+|  | 0x0 | RW |  |
+|  | 0x0 | RW |  |
+|  | 0x0 | RW |  |
+|  | 0x0 | RW |  |
+|  | 0x0 | RW |  |
+
+
+
+---
+
+
+## Page 15
+
+Table 15: Data transaction events status register
+
+bit # reset value access description
+
+[31:4] reserved
+
+[3] 0x0 RW fifo error event
+
+[2] 0x0 RW crc error event
+
+[1] 0x0 RW error event (logic sum of all error events)
+
+[0] 0x0 RW data transaction successful completion event
+
+4.1.14 Data transaction events enable register
+
+This register acts as event and mask. To enable given event, corresponding bit must be set to 1.
+
+Table 16: Data transaction events enable register
+
+bit # reset value access description
+
+[31:4] reserved
+
+[3] 0x0 RW enable fifo error event
+
+[2] 0x0 RW enable crc error event
+
+[1] 0x0 RW enable error event
+
+[0] 0x0 RW enable data transaction successful completion event
+
+4.1.15 Block size register
+
+This register controls the number of bytes to write/read in a single block. Data transaction will
+
+transmit number of bytes equal to size of block times blocks count. Register value is calculated by
+
+following formula:
+
+REG=size of block−1 (4)
+
+Table 17: Block size register
+
+bit # reset value access description
+
+[31:12] reserved
+
+[11:0] 0x200 RW number of byes in a single block minus 1
+
+4.1.16 Block count register
+
+Thisregistercontrolsthenumberofblockstowrite/readindatatransaction. Datatransactionwill
+
+transmitnumberofbytesequaltovalueblockscounttimesblocksize. Registervalueiscalculated
+
+by following formula:
+
+REG=number of blocks−1 (5)
+
+Table 18: Block count register
+
+bit # reset value access description
+
+[31:16] reserved
+
+[15:0] 0x0 RW number of blocks in data transaction minus 1
+
+15
+
+
+| bit # | reset value | access | description |
+|---|---|---|---|
+|  |  |  |  |
+|  | 0x0 | RW |  |
+|  | 0x0 | RW |  |
+|  | 0x0 | RW |  |
+|  | 0x0 | RW |  |
+
+
+| bit # | reset value | access | description |
+|---|---|---|---|
+|  |  |  |  |
+|  | 0x0 | RW |  |
+|  | 0x0 | RW |  |
+|  | 0x0 | RW |  |
+|  | 0x0 | RW |  |
+
+
+| bit # | reset value | access | description |
+|---|---|---|---|
+|  |  |  |  |
+|  | 0x200 | RW |  |
+
+
+| bit # | reset value | access | description |
+|---|---|---|---|
+|  |  |  |  |
+|  | 0x0 | RW |  |
+
+
+
+---
+
+
+## Page 16
+
+4.1.17 DMA destination / source register
+
+ThisregistersconfigurestheDMAsource/destinationaddress. Forwritetransactions,thisaddress
+
+points to the beginning of data block to be sent. For read transactions, this address points to the
+
+beginning of data block to be written.
+
+Table 19: DMA destination / source register
+
+bit # reset value access description
+
+[31:o] 0x00000000 RW address
+
+16
+
+
+| bit # | reset value | access | description |
+|---|---|---|---|
+|  | 0x00000000 | RW |  |
+
+
+
+---

@@ -1,6 +1,7 @@
 QUESTA_ROOT ?= /mnt/vault0/tools/Intel/intelFPGA_pro/23.4/questa_fe/bin
 DATASET_ROOT ?= /mnt/vault0/ehilaneh/llm_verif_dataset/data_points/
-BASE_DIR ?= $(DATASET_ROOT)ethmac_cop
+BASE_DIR ?= $(shell cd .. && pwd)
+COVERAGE ?= bcs
 
 all: worklib compile sim 
 
@@ -10,11 +11,11 @@ worklib:
 
 compile:
 	echo "compiling design files and test files"
-	$(QUESTA_ROOT)/vlog -cover bcs $(BASE_DIR)/verif/tb_cop.v $(BASE_DIR)/design/eth_cop.v $(BASE_DIR)/design_context/wb_bus_mon.v $(BASE_DIR)/design_context/wb_master32.v $(BASE_DIR)/design_context/wb_master_behavioral.v $(BASE_DIR)/design_context/wb_slave_behavioral.v
+	$(QUESTA_ROOT)/vlog -sv -cover $(COVERAGE) $(BASE_DIR)/verif/tb_cop.v $(BASE_DIR)/design/eth_cop.v $(BASE_DIR)/design_context/wb_bus_mon.v $(BASE_DIR)/design_context/wb_master32.v $(BASE_DIR)/design_context/wb_master_behavioral.v $(BASE_DIR)/design_context/wb_slave_behavioral.v
 
 compile_design:
 	echo "compiling design files"
-	$(QUESTA_ROOT)/vlog -cover bcs $(BASE_DIR)/design/eth_cop.v $(BASE_DIR)/design_context/wb_bus_mon.v $(BASE_DIR)/design_context/wb_master32.v $(BASE_DIR)/design_context/wb_master_behavioral.v $(BASE_DIR)/design_context/wb_slave_behavioral.v
+	$(QUESTA_ROOT)/vlog -sv -cover $(COVERAGE) $(BASE_DIR)/design/eth_cop.v $(BASE_DIR)/design_context/wb_bus_mon.v $(BASE_DIR)/design_context/wb_master32.v $(BASE_DIR)/design_context/wb_master_behavioral.v $(BASE_DIR)/design_context/wb_slave_behavioral.v
 
 sim: 
 	echo "simulating test bench and generating .ucdb coverate report"

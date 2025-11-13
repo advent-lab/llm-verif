@@ -1,6 +1,7 @@
 QUESTA_ROOT ?= /mnt/vault0/tools/Intel/intelFPGA_pro/23.4/questa_fe/bin
 DATASET_ROOT ?= /mnt/vault0/ehilaneh/llm_verif_dataset/data_points/
-BASE_DIR ?= $(DATASET_ROOT)trng_csprng
+BASE_DIR ?= $(shell cd .. && pwd)
+COVERAGE ?= bcs
 
 all: worklib compile sim 
 
@@ -10,11 +11,11 @@ worklib:
 
 compile:
 	echo "compiling design files and test bench files"
-	$(QUESTA_ROOT)/vlog -cover bcs $(BASE_DIR)/verif/tb_csprng.v $(BASE_DIR)/design/trng_csprng.v $(BASE_DIR)/design_context/chacha.v $(BASE_DIR)/design_context/chacha_core.v $(BASE_DIR)/design_context/chacha_qr.v $(BASE_DIR)/design_context/trng_csprng_fifo.v 
+	$(QUESTA_ROOT)/vlog -sv -cover $(COVERAGE) $(BASE_DIR)/verif/tb_csprng.v $(BASE_DIR)/design/trng_csprng.v $(BASE_DIR)/design_context/chacha.v $(BASE_DIR)/design_context/chacha_core.v $(BASE_DIR)/design_context/chacha_qr.v $(BASE_DIR)/design_context/trng_csprng_fifo.v 
 
 compile_design:
 	echo "compiling design files"
-	$(QUESTA_ROOT)/vlog -cover bcs $(BASE_DIR)/design/trng_csprng.v $(BASE_DIR)/design_context/chacha.v $(BASE_DIR)/design_context/chacha_core.v $(BASE_DIR)/design_context/chacha_qr.v $(BASE_DIR)/design_context/trng_csprng_fifo.v 
+	$(QUESTA_ROOT)/vlog -sv -cover $(COVERAGE) $(BASE_DIR)/design/trng_csprng.v $(BASE_DIR)/design_context/chacha.v $(BASE_DIR)/design_context/chacha_core.v $(BASE_DIR)/design_context/chacha_qr.v $(BASE_DIR)/design_context/trng_csprng_fifo.v 
 
 sim: 
 	echo "simulating test bench and generating .ucdb coverate report"
