@@ -42,6 +42,7 @@ def main():
     parser.add_argument('--remove_polluted_context', action='store_true', default=None, help='Enable the removal of polluted content from the conversation history')
     parser.add_argument('--max_iterations', type=int, help="Maximum number of iterations for iterative refinement.")
     parser.add_argument('--max_valid_iter', type=int, help="Maximum number of successful iterations")
+    parser.add_argument('--max_refinement_iterations', type=int, help="Maximum number of coverage refinement iterations (default: 5).")
     parser.add_argument('-o', '--output', type=str, help="Output directory for log files.")
     parser.add_argument('-b', "--batch_size", type=int, help="The number of test benches to generate per query.")
     parser.add_argument('--id', type=str, help="User specified identifier")
@@ -172,6 +173,8 @@ def main():
     logger.info(f"Constrained random testing enabled: {args.crt}")
     args.simulator = resolve_config("simulator", default="verilator", cast=str)
     logger.info(f"Using simulator: {args.simulator}")
+    args.max_refinement_iterations = resolve_config("max_refinement_iterations", default=5, cast=int)
+    logger.info(f"Maximum refinement iterations: {args.max_refinement_iterations}")
     args.base_url = resolve_config("base_url", default=None, cast=str)
     if args.base_url:
         logger.info(f"Using custom API base URL: {args.base_url}")

@@ -161,7 +161,7 @@ class ConversationRunner:
 
                 # Create both short name and full description
                 features.append({
-                    'short_name': f"Feature {num}: {name}",
+                    'short_name': name,
                     'full_desc': feature_text
                 })
 
@@ -182,7 +182,7 @@ class ConversationRunner:
                         feature_text = testplan_text[start:end].strip()
 
                         features.append({
-                            'short_name': f"Feature {num}: {name}",
+                            'short_name': name,
                             'full_desc': feature_text
                         })
                     break
@@ -194,17 +194,16 @@ class ConversationRunner:
             if objectives:
                 # This is a rough fallback - just use feature names
                 for i, obj in enumerate(objectives):
-                    short = f"Feature {i+1}: {obj.strip()}"
                     features.append({
-                        'short_name': short,
-                        'full_desc': short
+                        'short_name': obj.strip(),
+                        'full_desc': f"Feature {i+1}: {obj.strip()}"
                     })
 
         # Final fallback: Treat entire testplan as one feature
         if not features:
             full = "Feature 1: Complete Design Verification\n" + testplan_text
             features.append({
-                'short_name': "Feature 1: Complete Design Verification",
+                'short_name': "Complete Design Verification",
                 'full_desc': full
             })
 
@@ -301,6 +300,114 @@ class ConversationRunner:
             self.conversation.append_assistant_message(responses[0], slice=False)
 
         return CoverageResponse(True, 0, "", [], 0)
+
+    async def run_coverage_refinement(
+        self,
+        run_index: int,
+        iteration: int,
+        initial_coverage: "CoverageResponse",
+        mode: str = "standalone"
+    ) -> tuple[int, "CoverageResponse"]:
+        """
+        Improve coverage through iterative generation.
+
+        Args:
+            run_index (int): Current run index
+            iteration (int): Starting iteration number
+            initial_coverage (CoverageResponse): The current coverage to improve upon
+            mode (str): Refinement mode
+
+        Returns:
+            tuple[int, CoverageResponse]: (final_iteration_number, final_coverage_response)
+        """
+        logging.info("=" * 80)
+        logging.info("STARTING COVERAGE REFINEMENT LOOP")
+        logging.info(f"Initial coverage: {initial_coverage.total_coverage}%")
+        logging.info(f"Target coverage: 100.0%")
+        logging.info(f"Max refinement iterations: {self.environment.max_refinement_iterations}")
+        logging.info("=" * 80)
+
+        current_coverage = initial_coverage
+        refinement_iter = 0
+        COVERAGE_TARGET = 100.0
+
+        while (current_coverage.total_coverage < COVERAGE_TARGET
+               and refinement_iter < self.environment.max_refinement_iterations):
+
+            logging.info(f"\n--- Refinement Iteration {refinement_iter + 1}/{self.environment.max_refinement_iterations} ---")
+
+            # Generate refinement prompt based on coverage holes
+            if not current_coverage.success:
+                # If there's an error, use error prompt
+                prompt = prompt_templates.error_prompt(
+                    current_coverage.error_code,
+                    current_coverage.error_message
+                )
+                logging.info("Using error prompt for refinement")
+            else:
+                # Extract coverage feedback and generate refinement prompt
+                prompt = prompt_templates.iter_prompt(
+                    current_coverage,
+                    self.environment.design_module_name,
+                    self.llm.simulator,
+                    self.args.work_dir
+                )
+                logging.info("Using coverage-driven refinement prompt")
+
+            # Generate and evaluate refinement testbench
+            feature_name = f"Refinement_{refinement_iter + 1}"
+            if mode == "feature":
+                feature_name = f"Feature_Refinement_{refinement_iter + 1}"
+
+            logging.info(f"Generating refinement testbench: {feature_name}")
+
+            current_coverage = await self.generate_and_evaluate(
+                prompt,
+                run_index,
+                iteration + refinement_iter,
+                batch_size=self.environment.batch_size,
+                sim_runs=self.args.sim_runs,
+                feature=feature_name
+            )
+
+            logging.info(f"Refinement iteration {refinement_iter + 1} coverage: {current_coverage.total_coverage}%")
+
+            # After generating refinement testbench, merge with all previous coverage
+            if self.args.merge_coverage and current_coverage.success:
+                try:
+                    merged_response = self.llm.simulator.merge_and_parse_run_coverage(
+                        design_name=self.environment.design_name,
+                        work_dir=self.environment.store.storage_path if self.environment.store else self.args.design,
+                        run_idx=run_index,
+                        max_iterations=iteration + refinement_iter + 1,
+                        batch_size=self.environment.batch_size,
+                        sim_runs=self.args.sim_runs,
+                        design_dir=self.args.design,
+                        use_store=self.environment.store is not None
+                    )
+
+                    # Update current coverage with merged result
+                    current_coverage = merged_response
+                    self.record.update_run_merge_coverage(merged_response, run_index)
+
+                    logging.info(f"Merged coverage after refinement: {merged_response.total_coverage}%")
+                except Exception as e:
+                    logging.error(f"Failed to merge coverage during refinement: {e}")
+
+            refinement_iter += 1
+
+            # Check if we've reached the target
+            if current_coverage.total_coverage >= COVERAGE_TARGET:
+                logging.info(f"Coverage target {COVERAGE_TARGET}% reached!")
+                break
+
+        logging.info("=" * 80)
+        logging.info("COVERAGE REFINEMENT COMPLETE")
+        logging.info(f"Final coverage: {current_coverage.total_coverage}%")
+        logging.info(f"Refinement iterations used: {refinement_iter}/{self.environment.max_refinement_iterations}")
+        logging.info("=" * 80)
+
+        return (iteration + refinement_iter, current_coverage)
 
     async def run_conversation(self, run_index: int):
         """
@@ -465,10 +572,29 @@ class ConversationRunner:
                         design_dir=self.args.design,
                         use_store=self.environment.store is not None
                     )
-                    
+
                     logging.info("Feature-based merged coverage generated successfully.")
                     logging.info(f"\n====== TOTAL COVERAGE ACROSS ALL FEATURES: {merged_response.total_coverage}%")
                     self.record.update_run_merge_coverage(merged_response, run_index)
+
+                    # Coverage refinement after feature generation (testplan mode)
+                    if merged_response.total_coverage < 100.0:
+                        logging.info("\n" + "=" * 80)
+                        logging.info("INITIATING POST-FEATURE COVERAGE REFINEMENT")
+                        logging.info(f"Current merged coverage: {merged_response.total_coverage}%")
+                        logging.info(f"Target: 100.0%")
+                        logging.info("=" * 80 + "\n")
+
+                        iteration, cov = await self.run_coverage_refinement(
+                            run_index=run_index,
+                            iteration=iteration,
+                            initial_coverage=merged_response,
+                            mode="standalone"
+                        )
+
+                        # Update merged_response with final refined coverage
+                        merged_response = cov
+
                 except Exception as e:
                     logging.error(f"===== Failed to generate merged feature coverage: {e}")
         else:
@@ -490,46 +616,35 @@ class ConversationRunner:
         logging.info(f"Length of conversation: {self.conversation.length()}")
         logging.info(f"Stack pointer: {self.conversation.stack_pointer}")
 
-        # Iterative Refinement (only for non-testplan mode)
+        # Unified Coverage Refinement (for both testplan and non-testplan modes)
         iteration += 1
         first_success = True
         if not self.environment.testplan:
-            while (self.record.max_cov < 100 and iteration <= self.args.max_iterations
-                   and valid_iterations < self.args.max_valid_iter):
-
-                # The stack pointer should point to the last user message
-                if cov.error_code == 0 and first_success:
-                    first_success = False
-                    valid_iterations += 1
-                    if not self.environment.no_design_prompt:
-                        # Add design prompt to end of conversation
-                        self.conversation.update_system_prompt(
-                            prompt_templates.system_prompt(
-                                self.environment.design_specification,
-                                self.environment.module_header,
-                                self.environment.all_design_file_paths
-                            )
+            if cov.error_code == 0 and first_success:
+                first_success = False
+                valid_iterations += 1
+                if not self.environment.no_design_prompt:
+                    self.conversation.update_system_prompt(
+                        prompt_templates.system_prompt(
+                            self.environment.design_specification,
+                            self.environment.module_header,
+                            self.environment.all_design_file_paths
                         )
-
-                if not cov.success:
-                    prompt = prompt_templates.error_prompt(cov.error_code, cov.error_message)
-                else:
-                    prompt = prompt_templates.iter_prompt(
-                        cov,
-                        self.environment.design_module_name,
-                        self.llm.simulator,
-                        self.args.work_dir
                     )
-                logging.info(f"Iteration prompt: {prompt}")
 
-                # This call adds 2 prompts to the conversation: the next user prompt and the response
-                cov = await self.generate_and_evaluate(
-                    prompt, run_index, iteration, batch_size=self.environment.batch_size, feature="Iterative Refinement"
-                )
+            # Run coverage refinement
+            logging.info("\n" + "=" * 80)
+            logging.info("INITIATING COVERAGE REFINEMENT (Non-Testplan Mode)")
+            logging.info(f"Current coverage: {cov.total_coverage}%")
+            logging.info(f"Target: 100.0%")
+            logging.info("=" * 80 + "\n")
 
-                iteration += 1
-                logging.info(f"Length of conversation: {self.conversation.length()}")
-                logging.info(f"Stack pointer: {self.conversation.stack_pointer}")
+            iteration, cov = await self.run_coverage_refinement(
+                run_index=run_index,
+                iteration=iteration,
+                initial_coverage=cov,
+                mode="standalone"
+            )
 
         # Merged Coverage Logic (only for non-testplan mode)
         # For testplan mode, feature-based merging already happened above

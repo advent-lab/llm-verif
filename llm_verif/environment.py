@@ -31,6 +31,7 @@ class Environment:
         self.testplan = env_options.testplan
         self.batch_size = env_options.batch_size
         self.remove_polluted_context = env_options.remove_polluted_context
+        self.max_refinement_iterations = env_options.max_refinement_iterations
 
         # Create the prompt
         # Read the specification file
