@@ -12,6 +12,8 @@ report.txt
 # QuestaSim ignores
 *work/
 *transcript
+*.vcd
+*.bak
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
