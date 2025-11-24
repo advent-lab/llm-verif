@@ -56,6 +56,12 @@ At other times, you will generate a testbench. The goal of the testbench is to i
                          
 We will run multiple iterations. In each iteration, you will generate a testbench - using one of the options mentioned above. Your goal should be to cover as much as statement coverage goal as possible. Across multiple iterations, we aim to have a coverage of 100%.
 
+IMPORTANT: Avoid simulation timeouts by following these guidelines:
+- Do NOT use blocking waits like @(posedge signal) or wait(signal) for DUT output signals unless you are absolutely certain the signal will change. The DUT may not respond as expected.
+- Instead of waiting for acknowledgment or handshake signals from the DUT, use fixed delays (e.g., #100 or repeat(10) @(posedge clk)).
+- Avoid infinite loops - ensure all loops have clear exit conditions with bounded iterations.
+- Keep testbenches simple and deterministic to prevent hanging simulations.
+
 Generate only the testbench and no additional words.
 The module name of the testbench should be tb_llm.
 You can use either Verilog or SystemVerilog syntax and features. Do not generate any UVM code.
@@ -200,7 +206,14 @@ Here are some additional guidelines for the test bench: \n
 Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n''' + json_format_str
 	
 	elif error_code == 3:
-		return f'''The generated test bench took to long to simulate and timed out. Try to shorten the testbench. Use the same JSON format for the new testbench. Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Ensure that there is only one testbench within the JSON formatted output.\n
+		return f'''The generated test bench took too long to simulate and timed out. This is often caused by infinite loops or waiting for signals that never change. Try to shorten the testbench and avoid these common issues:
+- Do NOT use blocking waits like @(posedge signal) or wait(signal) unless you are certain the signal will change. The DUT may not respond as expected.
+- Instead of waiting for acknowledgment signals, use fixed delays (e.g., #100 or repeat(10) @(posedge clk)).
+- Add timeout guards to any wait statements (e.g., fork-join_any with a timeout).
+- Avoid infinite loops - ensure all loops have a clear exit condition.
+- Keep the testbench simple and deterministic.
+
+Use the same JSON format for the new testbench. Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Ensure that there is only one testbench within the JSON formatted output.\n
 Here are some additional guidelines for the test bench: \n
 Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n''' + json_format_str
 	
