@@ -305,7 +305,8 @@ class Verilator(Simulator):
 
     Args:
         dat_path (str): Path to the .dat file generated during simulation.
-        report_path (str): Path to save the coverage report.
+        info_path (str): Path to write the generated .info file.
+        annotate_dir_path (str): Directory to write annotated source files.
 
     Returns:
         str: Coverage annotation output or error message.
@@ -354,7 +355,7 @@ class Verilator(Simulator):
       return self.run_command(merge_command)
 
   @staticmethod
-  def parse_coverage_report(report_path: str, tb_path: str):
+  def parse_coverage_report(report_path: str, tb_path: str) -> tuple[list[FileCoverage], float]:
     """
     Parse Verilator coverage report from .info file.
 
@@ -716,5 +717,4 @@ Important:
       return (0, 0, 0)
 
     return (uncovered_count, control_flow_misses, total_lines)
-
 

@@ -1,0 +1,48 @@
+site_name: llm-verif Developer Docs
+repo_url: https://github.com/advent-lab/llm-verif
+theme:
+  name: material
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          setup_commands:
+            - "import os, sys; sys.path.insert(0, os.path.abspath('.'))"
+          options:
+            docstring_style: google
+            merge_init_into_class: true
+            members_order: source
+            show_root_heading: true
+            show_source: true
+            separate_signature: true
+            filters:
+              - "!^__.*__$"
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - def_list
+nav:
+  - Overview: index.md
+  - Developer Guide: developer-guide.md
+  - API Reference:
+      - Package: reference/llm_verif.md
+      - Dashboard: reference/dashboard.md
+      - Environment: reference/environment.md
+      - Prompt Templates: reference/prompt_templates.md
+      - Conversation Manager: reference/conversation_manager.md
+      - Conversation Runner: reference/conversation_runner.md
+      - ModelChat (base): reference/modelchat.md
+      - OpenAI Backend: reference/openai_backend.md
+      - Llama3 Chat (legacy): reference/llama3_chat.md
+      - ChatGPT Chat: reference/chatgpt_chat.md
+      - Simulator Base: reference/simulator.md
+      - Verilator: reference/verilator.md
+      - QuestaSim: reference/questasim.md
+      - LCOV Parser: reference/lcovparser.md
+      - Storage: reference/storage.md
+      - Record: reference/record.md
+      - Metrics: reference/metrics.md
+      - Util: reference/util.md

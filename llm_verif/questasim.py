@@ -233,8 +233,7 @@ class QuestaSim(Simulator):
 
         Args:
             du (str): Name of the design unit to be merged
-            coverage dbs (List[str]): List of UCDB coverage databases to merge together.
-            log_name (str): Log file name.
+            coverage_dbs (List[str]): List of UCDB coverage databases to merge together.
 
         Returns:
             str: Report generation output.
@@ -324,7 +323,6 @@ class QuestaSim(Simulator):
         Args:
             du (str): The name of the design unit to generate the report for.
             coverage_dbs (List[Union[str, Path]]): A list of paths to coverage databases (`.ucdb` files).
-            log_name (str): The base name of the log files to be generated.
 
         Returns:
             str: The output of the generated XML coverage report.
@@ -392,7 +390,7 @@ class QuestaSim(Simulator):
         Args:
             design_name: Name of the design module
             work_dir: Working directory containing coverage files
-            run_index: Index of the current run
+            run_idx: Index of the current run
             max_iterations: Maximum iterations per run
             batch_size: Batch size per iteration
             sim_runs: Number of simulation runs per testbench
@@ -646,4 +644,3 @@ Here is {rand_du} with the coverage hole marked:
                 continue
 
         return prioritized
-

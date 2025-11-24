@@ -14,6 +14,7 @@ This repository contains scripts, data, and workflows for generating and evaluat
   - [Simulation and Coverage](#simulation-and-coverage)
 - [Scripts](#scripts)
 - [Data Points](#data-points)
+- [Developer Guide](#developer-guide)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -132,3 +133,6 @@ See `llm_verif/README.md` for detailed command-line options and configuration de
 
 For more details on running jobs and troubleshooting, see [llm_verif/README.md](llm_verif/README.md).
 
+## Developer Guide
+
+For architecture notes, local setup, testing, and extension points, see `docs/developer-guide.md`.

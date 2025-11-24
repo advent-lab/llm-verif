@@ -128,7 +128,7 @@ class Simulator():
 
         return ''
     
-    def has_finish(self, file_path):
+    def has_finish(self, file_path) -> bool:
         """
         Checks if '$finish' is present in a Verilog test bench file.
         
