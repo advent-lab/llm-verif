@@ -48,7 +48,7 @@ except Exception as e:
 class VectorStore:
     def __init__(self, directory, chunk_size=256, chunk_overlap=32, index_path=None,
                  model_name='sentence-transformers/all-MiniLM-L6-v2',
-                 device=None, batch_size=32, num_workers=None):
+                 device=None, batch_size=32, num_workers=None, corpus_paths=None, index_name=None):
         """
         Initialize VectorStore with configurable parameters.
 
@@ -61,11 +61,14 @@ class VectorStore:
             device: Device for embeddings ('cuda', 'cpu', or None for auto-detect)
             batch_size: Batch size for encoding (default: 32, increase for GPU)
             num_workers: Number of CPU workers (default: auto-detect)
+            corpus_paths: Optional list of additional files/directories to include in the corpus
+            index_name: Optional default name used for saving/loading the index
         """
         print("Initializing VectorStore...")
         self.directory = Path(directory)
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
+        self.index_name = index_name
 
         # Set up device
         if device is None:
@@ -106,6 +109,93 @@ class VectorStore:
         self.all_chunks = []
         self.file_paths = []
         self.index = None
+        self.corpus_paths = self._normalize_corpus_paths(corpus_paths, directory)
+
+    def _normalize_corpus_paths(self, corpus_paths, directory) -> list[Path]:
+        """
+        Normalize corpus inputs into a list of valid Paths.
+        Includes the legacy `directory` argument by default.
+        """
+        collected = []
+        inputs = corpus_paths if corpus_paths else [directory]
+        for path in inputs:
+            p = Path(path)
+            if p.exists():
+                collected.append(p)
+            else:
+                print(f"Warning: corpus path does not exist and will be skipped: {p}")
+
+        if not collected:
+            raise FileNotFoundError("No valid corpus paths provided for VectorStore.")
+
+        return collected
+
+    def _ingest_file(self, file_path: str | Path) -> int:
+        """
+        Process a single file and add its chunks to the store.
+
+        Returns:
+            int: 1 if the file was processed, 0 otherwise
+        """
+        file_path = str(file_path)
+        filename = os.path.basename(file_path)
+
+        try:
+            if filename.lower().endswith('.pdf'):
+                if not FITZ_AVAILABLE:
+                    print(f"Skipping PDF: {filename} (PyMuPDF not available)")
+                    return 0
+                print(f"Processing PDF: {filename}")
+                text = self.extract_text_from_pdf(file_path)
+                if text.strip():  # Only process if text was extracted
+                    for chunk in self.chunk_text(text):
+                        if chunk.strip():  # Skip empty chunks
+                            self.all_chunks.append(chunk)
+                            self.file_paths.append(file_path)
+
+                tables = self.extract_tables_from_pdf(file_path)
+                for table in tables:
+                    if table:  # Only process non-empty tables
+                        table_str = "\n".join(["\t".join(map(str, row)) for row in table if row])
+                        for chunk in self.chunk_text(f"Table:\n{table_str}"):
+                            if chunk.strip():
+                                self.all_chunks.append(chunk)
+                                self.file_paths.append(file_path)
+
+                captions = self.extract_graphics_captions(file_path)
+                for caption in captions:
+                    for chunk in self.chunk_text(caption):
+                        if chunk.strip():
+                            self.all_chunks.append(chunk)
+                            self.file_paths.append(file_path)
+                return 1
+
+            elif filename.lower().endswith(('.md', '.txt', '.sv', '.svh', '.v', '.vh', '.hjson')):
+                # Determine file type for better logging
+                if filename.lower().endswith(('.sv', '.svh', '.v', '.vh')):
+                    print(f"Processing Verilog/SystemVerilog file: {filename}")
+                elif filename.lower().endswith('.hjson'):
+                    print(f"Processing HJSON file: {filename}")
+                else:
+                    print(f"Processing text file: {filename}")
+
+                # Read file based on type
+                if filename.lower().endswith('.hjson'):
+                    text = self.read_hjson_file(file_path)
+                else:
+                    text = self.read_text_file(file_path)
+
+                if text.strip():
+                    for chunk in self.chunk_text(text):
+                        if chunk.strip():
+                            self.all_chunks.append(chunk)
+                            self.file_paths.append(file_path)
+                    return 1
+
+        except Exception as e:
+            print(f"Error processing {filename}: {e}")
+
+        return 0
 
     def extract_text_from_pdf(self, pdf_path):
         if not FITZ_AVAILABLE:
@@ -194,71 +284,17 @@ class VectorStore:
         return chunks
 
     def chunk_files(self):
-        if not self.directory.exists():
-            raise FileNotFoundError(f"Corpus directory not found: {self.directory}")
-
-        print(f"Scanning for documents in: {self.directory}")
+        print(f"Scanning for documents in corpus paths: {', '.join(str(p) for p in self.corpus_paths)}")
         file_count = 0
 
-        for root, _, files in os.walk(self.directory):
-            for filename in files:
-                file_path = os.path.join(root, filename)
-
-                try:
-                    if filename.lower().endswith('.pdf'):
-                        if not FITZ_AVAILABLE:
-                            print(f"Skipping PDF: {filename} (PyMuPDF not available)")
-                            continue
-                        print(f"Processing PDF: {filename}")
-                        text = self.extract_text_from_pdf(file_path)
-                        if text.strip():  # Only process if text was extracted
-                            for chunk in self.chunk_text(text):
-                                if chunk.strip():  # Skip empty chunks
-                                    self.all_chunks.append(chunk)
-                                    self.file_paths.append(file_path)
-
-                        tables = self.extract_tables_from_pdf(file_path)
-                        for table in tables:
-                            if table:  # Only process non-empty tables
-                                table_str = "\n".join(["\t".join(map(str, row)) for row in table if row])
-                                for chunk in self.chunk_text(f"Table:\n{table_str}"):
-                                    if chunk.strip():
-                                        self.all_chunks.append(chunk)
-                                        self.file_paths.append(file_path)
-
-                        captions = self.extract_graphics_captions(file_path)
-                        for caption in captions:
-                            for chunk in self.chunk_text(caption):
-                                if chunk.strip():
-                                    self.all_chunks.append(chunk)
-                                    self.file_paths.append(file_path)
-                        file_count += 1
-
-                    elif filename.lower().endswith(('.md', '.txt', '.sv', '.svh', '.v', '.vh', '.hjson')):
-                        # Determine file type for better logging
-                        if filename.lower().endswith(('.sv', '.svh', '.v', '.vh')):
-                            print(f"Processing Verilog/SystemVerilog file: {filename}")
-                        elif filename.lower().endswith('.hjson'):
-                            print(f"Processing HJSON file: {filename}")
-                        else:
-                            print(f"Processing text file: {filename}")
-
-                        # Read file based on type
-                        if filename.lower().endswith('.hjson'):
-                            text = self.read_hjson_file(file_path)
-                        else:
-                            text = self.read_text_file(file_path)
-
-                        if text.strip():
-                            for chunk in self.chunk_text(text):
-                                if chunk.strip():
-                                    self.all_chunks.append(chunk)
-                                    self.file_paths.append(file_path)
-                            file_count += 1
-
-                except Exception as e:
-                    print(f"Error processing {filename}: {e}")
-                    continue
+        for corpus_path in self.corpus_paths:
+            if corpus_path.is_dir():
+                for root, _, files in os.walk(corpus_path):
+                    for filename in files:
+                        file_path = os.path.join(root, filename)
+                        file_count += self._ingest_file(file_path)
+            elif corpus_path.is_file():
+                file_count += self._ingest_file(corpus_path)
 
         print(f"Processed {file_count} files, created {len(self.all_chunks)} chunks")
 
@@ -329,9 +365,70 @@ class VectorStore:
             print(f"Error during retrieval: {e}")
             return []
 
+    def add_texts(self, texts, source: str = "runtime", persist: bool = False, index_name: str | None = None):
+        """
+        Add raw text snippets to the vector store at runtime.
+
+        Args:
+            texts: A string or list of strings to add.
+            source: Identifier for where the text came from (stored with each chunk).
+            persist: If True, save the index after updating.
+            index_name: Optional override for save name (defaults to self.index_name).
+        """
+        if isinstance(texts, str):
+            texts = [texts]
+
+        new_chunks = []
+        for text in texts:
+            if not text:
+                continue
+            for chunk in self.chunk_text(text):
+                if chunk.strip():
+                    new_chunks.append(chunk)
+
+        if not new_chunks:
+            print("No new chunks to add to the vector store.")
+            return
+
+        try:
+            encode_kwargs = {
+                'batch_size': self.batch_size,
+                'show_progress_bar': False,
+                'convert_to_numpy': True
+            }
+            if self.device == 'cpu':
+                encode_kwargs['multi_process'] = True
+                encode_kwargs['num_workers'] = self.num_workers
+
+            embeddings = self.model.encode(new_chunks, **encode_kwargs)
+        except Exception as e:
+            print(f"Failed to encode new chunks: {e}")
+            return
+
+        # Ensure embeddings is a NumPy array with dtype float32
+        embeddings = np.asarray(embeddings, dtype=np.float32)
+
+        if embeddings.ndim == 1:
+            embeddings = embeddings.reshape(1, -1)
+
+        # Initialize index if it doesn't exist
+        if self.index is None:
+            dim = embeddings.shape[1]
+            self.index = faiss.IndexFlatL2(dim)
+
+        self.index.add(embeddings)
+        self.all_chunks.extend(new_chunks)
+        self.file_paths.extend([source] * len(new_chunks))
+
+        if persist:
+            save_name = index_name or self.index_name or "default"
+            self.save_index(name=save_name)
+
     def save_index(self, name="default"):
         if self.index is None:
             raise ValueError("No index to save. Create index first with create_index()")
+
+        self.index_name = name
 
         save_dir = self.index_path / name
         save_dir.mkdir(parents=True, exist_ok=True)
@@ -348,6 +445,7 @@ class VectorStore:
             'chunk_size': self.chunk_size,
             'chunk_overlap': self.chunk_overlap,
             'directory': str(self.directory),
+            'corpus_paths': [str(p) for p in self.corpus_paths],
             'saved_at': datetime.now().isoformat()
         }
         metadata_file = save_dir / "metadata.pkl"
@@ -370,6 +468,7 @@ class VectorStore:
         if not load_dir.exists():
             print(f"No saved index found at {load_dir}")
             return False
+        self.index_name = name
 
         try:
             # Load FAISS index
@@ -394,6 +493,9 @@ class VectorStore:
             self.file_paths = metadata['file_paths']
             self.chunk_size = metadata.get('chunk_size', self.chunk_size)
             self.chunk_overlap = metadata.get('chunk_overlap', self.chunk_overlap)
+            loaded_corpus = metadata.get('corpus_paths')
+            if loaded_corpus:
+                self.corpus_paths = [Path(p) for p in loaded_corpus]
 
             saved_at = metadata.get('saved_at', 'unknown')
             print(f"Loaded metadata (saved at: {saved_at})")
@@ -412,6 +514,7 @@ class VectorStore:
 
         # Corpus info
         stats.append(f"Corpus Directory: {self.directory}")
+        stats.append(f"Corpus Paths: {[str(p) for p in self.corpus_paths]}")
         stats.append(f"Index Path: {self.index_path}")
 
         # Chunk info

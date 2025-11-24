@@ -40,6 +40,7 @@ class Environment:
         self.rag_model = env_options.rag_model
         self.rebuild_rag_index = env_options.rebuild_rag_index
         self.vector_store = None
+        self.vector_corpus_paths: list[str] = []
 
         # Create the prompt
         # Read the specification file
@@ -79,6 +80,23 @@ class Environment:
         self.store: FileStore = FileStore(env_options.output)
 
         self.simulator_name = env_options.simulator
+
+        # Collect important materials for RAG ingestion
+        corpus_paths: set[str] = set()
+        corpus_paths.add(self.design_dir)
+
+        def _add_path(path_entry):
+            if not path_entry:
+                return
+            if isinstance(path_entry, list):
+                for p in path_entry:
+                    corpus_paths.add(p)
+            else:
+                corpus_paths.add(path_entry)
+
+        _add_path(self.design_specification_path)
+        _add_path(self.all_design_file_paths)
+        self.vector_corpus_paths = list(corpus_paths)
 
         # Initialize RAG vector store if enabled
         if self.enable_rag:
@@ -147,6 +165,7 @@ class Environment:
 
             logging.info(f"Initializing VectorStore for design: {self.design_name}")
             logging.info(f"Design directory: {self.design_dir}")
+            logging.info(f"VectorStore corpus paths: {self.vector_corpus_paths}")
 
             # Create vector store instance pointing to design directory
             self.vector_store = VectorStore(
@@ -154,7 +173,9 @@ class Environment:
                 chunk_size=self.rag_chunk_size,
                 chunk_overlap=self.rag_chunk_overlap,
                 model_name=self.rag_model,
-                device=None  # Auto-detect GPU/CPU
+                device=None,  # Auto-detect GPU/CPU
+                corpus_paths=self.vector_corpus_paths,
+                index_name=self.design_name
             )
 
             # Try to load existing index
@@ -182,4 +203,3 @@ class Environment:
             logging.warning("RAG mode will be disabled. Falling back to non-RAG prompts.")
             self.enable_rag = False
             self.vector_store = None
-

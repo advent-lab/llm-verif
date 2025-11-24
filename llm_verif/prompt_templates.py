@@ -1,5 +1,5 @@
 from llm_verif.questasim import CoverageResponse
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from llm_verif.vector_store import VectorStore
@@ -78,7 +78,9 @@ Below is the JSON format you must use to respond. Do not change the format in an
 def system_prompt_rag(module_header: str, vector_store: "VectorStore", module_name: str, top_k: int = 5, design_content: list[str] | None = None):
 	"""
 	RAG-enhanced system prompt that retrieves relevant specification chunks
-	instead of injecting the full specification.
+	instead of injecting the full specification. Also pulls design and
+	verification-specific context so the assistant has targeted knowledge of
+	the DUT and how it should be tested.
 
 	Args:
 		module_header: The module header for the design
@@ -98,13 +100,24 @@ def system_prompt_rag(module_header: str, vector_store: "VectorStore", module_na
 	query = f"{module_name} specification requirements interface behavior"
 	retrieved_chunks = vector_store.retrieve_relevant_chunks(query, top_k=top_k)
 
-	# Format retrieved chunks with source attribution
-	spec_context = "Design Specification (Retrieved Context):\n\n"
-	if retrieved_chunks:
-		for i, (chunk, source_file, distance) in enumerate(retrieved_chunks, 1):
-			spec_context += f"[Context {i} from {source_file}]:\n{chunk}\n\n"
-	else:
-		spec_context += "[No relevant specification context found]\n"
+	def _format_context(chunks, label: str):
+		section = f"{label}:\n\n"
+		if chunks:
+			for i, (chunk, source_file, distance) in enumerate(chunks, 1):
+				section += f"[Context {i} from {source_file}]:\n{chunk}\n\n"
+		else:
+			section += f"[No relevant {label.lower()} found]\n"
+		return section
+
+	spec_context = _format_context(retrieved_chunks, "Design Specification (Retrieved Context)")
+
+	design_query = f"{module_name} RTL implementation state machine datapath corner cases reset behavior"
+	design_chunks = vector_store.retrieve_relevant_chunks(design_query, top_k=top_k)
+	design_context = _format_context(design_chunks, "Design Implementation (Retrieved Context)")
+
+	verification_query = f"{module_name} verification strategy coverage goals directed random constraints interface timing"
+	verification_chunks = vector_store.retrieve_relevant_chunks(verification_query, top_k=max(2, top_k // 2))
+	verification_context = _format_context(verification_chunks, "Verification Guidance (Retrieved Context)")
 
 	return f"""You are an expert Verilog verification assistant. You have expertise in writing high quality, high code coverage testbench for a wide variety of digital hardware designs.
 
@@ -146,7 +159,7 @@ Below are a specification for the design you are trying to verify and a module h
 Module Header:
 {module_header}
 
-{spec_context}
+{spec_context}{design_context}{verification_context}
 
 Below is the JSON format you must use to respond. Do not change the format in any way.
 """ + json_format_str + f"\n{design_message}"
@@ -260,7 +273,7 @@ Begin writing the verification plan now:
 # This function returns two prompts
 # The first prompt should be used to generate the verification plan
 # The second prompt should be used to generate the test bench after the verification plan is generated
-# The second prompt assumes that conversation histroy is being provided to the LLM in addition to the second prompt
+# The second prompt assumes that conversation history is being provided to the LLM in addition to the second prompt
 def verif_and_testbench_prompt(crt: bool = True) -> tuple[str, str]:
     p1 = verification_plan_prompt()
     p2 = '''Now we are in the second stage of the verification process.''' + first_testbench_prompt() if crt else zero_shot_prompt() + json_format_str
@@ -301,6 +314,9 @@ def iter_prompt(
     top_design_module: str,
     simulator,  # Simulator instance (QuestaSim or Verilator)
     work_dir: str,
+    vector_store: Optional["VectorStore"] = None,
+    rag_top_k: int = 3,
+    max_rag_chunks: int = 6,
 ) -> str:
     """
     Generate an iteration prompt using simulator-specific coverage feedback.
@@ -324,12 +340,67 @@ inside of the JSON. Please see the format below again for reference:\n''' + json
     coverage_summary = simulator.format_coverage_summary(coverage)
     coverage_feedback = simulator.extract_coverage_feedback(coverage, top_design_module, work_dir)
 
+    def _gap_queries():
+        gaps: list[str] = []
+        if getattr(coverage, "uncovered_lines", None):
+            gaps.extend([str(g) for g in coverage.uncovered_lines[:10]])
+        for entry in getattr(coverage, "coverage_list", []):
+            if hasattr(entry, "uncovered_lines") and getattr(entry, "uncovered_lines"):
+                path = getattr(entry, "path", "design")
+                for ln in entry.uncovered_lines[:3]:
+                    gaps.append(f"{path}:{ln}")
+        if gaps:
+            # Deduplicate while preserving order
+            seen = set()
+            ordered = []
+            for g in gaps:
+                if g not in seen:
+                    seen.add(g)
+                    ordered.append(g)
+            return ordered
+
+        # Fallback generic hints if nothing explicit is available
+        if coverage.total_coverage < 50:
+            return ["main logic implementation", "control flow", "state machine"]
+        if coverage.total_coverage < 75:
+            return ["edge cases", "corner cases", "boundary conditions"]
+        if coverage.total_coverage < 90:
+            return ["uncovered code paths", "conditional branches"]
+        return []
+
+    rag_context = ""
+    if vector_store:
+        gap_queries = _gap_queries()
+        if gap_queries:
+            chunks = []
+            seen_sources = set()
+            for gap in gap_queries:
+                retrieved = vector_store.retrieve_relevant_chunks(
+                    f"{top_design_module} implementation {gap}", top_k=rag_top_k
+                )
+                for chunk, source, distance in retrieved:
+                    key = (source, chunk)
+                    if key in seen_sources:
+                        continue
+                    seen_sources.add(key)
+                    chunks.append((chunk, source))
+                    if len(chunks) >= max_rag_chunks:
+                        break
+                if len(chunks) >= max_rag_chunks:
+                    break
+            if chunks:
+                rag_context = "Retrieved design/context snippets for uncovered areas:\n\n"
+                for idx, (chunk, source) in enumerate(chunks, 1):
+                    rag_context += f"[RAG {idx} from {source}]:\n{chunk}\n\n"
+        else:
+            rag_context = "No additional RAG context retrieved (no explicit uncovered gaps detected)."
+
     # Build the prompt using simulator-agnostic structure
     return (
         "The test bench that you generated did not meet coverage goals. "
         "Use the following coverage data and context to generate a test bench that achieves better coverage:\n\n"
         + coverage_summary + "\n\n"
-        + coverage_feedback + "\n\n"
+        + coverage_feedback + ("\n\n" + rag_context if rag_context else "\n\n")
         + f"""There are two options for improving line coverage; choose one:
 1) Modify an existing testcase from a previous testbench (adjust/add/remove stimulus).
 2) Start a fresh testcase with novel stimulus to target the uncovered logic.
@@ -368,22 +439,33 @@ def design_prompt_rag(coverage_response: "CoverageResponse", vector_store: "Vect
 	if coverage_response.total_coverage >= coverage_threshold:
 		return ""
 
+	def _extract_gaps_from_coverage_list():
+		items: list[str] = []
+		for entry in getattr(coverage_response, "coverage_list", []):
+			if hasattr(entry, "uncovered_lines") and getattr(entry, "uncovered_lines"):
+				path = getattr(entry, "path", "design")
+				for ln in entry.uncovered_lines[:5]:
+					items.append(f"{path}: line {ln}")
+			elif hasattr(entry, "coverage_details") and getattr(entry, "coverage_details"):
+				# QuestaSim DU entries: include statement identifiers if available
+				for stmt in entry.coverage_details[:5]:
+					src = stmt.get("src") if hasattr(stmt, "get") else None
+					if src:
+						items.append(src)
+		return items
+
 	# Extract coverage gaps from the response
 	gaps = []
 
-	# Try to extract uncovered items from coverage response
-	# This is simulator-specific, so we'll use the error_message which contains formatted feedback
-	if hasattr(coverage_response, 'uncovered_lines') and coverage_response.uncovered_lines:
-		gaps.extend([f"line {line}" for line in coverage_response.uncovered_lines[:10]])  # Limit to first 10
+	# Prefer explicit uncovered_lines aggregated in CoverageResponse
+	if getattr(coverage_response, "uncovered_lines", None):
+		gaps.extend([f"{line}" for line in coverage_response.uncovered_lines[:10]])
+	else:
+		gaps.extend(_extract_gaps_from_coverage_list())
 
-	# If no specific gaps found, use generic queries based on coverage level
+	# If no specific gaps found, treat as fully covered (no extra context needed)
 	if not gaps:
-		if coverage_response.total_coverage < 50:
-			gaps = ["main logic implementation", "control flow", "state machine"]
-		elif coverage_response.total_coverage < 75:
-			gaps = ["edge cases", "corner cases", "boundary conditions"]
-		else:
-			gaps = ["uncovered code paths", "conditional branches"]
+		return ""
 
 	# Retrieve chunks for each gap
 	all_chunks = []
