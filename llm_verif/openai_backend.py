@@ -7,8 +7,9 @@ Supports:
 - Any OpenAI-compatible inference server
 """
 
-from typing import Any
+from typing import Any, Type
 from openai import AsyncOpenAI
+from pydantic import BaseModel
 import tiktoken
 import os
 from llm_verif.modelchat import ModelChat
@@ -144,13 +145,19 @@ class OpenAIBackend(ModelChat):
         return client, tokenizer
 
     async def generate_response_async(
-        self, conversation_history: ConversationManager, num_return_sequences: int = 1
+        self, 
+        conversation_history: ConversationManager, 
+        num_return_sequences: int = 1,
+        response_format: Type[BaseModel] | None = None
     ) -> tuple[list[str], int, float]:
         """Generate responses asynchronously using OpenAI-compatible API.
 
         Args:
             conversation_history: Conversation manager with message history
             num_return_sequences: Number of responses to generate (n parameter)
+            response_format: Optional Pydantic model for structured output.
+                           When provided, uses OpenAI's structured output feature
+                           to ensure responses match the schema.
 
         Returns:
             Tuple of (responses list, total tokens used, elapsed time in seconds)
@@ -167,20 +174,59 @@ class OpenAIBackend(ModelChat):
         try:
             start_time = time.time()
 
-            # Make async API call
-            response = await self.llm.chat.completions.create(
-                model=self.environment.model_id,
-                messages=conversation,
-                temperature=self.temperature if self.do_sample else 0.0,
-                top_p=self.top_p if self.do_sample else 1.0,
-                max_tokens=self.max_new_tokens,
-                n=num_return_sequences,
-            )
+            # Build API call parameters
+            api_params = {
+                "model": self.environment.model_id,
+                "messages": conversation,
+                "temperature": self.temperature if self.do_sample else 0.0,
+                "top_p": self.top_p if self.do_sample else 1.0,
+                "max_tokens": self.max_new_tokens,
+                "n": num_return_sequences,
+            }
 
-            elapsed_time = time.time() - start_time
-
-            # Extract responses
-            responses = [choice.message.content.strip() for choice in response.choices]
+            # Make async API call with or without structured output
+            # Note: Structured output requires using parse() instead of create()
+            if response_format is not None:
+                logging.info(f"Using structured output with schema: {response_format.__name__}")
+                
+                # Warn if batch size > 1 (parse() doesn't support n parameter)
+                if num_return_sequences > 1:
+                    logging.warning(
+                        f"Structured output with parse() doesn't support n > 1. "
+                        f"Requested {num_return_sequences} responses, but will only generate 1. "
+                        "Consider disabling structured output for batch generation."
+                    )
+                
+                # Use parse() method for structured output
+                # Note: parse() doesn't support n parameter, so we can only get 1 response
+                response = await self.llm.beta.chat.completions.parse(
+                    model=api_params["model"],
+                    messages=api_params["messages"],
+                    temperature=api_params["temperature"],
+                    top_p=api_params["top_p"],
+                    max_tokens=api_params["max_tokens"],
+                    response_format=response_format,
+                )
+                
+                elapsed_time = time.time() - start_time
+                
+                # Extract parsed response
+                responses = []
+                for choice in response.choices:
+                    parsed = choice.message.parsed
+                    if parsed:
+                        # Convert Pydantic model to JSON string for compatibility
+                        responses.append(parsed.model_dump_json(indent=2))
+                    else:
+                        # Fallback to raw content if parsing failed
+                        responses.append(choice.message.content.strip() if choice.message.content else "")
+            else:
+                # Standard create() for non-structured output
+                response = await self.llm.chat.completions.create(**api_params)
+                elapsed_time = time.time() - start_time
+                
+                # Standard string responses
+                responses = [choice.message.content.strip() for choice in response.choices]
 
             # Get token count from API response or estimate
             if response.usage:

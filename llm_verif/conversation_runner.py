@@ -4,16 +4,18 @@ ConversationRunner class for managing test bench generation and coverage evaluat
 
 import logging
 import os
-from typing import Optional
+from typing import Optional, Type, Any
 import argparse
 
 from transformers import AutoTokenizer
+from pydantic import BaseModel
 from llm_verif.environment import Environment
 from llm_verif.simulator import CoverageResponse
 from llm_verif.modelchat import ModelChat
 import llm_verif.prompt_templates as prompt_templates
 from llm_verif.record import Record
 from llm_verif.conversation_manager import ConversationManager
+from llm_verif.schemas import TestbenchResponse, TestplanResponse
 
 
 class ConversationRunner:
@@ -40,22 +42,23 @@ class ConversationRunner:
 
     def parse_json_response(self, response: str) -> str | CoverageResponse:
         """
-        Parse the JSON response from ModelChat and handle errors.
+        Parse the JSON response from structured output.
 
         Args:
-            response (str): The JSON response string.
+            response (str): The JSON response string from Pydantic model.
 
         Returns:
             str | CoverageResponse: Parsed test bench code or error response.
         """
-        parsed_response, status = ModelChat.convert_json_response_to_dict(response)
-        if status == 0:  # Valid JSON
-            test_bench_code = parsed_response.get("test bench", "")
+        try:
+            import json
+            parsed_response = json.loads(response)
+            test_bench_code = parsed_response.get("test_bench", "")
             test_bench_code = test_bench_code.replace('\\"', '"')
             return test_bench_code
-        else:
-            error_message = parsed_response.get("error", "JSON parsing error.")
-            return CoverageResponse(False, 4, error_message)
+        except json.JSONDecodeError as e:
+            logging.error(f"Failed to parse structured output: {e}")
+            return CoverageResponse(False, 4, f"Structured output parsing error: {e}")
 
     def evaluate_coverage(
         self, test_bench_code: str | None, tb_name: str, run: int, iteration: int, batch: int, sim_runs: int = 1
@@ -89,7 +92,8 @@ class ConversationRunner:
 
     async def generate_and_evaluate(
         self, prompt: str, run: int, iteration: int, json: bool = True,
-        batch_size: int = 1, set_stack_pointer: bool = False, sim_runs: int = 1
+        batch_size: int = 1, set_stack_pointer: bool = False, sim_runs: int = 1,
+        response_format: Type[BaseModel] | None = None
     ) -> CoverageResponse:
         """
         Generate a test bench and evaluate its coverage.
@@ -102,6 +106,7 @@ class ConversationRunner:
             batch_size (int): Number of responses to generate.
             set_stack_pointer (bool): Whether to set the stack pointer.
             sim_runs (int): Number of simulation runs.
+            response_format (Type[BaseModel] | None): Pydantic schema for API structured output.
 
         Returns:
             CoverageResponse: The best coverage response from the batch.
@@ -114,13 +119,16 @@ class ConversationRunner:
         logging.info(f"Prompt: {prompt}")
         self.conversation.append_user_message(prompt, update_stack_pointer=set_stack_pointer)
         responses, tokens_generated, gen_time = await self.llm.generate_response_async(
-            self.conversation, num_return_sequences=1 if not json else batch_size
+            self.conversation, 
+            num_return_sequences=1 if not json else batch_size,
+            response_format=response_format
         )
         logging.info(f"Responses: {responses}")
         logging.info(f"Tokens / second: {tokens_generated / gen_time}")
 
         selected: CoverageResponse = CoverageResponse()
         if json:
+            # Parse responses from structured output
             json_responses: list[str | CoverageResponse] = [
                 self.parse_json_response(response) for response in responses
             ]
@@ -202,7 +210,11 @@ class ConversationRunner:
             testplan_prompt, testbench_prompt = prompt_templates.verif_and_testbench_prompt(self.environment.crt)
             logging.info(f"Testplan prompt: {testplan_prompt}")
             logging.info(f"Testbench prompt: {testbench_prompt}")
-            cov = await self.generate_and_evaluate(testplan_prompt, run_index, iteration, json=False)
+            # Generate testplan using TestplanResponse schema (no JSON parsing needed)
+            cov = await self.generate_and_evaluate(
+                testplan_prompt, run_index, iteration, json=False, 
+                response_format=TestplanResponse
+            )
             iteration += 1
         else:
             testbench_prompt = prompt_templates.first_testbench_prompt(
@@ -215,9 +227,10 @@ class ConversationRunner:
 
         # Stage 2: Generate test bench
         if cov.success:
+            # Generate testbench using TestbenchResponse schema for structured output
             cov = await self.generate_and_evaluate(
                 testbench_prompt, run_index, iteration, batch_size=self.environment.batch_size,
-                sim_runs=self.args.sim_runs
+                sim_runs=self.args.sim_runs, response_format=TestbenchResponse
             )
             if cov.success:
                 valid_iterations += 1
@@ -253,8 +266,10 @@ class ConversationRunner:
             logging.info(f"Iteration prompt: {prompt}")
 
             # This call adds 2 prompts to the conversation: the next user prompt and the response
+            # Use TestbenchResponse schema for iterative refinement
             cov = await self.generate_and_evaluate(
-                prompt, run_index, iteration, batch_size=self.environment.batch_size
+                prompt, run_index, iteration, batch_size=self.environment.batch_size,
+                response_format=TestbenchResponse
             )
 
             iteration += 1

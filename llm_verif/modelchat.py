@@ -1,11 +1,7 @@
 from pathlib import Path
-import re
-from tracemalloc import start
 import os
-import json
 from llm_verif.conversation_manager import ConversationManager
 from llm_verif.storage import FileStore
-import time
 from llm_verif.simulator import Simulator, CoverageResponse
 from llm_verif.environment import Environment
 from math import exp, log10
@@ -128,7 +124,7 @@ class ModelChat:
 
         return [""], 0, 0.0
 
-    async def generate_response_async(self, conversation_history: ConversationManager, num_return_sequences: int = 1) -> tuple[list[str], int, float]:
+    async def generate_response_async(self, conversation_history: ConversationManager, num_return_sequences: int = 1, response_format: Any = None) -> tuple[list[str], int, float]:
         """
         Generate a response from the model given the conversation history (async version).
 
@@ -138,6 +134,9 @@ class ModelChat:
         Args:
             conversation_history (ConversationManager): The conversation history as a ConversationManager instance.
             num_return_sequences (int): Number of response sequences to generate.
+            response_format (Any): Structured output schema (Pydantic model) for backends that support it.
+                                  This parameter is backend-specific (openai) and may be ignored by implementations that don't
+                                  support structured output.
 
         Returns:
             tuple[list[str], int, float]:
@@ -149,74 +148,11 @@ class ModelChat:
             ValueError: If the conversation history is empty or invalid.
             Exception: For unexpected errors during text generation.
         """
-        # Default implementation: call synchronous version
+        # Default implementation: call synchronous version (ignoring response_format for backwards compatibility)
         # Async-native backends should override this method
         return self.generate_response(conversation_history, num_return_sequences)
 
-    @staticmethod
-    def convert_json_response_to_dict(generated_response: str) -> tuple[dict[str, Any], int]:
-        """
-        Extract and parse JSON content from an AI-generated response.
-
-        This method identifies and parses JSON-like content embedded within the model's response.
-        If the response contains invalid JSON or no JSON at all, it attempts to extract the most
-        plausible JSON segment and returns a default structure for errors.
-
-        Args:
-            generated_response (str): The AI-generated response containing JSON-like content.
-
-        Returns:
-            Tuple[Dict[str, Any], int]:
-                - The parsed JSON object as a dictionary.
-                - A status code:
-                    - 0: Successfully parsed JSON.
-                    - 1: Empty response or no JSON found.
-                    - 2: JSON parsing failed.
-                    - 3: Other unexpected errors.
-
-        Notes:
-            - This function is designed for scenarios where the AI response might contain
-              additional non-JSON text before or after the JSON content.
-        """
-        # Handle empty response
-        if not generated_response:
-            logging.error("Empty or invalid response received.")
-            return {"error": "Empty response"}, 1
-
-        # Attempt to extract JSON-like content
-        try:
-            # Find the first JSON curly brace
-            first_pos = generated_response.find('{')
-            if first_pos != -1:
-                generated_response = generated_response[first_pos:]
-            
-            comments_pos = generated_response.find('"comments":')
-            
-            # Find the first JSON curly brace after comments tag
-            last_pos = generated_response.find('}', comments_pos)
-            if last_pos != -1 and comments_pos != -1:
-                generated_response = generated_response[:last_pos + 1]
-
-            # TODO: Escape all non-terminal double quotes
-            pattern = r'{\s*"test bench":\s*"(.*?)",\s*"comments":\s*"(.*?)"\s*}'
-            matches = re.match(pattern, generated_response, re.DOTALL)
-            if matches:
-                parsed_response = matches.group(1)
-            else:
-                raise RuntimeError(f"Could not parse the response:\n{generated_response}")
-
-            # Parse JSON
-            #decoder = json.JSONDecoder(strict=False)
-            #parsed_response = decoder.raw_decode(generated_response)
-            return {"test bench": parsed_response}, 0
-
-        except json.JSONDecodeError as e:
-            logging.error(f"JSONDecodeError: {e}. Response: {generated_response}")
-            return {"error": f"Malformed JSON content\n\n{generated_response}"}, 2
-
-        except Exception as e:
-            logging.error(f"Unexpected error during JSON parsing: {e}")
-            return {"error": f"Unexpected error\n\n{generated_response}"}, 3
+    # Legacy convert_json_response_to_dict method removed - now using structured output with Pydantic
 
     def get_coverage(self, generated_response: str, work_dir: str | Path, tb_name: str, data_point: dict[str, str | list[str]] | None, storage: FileStore | None = None, batch: int = 0, sim_runs: int = 1) -> CoverageResponse:
         if not generated_response:

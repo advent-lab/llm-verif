@@ -1,24 +1,5 @@
 from llm_verif.questasim import CoverageResponse
 
-json_format_str = '''Example response:
-{
-	"test bench": "
-		`timescale 1ns / 1ps
-		module tb_llm;
-
-			// Clock logic
-
-			initial
-			begin
-				// Generated testcase
-			$finish;
-			end
-		endmodule
-	",
-	"comments": " // Any additional comments here "
-}
-'''
-
 def system_prompt(design_specification: str, module_header: str,design_content: list[str] | None = None):
 
 	design_message = ""
@@ -56,46 +37,46 @@ At other times, you will generate a testbench. The goal of the testbench is to i
                          
 We will run multiple iterations. In each iteration, you will generate a testbench - using one of the options mentioned above. Your goal should be to cover as much as statement coverage goal as possible. Across multiple iterations, we aim to have a coverage of 100%.
 
-Generate only the testbench and no additional words.
 The module name of the testbench should be tb_llm.
 You can use either Verilog or SystemVerilog syntax and features. Do not generate any UVM code.
 If you use SystemVerilog classes, declare them before the top-level testbench module.
-Provide the generated testbench in a JSON format as shown below. You should put the generated testbench into the "test bench" tag and any additional comments into the "comments" tag. Ensure that there is only one testbench within the JSON formatted output.\n
+
 Below are a specification for the design you are trying to verify and a module header for the top-level module of the design. Use this information to generate the testbench.
+
 Module Header:
 {module_header}
 
 Design Specification:
 {design_specification}
-
-Below is the JSON format you must use to respond. Do not change the format in any way.
-""" + json_format_str + f"\n{design_message}"
+""" + design_message
 
 def zero_shot_prompt() -> str:
-	return f'''Generate a testbench for the following design specification.
-Generate a Verilog testbench named tb_llm for the the top-level module. The test bench should meet the statement coverage goal of 100%. Generate only the Verilog testbench and no additional words.
+	return '''Generate a testbench for the following design specification.
+Generate a Verilog testbench named tb_llm for the top-level module. The test bench should meet the statement coverage goal of 100%.
 
 The module name of the testbench should be tb_llm.
-Generate only the testbench and no additional words.
 You can use either Verilog or SystemVerilog syntax and features. Do not generate any UVM code.
-Provide the generated testbench in a JSON format as shown below. You should put the generated testbench into the "testbench" tag and any additional comments into the "comments" tag. 
-Ensure that there is only one testbench within the JSON formatted output.\n
-Here are some additional guidelines for the test bench: \n
-Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo.
-''' + json_format_str
+
+Additional guidelines:
+- Please declare signals before using them
+- When instantiating the DUT, signals connected to input ports should be declared as reg
+- Signals connected to output ports should be declared as wire
+- Do not connect module ports to cross module references (such as dut.foo)
+'''
 
 # This function returns the initial prompt used for generating a test bench
 def first_testbench_prompt(design_specification: str | None = None, module_header: str | None = None) -> str:
-    return f'''Generate a testbench for the given design specification and module header.
-Generate a Verilog testbench named tb_llm for the the top-level module. The test bench should meet the statement coverage goal of 100%. Generate only the Verilog testbench and no additional words.
+    return '''Generate a testbench for the given design specification and module header.
+Generate a Verilog testbench named tb_llm for the top-level module. The test bench should meet the statement coverage goal of 100%.
 
 The module name of the testbench should be tb_llm.
-Generate only the testbench and no additional words.
 You can use either Verilog or SystemVerilog syntax and features. Do not generate any UVM code.
-Provide the generated testbench in a JSON format as shown below. You should put the generated testbench into the "testbench" tag and any additional comments into the "comments" tag. 
-Ensure that there is only one testbench within the JSON formatted output.\n
-Here are some additional guidelines for the test bench: \n
-Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo.
+
+Additional guidelines for the testbench:
+- Please declare signals before using them
+- When instantiating the DUT, signals connected to input ports should be declared as reg
+- Signals connected to output ports should be declared as wire
+- Do not connect module ports to cross module references (such as dut.foo)
 
 When you generate the testcase, randomize the appropriate signals to get as much coverage as possible. You can randomize signals using $urandom, $urandom_range, or randomize(). Please do not use $random as it lacks random stability. If you use the randomize(), ensure that you enclose the call in an assert(), so that if the randomization fails, an error is produced.
 
@@ -131,7 +112,7 @@ SimpleSum p = new;
 int success = p.randomize() with {{x < y}};
 
 Remember that when you use System Verilog classes for the testcases, you should create an interface, instantiate the interface, connect the right signals to it, and pass the handle to the interface to the class object.
-''' + json_format_str
+'''
 
 def verification_plan_prompt() -> str:
 	prompt = f"""You are a hardware verification expert. Your task is to generate a *comprehensive* and *structured* verification plan for a SystemVerilog testbench that targets the design described below.
@@ -183,34 +164,60 @@ Begin writing the verification plan now:
 # The second prompt assumes that conversation histroy is being provided to the LLM in addition to the second prompt
 def verif_and_testbench_prompt(crt: bool = True) -> tuple[str, str]:
     p1 = verification_plan_prompt()
-    p2 = '''Now we are in the second stage of the verification process.''' + first_testbench_prompt() if crt else zero_shot_prompt() + json_format_str
+    p2 = '''Now we are in the second stage of the verification process.''' + first_testbench_prompt() if crt else zero_shot_prompt()
     return (p1, p2)
 
 def error_prompt(error_code: int, error_message: str) -> str:
 
-	# Handle error responses from QuestaSim
+	# Handle error responses from simulators
 	if error_code == 1:
-		return f'''The generated test bench failed to compile. Use the following error message to fix the errors. Use the same JSON format for the new testbench. Error Message:\n{error_message}\nProvide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Ensure that there is only one testbench within the JSON formatted output.\n
-Here are some additional guidelines for the test bench: \n
-Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n''' + json_format_str
+		return f'''The generated testbench failed to compile. Use the following error message to fix the errors.
+
+Error Message:
+{error_message}
+
+Additional guidelines:
+- Please declare signals before using them
+- When instantiating the DUT, signals connected to input ports should be declared as reg
+- Signals connected to output ports should be declared as wire
+- Do not connect module ports to cross module references (such as dut.foo)
+'''
 	
 	elif error_code == 2:
-		return f'''The generated test bench failed to simulate. Use the following error message to fix the errors Use the same JSON format for the new testbench. Error Message:\n{error_message}\nProvide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Ensure that there is only one testbench within the JSON formatted output.\n
-Here are some additional guidelines for the test bench: \n
-Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n''' + json_format_str
+		return f'''The generated testbench failed to simulate. Use the following error message to fix the errors.
+
+Error Message:
+{error_message}
+
+Additional guidelines:
+- Please declare signals before using them
+- When instantiating the DUT, signals connected to input ports should be declared as reg
+- Signals connected to output ports should be declared as wire
+- Do not connect module ports to cross module references (such as dut.foo)
+'''
 	
 	elif error_code == 3:
-		return f'''The generated test bench took to long to simulate and timed out. Try to shorten the testbench. Use the same JSON format for the new testbench. Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Ensure that there is only one testbench within the JSON formatted output.\n
-Here are some additional guidelines for the test bench: \n
-Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n''' + json_format_str
+		return f'''The generated testbench took too long to simulate and timed out. Try to shorten the testbench.
+
+Additional guidelines:
+- Please declare signals before using them
+- When instantiating the DUT, signals connected to input ports should be declared as reg
+- Signals connected to output ports should be declared as wire
+- Do not connect module ports to cross module references (such as dut.foo)
+'''
 	
 	elif error_code == 4:
-		return f'''You failed to generate a test bench in the JSON format I have specified. You MUST use this JSON format so I can parse your response correctly. You may have also either generated a terminating token too early, ran past the token limit, or took too long to generate. Try generating a shorter test bench with higher quality tests. Use the same JSON format for the new testbench. Provide the generated testbench in a JSON format as shown below. You should put the generated test bench into the \"test bench\" tag and any additonal comments into the \"comments\" tag. Ensure that there is only one testbench within the JSON formatted output.\n
-Here are some additional guidelines for the test bench: \n
-Please declare signals before using them. When instantiating the DUT, the signals connected to the input ports should be declared as a reg in the test bench. When instantiating the DUT, the signals connected to the output ports should be declared as a wire in the test bench. Also, do not connect module port to cross module references, such as dut.foo. \n''' + json_format_str
+		return '''The response generation failed. You may have generated a terminating token too early, ran past the token limit, or took too long to generate. Try generating a shorter testbench with higher quality tests.
+
+Additional guidelines:
+- Please declare signals before using them
+- When instantiating the DUT, signals connected to input ports should be declared as reg
+- Signals connected to output ports should be declared as wire
+- Do not connect module ports to cross module references (such as dut.foo)
+'''
 	
 	elif error_code == 5:
-		return "You did not add a $finish command to your test bench so I cannot simulate it. Please add the $finish command in the correct place in the test bench."
+		return "You did not add a $finish command to your testbench so I cannot simulate it. Please add the $finish command in the correct place in the testbench."
 
 	return ""
 
@@ -237,8 +244,8 @@ def iter_prompt(
 
 Error Message: {coverage.error_message}
 
-Please remember to format your response properly. We want you to put the test bench you think will achieve the most coverage
-inside of the JSON. Please see the format below again for reference:\n''' + json_format_str
+Please generate a testbench that will achieve maximum coverage for the design.
+'''
 
     # Use simulator-specific methods for coverage formatting
     coverage_summary = simulator.format_coverage_summary(coverage)
@@ -246,18 +253,17 @@ inside of the JSON. Please see the format below again for reference:\n''' + json
 
     # Build the prompt using simulator-agnostic structure
     return (
-        "The test bench that you generated did not meet coverage goals. "
-        "Use the following coverage data and context to generate a test bench that achieves better coverage:\n\n"
+        "The testbench that you generated did not meet coverage goals. "
+        "Use the following coverage data and context to generate a testbench that achieves better coverage:\n\n"
         + coverage_summary + "\n\n"
         + coverage_feedback + "\n\n"
         + f"""There are two options for improving line coverage; choose one:
 1) Modify an existing testcase from a previous testbench (adjust/add/remove stimulus).
 2) Start a fresh testcase with novel stimulus to target the uncovered logic.
 
-Generate a **Verilog** testbench named tb_llm for top module {top_design_module} (no SystemVerilog features).
-The test bench should target 100% statement coverage.
-Provide the output in the JSON format below (one testbench only):
-""" + json_format_str
+Generate a Verilog testbench named tb_llm for top module {top_design_module}.
+The testbench should target 100% statement coverage.
+"""
     )
 
 def design_prompt(all_design_files: list[str]) -> str:
