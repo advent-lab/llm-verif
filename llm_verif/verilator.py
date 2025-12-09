@@ -382,7 +382,7 @@ class Verilator(Simulator):
     Return True if Verilator output indicates an error or fatal condition.
     Accepts stdout/stderr text from compilation or simulation.
     """
-    return bool(re.search(r'\b%(?:Error|Fatal):', output))
+    return bool(re.search(r'%(?:Error|Fatal):', output))
 
   def get_coverage_file_extension(self) -> str:
     """Get the file extension for Verilator coverage database files."""
