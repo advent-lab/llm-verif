@@ -240,7 +240,7 @@ class Verilator(Simulator):
 
       if Verilator.check_errors(compile_output):
         logging.error(f"Compilation error for {tb_path}. Check {compile_log_path} for details.")
-        return CoverageResponse(False, 1, "Compilation error occurred", [], 0)
+        return CoverageResponse(False, 1, compile_output, [], 0)
 
     except RuntimeError as e:
       logging.error(f"Compilation failed for {tb_path}: {e}")
