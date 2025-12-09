@@ -30,6 +30,39 @@ class TestbenchResponse(BaseModel):
     )
 
 
+class Testpoint(BaseModel):
+    """
+    Single testpoint for a feature.
+    """
+    name: str = Field(..., description="Short name for the testpoint.")
+    description: str = Field(..., description="Detailed description of the stimulus and checks.")
+    expected: str = Field(..., description="Expected outcome or assertion for this testpoint.")
+
+
+class FeatureSpec(BaseModel):
+    """
+    Feature entry containing the feature name and its testpoints.
+    """
+    feature: str = Field(..., description="Name of the feature or functionality.")
+    testpoints: list[Testpoint] = Field(
+        ...,
+        description="List of testpoints (stimulus/check pairs) for this feature."
+    )
+
+
+class FeatureTestplanResponse(BaseModel):
+    """
+    Schema for feature-specific testplan generation responses with nested testpoints.
+    """
+    features: list[FeatureSpec] = Field(
+        ...,
+        description="List of features, each with a list of testpoints."
+    )
+    summary: str = Field(
+        default="",
+        description="Brief summary of the verification strategy and key testing areas."
+    )
+
 class TestplanResponse(BaseModel):
     """
     Schema for verification/test plan generation responses.
