@@ -174,13 +174,15 @@ class OpenAIBackend(ModelChat):
         try:
             start_time = time.time()
 
+            # temp support for gpt-5.1 api param
+            # token_limit_param = "max_completion_tokens" if "gpt-5.1" in self.environment.model_id else "max_tokens"
             # Build API call parameters
             api_params = {
                 "model": self.environment.model_id,
                 "messages": conversation,
                 "temperature": self.temperature if self.do_sample else 0.0,
                 "top_p": self.top_p if self.do_sample else 1.0,
-                "max_tokens": self.max_new_tokens,
+                "max_completion_tokens": self.max_new_tokens,
                 "n": num_return_sequences,
             }
 
@@ -204,7 +206,7 @@ class OpenAIBackend(ModelChat):
                     messages=api_params["messages"],
                     temperature=api_params["temperature"],
                     top_p=api_params["top_p"],
-                    max_tokens=api_params["max_tokens"],
+                    max_completion_tokens=api_params["max_completion_tokens"],
                     response_format=response_format,
                 )
                 

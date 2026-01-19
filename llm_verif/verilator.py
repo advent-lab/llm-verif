@@ -240,7 +240,7 @@ class Verilator(Simulator):
 
       if Verilator.check_errors(compile_output):
         logging.error(f"Compilation error for {tb_path}. Check {compile_log_path} for details.")
-        return CoverageResponse(False, 1, "Compilation error occurred", [], 0)
+        return CoverageResponse(False, 1, compile_output, [], 0)
 
     except RuntimeError as e:
       logging.error(f"Compilation failed for {tb_path}: {e}")
@@ -382,7 +382,7 @@ class Verilator(Simulator):
     Return True if Verilator output indicates an error or fatal condition.
     Accepts stdout/stderr text from compilation or simulation.
     """
-    return bool(re.search(r'\b%(?:Error|Fatal):', output))
+    return bool(re.search(r'%(?:Error|Fatal):', output))
 
   def get_coverage_file_extension(self) -> str:
     """Get the file extension for Verilator coverage database files."""
