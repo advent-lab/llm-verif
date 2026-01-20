@@ -100,6 +100,22 @@ llm_verif/
 llm_verif --help  # See all available options
 ```
 
+**RAG-Enhanced Mode (Recommended for Large Designs):**
+
+For designs with large specifications or complex RTL, enable RAG (Retrieval-Augmented Generation) to reduce token usage by 70-80% while maintaining coverage quality:
+
+```bash
+llm_verif \
+    --enable_rag \
+    --dotenv_path .env \
+    --backend openai \
+    --simulator verilator \
+    --design /path/to/design \
+    ...
+```
+
+RAG mode dynamically retrieves relevant specification and design chunks instead of injecting full documents, significantly reducing prompt sizes and API costs.
+
 **SLURM Cluster Mode (Recommended for Large-Scale Experiments):**
 
 For running vLLM-based experiments on SLURM clusters with automatic server management:

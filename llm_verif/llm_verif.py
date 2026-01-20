@@ -52,6 +52,14 @@ def main():
     parser.add_argument("--zero_shot", action='store_true', default=None, help="Enable zero-shot prompting.")
     parser.add_argument("--crt", action='store_true', default=None, help="Enable constrained random testing.")
 
+    # RAG-related arguments
+    parser.add_argument("--enable_rag", action='store_true', default=None, help="Enable RAG mode for dynamic context retrieval.")
+    parser.add_argument("--rag_top_k", type=int, help="Number of chunks to retrieve for RAG queries (default: 5).")
+    parser.add_argument("--rag_chunk_size", type=int, help="Chunk size in tokens for RAG indexing (default: 256).")
+    parser.add_argument("--rag_chunk_overlap", type=int, help="Overlap between chunks in tokens (default: 32).")
+    parser.add_argument("--rag_model", type=str, help="Embedding model name for RAG (default: sentence-transformers/all-MiniLM-L6-v2).")
+    parser.add_argument("--rebuild_rag_index", action='store_true', default=None, help="Force rebuild of RAG index.")
+
     args = parser.parse_args()
 
     # Configure logging based on verbosity level
@@ -169,6 +177,21 @@ def main():
     logger.info(f"Constrained random testing enabled: {args.crt}")
     args.simulator = resolve_config("simulator", default="verilator", cast=str)
     logger.info(f"Using simulator: {args.simulator}")
+
+    # RAG configuration
+    args.enable_rag = resolve_config("enable_rag", default=False, cast=str_to_bool)
+    logger.info(f"RAG mode enabled: {args.enable_rag}")
+    args.rag_top_k = resolve_config("rag_top_k", default=5, cast=int)
+    logger.info(f"RAG top-k chunks: {args.rag_top_k}")
+    args.rag_chunk_size = resolve_config("rag_chunk_size", default=256, cast=int)
+    logger.info(f"RAG chunk size: {args.rag_chunk_size}")
+    args.rag_chunk_overlap = resolve_config("rag_chunk_overlap", default=32, cast=int)
+    logger.info(f"RAG chunk overlap: {args.rag_chunk_overlap}")
+    args.rag_model = resolve_config("rag_model", default="sentence-transformers/all-MiniLM-L6-v2", cast=str)
+    logger.info(f"RAG embedding model: {args.rag_model}")
+    args.rebuild_rag_index = resolve_config("rebuild_rag_index", default=False, cast=str_to_bool)
+    logger.info(f"Rebuild RAG index: {args.rebuild_rag_index}")
+
     args.base_url = resolve_config("base_url", default=None, cast=str)
     if args.base_url:
         logger.info(f"Using custom API base URL: {args.base_url}")

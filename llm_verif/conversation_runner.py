@@ -38,6 +38,45 @@ class ConversationRunner:
         self.tokenizer = AutoTokenizer.from_pretrained(environment.tokenizer_id, use_fast=False)
         self.conversation: Optional[ConversationManager] = None
 
+    def _build_rag_context(self, query: str, heading: str, top_k: Optional[int] = None, max_chunks: int = 6) -> str:
+        """
+        Retrieve context from the vector store and format it for prompt injection.
+        """
+        if not (self.environment.enable_rag and self.environment.vector_store):
+            return ""
+
+        results = self.environment.vector_store.retrieve_relevant_chunks(
+            query, top_k=top_k or self.environment.rag_top_k
+        )
+        if not results:
+            return ""
+
+        context = f"\n\n{heading}\n"
+        for idx, (chunk, source, distance) in enumerate(results, 1):
+            context += f"[{heading} {idx} from {source}]:\n{chunk}\n\n"
+            if idx >= max_chunks:
+                break
+        return context
+
+    @staticmethod
+    def _coverage_gap_hint(cov: CoverageResponse) -> str:
+        """
+        Build a brief hint string describing uncovered areas, if available.
+        """
+        gaps: list[str] = []
+        if getattr(cov, "uncovered_lines", None):
+            for ln in getattr(cov, "uncovered_lines")[:5]:
+                gaps.append(str(ln))
+        elif getattr(cov, "coverage_list", None):
+            for entry in cov.coverage_list:
+                if hasattr(entry, "uncovered_lines") and getattr(entry, "uncovered_lines"):
+                    path = getattr(entry, "path", "design")
+                    for ln in getattr(entry, "uncovered_lines")[:3]:
+                        gaps.append(f"{path}:{ln}")
+                if len(gaps) >= 5:
+                    break
+        return ", ".join(gaps)
+
     def parse_json_response(self, response: str) -> str | CoverageResponse:
         """
         Parse the JSON response from ModelChat and handle errors.
@@ -157,6 +196,19 @@ class ConversationRunner:
                     max_coverage[1], slice=(True and self.environment.remove_polluted_context)
                 )
 
+                # Optionally index the best-performing testbench for future retrieval
+                if self.environment.enable_rag and self.environment.vector_store:
+                    try:
+                        self.environment.vector_store.add_texts(
+                            max_coverage[1],
+                            source=f"runtime:testbench:{self.environment.design_name}",
+                            persist=True,
+                            index_name=self.environment.design_name
+                        )
+                        logging.info("Runtime testbench added to vector store for retrieval.")
+                    except Exception as e:
+                        logging.warning(f"Failed to add testbench to vector store: {e}")
+
                 for i, response in enumerate(coverage_responses):
                     self.record.update_dataframe(
                         response, self.llm.temperature, self.llm.top_p, run, iteration, i,
@@ -189,7 +241,23 @@ class ConversationRunner:
         top_p = 0.7
         cov = CoverageResponse(True, 0, "")
 
-        self.conversation = ConversationManager(self.tokenizer, prompt_templates.system_prompt(self.environment.design_specification, self.environment.module_header))
+        # Point 1: Use RAG-enhanced system prompt if RAG is enabled
+        if self.environment.enable_rag and self.environment.vector_store:
+            logging.info("Using RAG-enhanced system prompt")
+            system_prompt = prompt_templates.system_prompt_rag(
+                module_header=self.environment.module_header,
+                vector_store=self.environment.vector_store,
+                module_name=self.environment.design_module_name,
+                top_k=self.environment.rag_top_k
+            )
+        else:
+            logging.info("Using standard system prompt")
+            system_prompt = prompt_templates.system_prompt(
+                self.environment.design_specification,
+                self.environment.module_header
+            )
+
+        self.conversation = ConversationManager(self.tokenizer, system_prompt)
 
         logging.info(f"Length of conversation: {self.conversation.length()}")
         logging.info(f"Stack pointer: {self.conversation.stack_pointer}")
@@ -200,15 +268,42 @@ class ConversationRunner:
         # Stage 1: Generate verification plan (if testplan is enabled)
         if self.environment.testplan:
             testplan_prompt, testbench_prompt = prompt_templates.verif_and_testbench_prompt(self.environment.crt)
+            if self.environment.enable_rag and self.environment.vector_store:
+                rag_context = self._build_rag_context(
+                    query=f"{self.environment.design_module_name} verification plan scenarios coverage goals interface behavior corner cases",
+                    heading="Retrieved context for building the verification plan"
+                )
+                testplan_prompt += rag_context
+
             logging.info(f"Testplan prompt: {testplan_prompt}")
             logging.info(f"Testbench prompt: {testbench_prompt}")
             cov = await self.generate_and_evaluate(testplan_prompt, run_index, iteration, json=False)
+
+            # Add the generated test plan back into the vector store for future prompts
+            if self.environment.enable_rag and self.environment.vector_store:
+                try:
+                    testplan_response = self.conversation.conversation[-1]["content"]
+                    self.environment.vector_store.add_texts(
+                        testplan_response,
+                        source=f"runtime:testplan:{self.environment.design_name}",
+                        persist=True,
+                        index_name=self.environment.design_name
+                    )
+                    logging.info("Runtime test plan added to vector store for retrieval.")
+                except Exception as e:
+                    logging.warning(f"Failed to add test plan to vector store: {e}")
             iteration += 1
         else:
             testbench_prompt = prompt_templates.first_testbench_prompt(
                 self.environment.design_specification, self.environment.module_header
             )
             logging.info(f"Testbench prompt: {testbench_prompt}")
+
+        if self.environment.enable_rag and self.environment.vector_store:
+            testbench_prompt += self._build_rag_context(
+                query=f"{self.environment.design_module_name} testbench stimulus reset sequencing corner and error cases coverage goals",
+                heading="Retrieved context for generating the testbench"
+            )
 
         logging.info(f"Length of conversation: {self.conversation.length()}")
         logging.info(f"Stack pointer: {self.conversation.stack_pointer}")
@@ -236,10 +331,24 @@ class ConversationRunner:
                 first_success = False
                 valid_iterations += 1
                 if not self.environment.no_design_prompt:
-                    # Add design prompt to end of conversation
-                    self.conversation.update_system_prompt(
-                        prompt_templates.system_prompt(self.environment.design_specification, self.environment.module_header, self.environment.all_design_file_paths)
-                    )
+                    # Point 2: Use RAG-based design retrieval if enabled
+                    if self.environment.enable_rag and self.environment.vector_store:
+                        logging.info("Using RAG-enhanced design context based on coverage gaps")
+                        design_context = prompt_templates.design_prompt_rag(
+                            coverage_response=cov,
+                            vector_store=self.environment.vector_store,
+                            top_k_per_gap=2,
+                            coverage_threshold=90.0
+                        )
+                        if design_context:
+                            # Append design context as system message
+                            self.conversation.append_system_context(design_context)
+                    else:
+                        # Original behavior: inject all design files
+                        logging.info("Using standard design prompt with all design files")
+                        self.conversation.update_system_prompt(
+                            prompt_templates.system_prompt(self.environment.design_specification, self.environment.module_header, self.environment.all_design_file_paths)
+                        )
 
             if not cov.success:
                 prompt = prompt_templates.error_prompt(cov.error_code, cov.error_message)
@@ -248,8 +357,31 @@ class ConversationRunner:
                     cov,
                     self.environment.design_module_name,
                     self.llm.simulator,
-                    self.args.work_dir
+                    self.args.work_dir,
+                    vector_store=self.environment.vector_store if self.environment.enable_rag else None,
+                    rag_top_k=self.environment.rag_top_k
                 )
+
+                # Point 3: For RAG mode, also inject targeted design context for each iteration
+                if self.environment.enable_rag and self.environment.vector_store and not self.environment.no_design_prompt:
+                    design_context = prompt_templates.design_prompt_rag(
+                        coverage_response=cov,
+                        vector_store=self.environment.vector_store,
+                        top_k_per_gap=2,
+                        coverage_threshold=90.0
+                    )
+                    if design_context:
+                        logging.info("Injecting RAG-based design context for iteration")
+                        self.conversation.append_system_context(design_context)
+
+            if self.environment.enable_rag and self.environment.vector_store:
+                uncovered_hint = self._coverage_gap_hint(cov)
+                if uncovered_hint:
+                    prompt += self._build_rag_context(
+                        query=f"{self.environment.design_module_name} verification stimuli to close coverage gaps {uncovered_hint}",
+                        heading="Retrieved context for refining the testbench"
+                    )
+
             logging.info(f"Iteration prompt: {prompt}")
 
             # This call adds 2 prompts to the conversation: the next user prompt and the response

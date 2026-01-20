@@ -32,6 +32,16 @@ class Environment:
         self.batch_size = env_options.batch_size
         self.remove_polluted_context = env_options.remove_polluted_context
 
+        # RAG configuration
+        self.enable_rag = env_options.enable_rag
+        self.rag_top_k = env_options.rag_top_k
+        self.rag_chunk_size = env_options.rag_chunk_size
+        self.rag_chunk_overlap = env_options.rag_chunk_overlap
+        self.rag_model = env_options.rag_model
+        self.rebuild_rag_index = env_options.rebuild_rag_index
+        self.vector_store = None
+        self.vector_corpus_paths: list[str] = []
+
         # Create the prompt
         # Read the specification file
         # TODO: Add support for PDF specification files/documentation
@@ -70,6 +80,27 @@ class Environment:
         self.store: FileStore = FileStore(env_options.output)
 
         self.simulator_name = env_options.simulator
+
+        # Collect important materials for RAG ingestion
+        corpus_paths: set[str] = set()
+        corpus_paths.add(self.design_dir)
+
+        def _add_path(path_entry):
+            if not path_entry:
+                return
+            if isinstance(path_entry, list):
+                for p in path_entry:
+                    corpus_paths.add(p)
+            else:
+                corpus_paths.add(path_entry)
+
+        _add_path(self.design_specification_path)
+        _add_path(self.all_design_file_paths)
+        self.vector_corpus_paths = list(corpus_paths)
+
+        # Initialize RAG vector store if enabled
+        if self.enable_rag:
+            self._initialize_vector_store()
 
     def get_design_name(self, design_path: str) -> str:
         split_filename = os.path.split(design_path)[1].split('.')
@@ -124,3 +155,51 @@ class Environment:
         else:
             return "No module header found."
 
+    def _initialize_vector_store(self):
+        """
+        Initialize the VectorStore for RAG-enhanced prompting.
+        Tries to load existing index, otherwise builds a new one.
+        """
+        try:
+            from llm_verif.vector_store import VectorStore
+
+            logging.info(f"Initializing VectorStore for design: {self.design_name}")
+            logging.info(f"Design directory: {self.design_dir}")
+            logging.info(f"VectorStore corpus paths: {self.vector_corpus_paths}")
+
+            # Create vector store instance pointing to design directory
+            self.vector_store = VectorStore(
+                directory=self.design_dir,
+                chunk_size=self.rag_chunk_size,
+                chunk_overlap=self.rag_chunk_overlap,
+                model_name=self.rag_model,
+                device=None,  # Auto-detect GPU/CPU
+                corpus_paths=self.vector_corpus_paths,
+                index_name=self.design_name
+            )
+
+            # Try to load existing index
+            index_loaded = False
+            if not self.rebuild_rag_index:
+                logging.info(f"Attempting to load existing RAG index for {self.design_name}...")
+                index_loaded = self.vector_store.load_index(name=self.design_name)
+
+            # Build new index if not loaded
+            if not index_loaded or self.rebuild_rag_index:
+                if self.rebuild_rag_index:
+                    logging.info("Rebuilding RAG index (--rebuild_rag_index flag set)")
+                else:
+                    logging.info("No existing index found. Building new RAG index...")
+
+                self.vector_store.create_index()
+                self.vector_store.save_index(name=self.design_name)
+                logging.info(f"RAG index created and saved for {self.design_name}")
+
+            # Print statistics
+            logging.info("\n" + self.vector_store.get_stats())
+
+        except Exception as e:
+            logging.warning(f"Failed to initialize VectorStore: {e}")
+            logging.warning("RAG mode will be disabled. Falling back to non-RAG prompts.")
+            self.enable_rag = False
+            self.vector_store = None

@@ -45,6 +45,7 @@ class CoverageResponse:
     error_message: str = ""
     coverage_list: Sequence[Any] = field(default_factory=list)  # Simulator-specific: QuestaSim uses DU, Verilator uses FileCoverage
     total_coverage: float = 0.0
+    uncovered_lines: Sequence[int | str] = field(default_factory=list)
 
     # Error codes
     # -1: empty object

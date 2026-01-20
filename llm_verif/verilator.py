@@ -5,6 +5,7 @@ from pathlib import Path
 from dataclasses import dataclass
 from typing import List, Tuple, Iterable
 import fnmatch
+from itertools import islice
 
 from llm_verif.simulator import ArtifactPlan, Simulator, CoverageResponse, DU
 from llm_verif.lcovparser import Report, Record
@@ -104,6 +105,22 @@ class Verilator(Simulator):
     lh = sum(r.covered_lines for r in rows)
     pct = (lh / lf * 100.0) if lf else 0.0
     return lf, lh, round(pct, 2)
+
+  @staticmethod
+  def _aggregate_uncovered_lines(rows: List[FileCoverage], limit: int = 50) -> list[str]:
+    """
+    Flatten uncovered line items across files, capped to avoid huge prompts.
+    """
+    uncovered: list[str] = []
+    for fc in rows:
+      if not fc.uncovered_lines:
+        continue
+      filename = os.path.basename(fc.path)
+      for ln in islice(fc.uncovered_lines, 0, 5):
+        uncovered.append(f"{filename}:{ln}")
+        if len(uncovered) >= limit:
+          return uncovered
+    return uncovered
 
   # ============================================================================
   # Public methods
@@ -288,8 +305,9 @@ class Verilator(Simulator):
         return CoverageResponse(False, 3, error_msg, [], 0)
 
       coverage_list, total_coverage = self.parse_coverage_report(str(coverage_info_path), tb_path)
+      uncovered_lines = self._aggregate_uncovered_lines(coverage_list)
       logging.info(f"Coverage report generated for {tb_path}: {total_coverage}%")
-      return CoverageResponse(True, 0, sim_output, coverage_list, total_coverage)
+      return CoverageResponse(True, 0, sim_output, coverage_list, total_coverage, uncovered_lines)
     except RuntimeError as e:
       logging.error(f"Coverage report generation failed for {tb_path}: {e}")
       return CoverageResponse(False, 3, str(e), [], 0)
@@ -443,7 +461,8 @@ class Verilator(Simulator):
 
       # Parse merged coverage - Verilator needs tb_path for exclusion, use empty string for cross-run merge
       merged_coverage, total_coverage = Verilator.parse_coverage_report(merged_info_path, "")
-      return CoverageResponse(True, 0, "Merged successfully", merged_coverage, total_coverage)
+      uncovered_lines = self._aggregate_uncovered_lines(merged_coverage)
+      return CoverageResponse(True, 0, "Merged successfully", merged_coverage, total_coverage, uncovered_lines)
 
     except Exception as e:
       logging.error(f"Failed to generate merged coverage: {e}")
@@ -508,7 +527,8 @@ class Verilator(Simulator):
 
       # Parse merged coverage - Verilator needs tb_path for exclusion, use empty string for cross-run merge
       merged_coverage, total_coverage = Verilator.parse_coverage_report(merged_info_path, "")
-      return CoverageResponse(True, 0, "Merged successfully", merged_coverage, total_coverage)
+      uncovered_lines = self._aggregate_uncovered_lines(merged_coverage)
+      return CoverageResponse(True, 0, "Merged successfully", merged_coverage, total_coverage, uncovered_lines)
 
     except Exception as e:
       logging.error(f"Failed to generate merged coverage: {e}")
@@ -716,5 +736,3 @@ Important:
       return (0, 0, 0)
 
     return (uncovered_count, control_flow_misses, total_lines)
-
-
