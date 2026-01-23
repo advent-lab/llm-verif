@@ -11,6 +11,7 @@ report.txt
 
 # QuestaSim ignores
 *work/
+*work_test/
 *transcript
 
 # Byte-compiled / optimized / DLL files
@@ -137,6 +138,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
+configs/
 .env
 .venv
 env/
