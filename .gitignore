@@ -1,3 +1,9 @@
+# Custom
+AGENTS*.md
+configs/
+
+
+
 # Project specific ignores
 logs/
 generations/
@@ -138,7 +144,6 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-configs/
 .env
 .venv
 env/

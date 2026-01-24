@@ -44,8 +44,7 @@ def load_system_prompt(
 
     # Prepare conditional sections
     if testplan_enabled:
-        testplan_instruction = """STEP 2: CREATE VERIFICATION PLAN
-────────────────────────────────
+        testplan_instruction = """### Step 2: Create Verification Plan
 Before generating testbenches, create a verification plan that outlines:
 - Key features to test
 - Corner cases and boundary conditions
@@ -61,7 +60,7 @@ This plan will guide your testbench development and help ensure comprehensive co
 
     if design_context_enabled:
         design_context_access = "ENABLED"
-        design_context_instruction = f"""RTL ACCESS ENABLED:
+        design_context_instruction = f"""**RTL Access:** ENABLED  
 You can read the RTL source files to understand implementation details.
 Use `read_file` on files in {rtl_dir}/ when you need to:
 - Understand how to trigger specific code paths
@@ -72,7 +71,7 @@ Use `read_file` on files in {rtl_dir}/ when you need to:
 This is especially useful when trying to cover specific lines shown in coverage reports."""
     else:
         design_context_access = "DISABLED"
-        design_context_instruction = f"""RTL ACCESS DISABLED:
+        design_context_instruction = f"""**RTL Access:** DISABLED  
 You cannot read files in the {rtl_dir}/ directory.
 Generate stimulus based solely on:
 - The specification document
