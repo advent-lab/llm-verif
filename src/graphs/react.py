@@ -20,6 +20,7 @@ class Colors:
 from ..state.schemas import AgentState
 from ..config import Config, load_config
 from ..utils.design_loader import scan_design_directory, extract_module_header, extract_all_module_headers
+from ..utils.tokens import count_message_tokens, format_token_count
 from ..prompts.loader import load_system_prompt
 from ..tools import get_all_tools, set_tool_config
 
@@ -168,10 +169,16 @@ def _log_agent_request(state: AgentState):
     cumulative_coverage = state.get("cumulative_coverage", 0.0)
     consecutive_failures = state.get("consecutive_failures", 0)
     no_progress = state.get("no_progress_count", 0)
-    messages = state.get("messages", [])
+    # messages = state.get("messages", [])
+    
+    # Count tokens in the message list
+    config = state.get("config")
+    model = config.model if config else "gpt-4"
+    token_count = count_message_tokens(messages, model)
+    token_display = format_token_count(token_count)
 
     logging.info(f"{Colors.CYAN}{Colors.BOLD}{'='*80}{Colors.RESET}")
-    logging.info(f"{Colors.CYAN}{Colors.BOLD} API REQUEST [API Call #{api_calls} | Iter {iteration} | Cumulative: {cumulative_coverage:.1f}% | Last: {current_coverage:.1f}% | Failures: {consecutive_failures} | No Progress: {no_progress}]{Colors.RESET}")
+    logging.info(f"{Colors.CYAN}{Colors.BOLD}API REQUEST [API Call #{api_calls} | Iter {iteration} | Cumulative: {cumulative_coverage:.1f}% | Last: {current_coverage:.1f}% | Failures: {consecutive_failures} | No Progress: {no_progress} | Tokens: {token_display}]{Colors.RESET}")
     logging.info(f"{Colors.CYAN}{'='*80}{Colors.RESET}")
 
     # Show only the latest message (the one being sent to LLM)
@@ -185,7 +192,8 @@ def _log_agent_request(state: AgentState):
         if hasattr(latest_msg, 'content') and latest_msg.content:
             content = latest_msg.content
             # Truncate if very long (e.g., tool results with lots of data)
-            if isinstance(content, str) and len(content) > 1000:
+            # Can be disabled via LOG_TRUNCATE=0 in .env
+            if config and config.log_truncate and isinstance(content, str) and len(content) > 1000:
                 preview = content[:1000] + f"\n... ({len(content)} chars total)"
                 # Use YELLOW for tool results
                 color = Colors.YELLOW if msg_type == "ToolMessage" else Colors.CYAN
@@ -213,9 +221,16 @@ def _log_agent_response(response, state: AgentState):
     cumulative_coverage = state.get("cumulative_coverage", 0.0)
     consecutive_failures = state.get("consecutive_failures", 0)
     no_progress = state.get("no_progress_count", 0)
+    
+    # Count tokens in the updated message list (includes the response)
+    messages = state.get("messages", [])
+    config = state.get("config")
+    model = config.model if config else "gpt-4"
+    token_count = count_message_tokens(messages, model)
+    token_display = format_token_count(token_count)
 
     logging.info(f"{Colors.GREEN}{Colors.BOLD}{'='*80}{Colors.RESET}")
-    logging.info(f"{Colors.GREEN}{Colors.BOLD} AGENT RESPONSE [API Call #{api_calls} | Iter {iteration} | Cumulative: {cumulative_coverage:.1f}% | Last: {current_coverage:.1f}% | Failures: {consecutive_failures} | No Progress: {no_progress}]{Colors.RESET}")
+    logging.info(f"{Colors.GREEN}{Colors.BOLD} AGENT RESPONSE [API Call #{api_calls} | Iter {iteration} | Cumulative: {cumulative_coverage:.1f}% | Last: {current_coverage:.1f}% | Failures: {consecutive_failures} | No Progress: {no_progress} | Tokens: {token_display}]{Colors.RESET}")
     logging.info(f"{Colors.GREEN}{'='*80}{Colors.RESET}")
 
     # Log reasoning text (if present)

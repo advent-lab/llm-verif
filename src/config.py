@@ -37,6 +37,7 @@ class Config:
 
     # Debug
     log_level: str
+    log_truncate: bool  # Whether to truncate long content in logs
 
     # Runtime tracking (mutable)
     current_iteration: int = 1
@@ -170,5 +171,6 @@ def load_config() -> Config:
         sim_runs=int(os.getenv("SIM_RUNS", "5")),
         sim_timeout=int(os.getenv("SIM_TIMEOUT", "60")),
         testplan_enabled=os.getenv("TESTPLAN", "1") == "1",
-        log_level=os.getenv("LOG_LEVEL", "INFO")
+        log_level=os.getenv("LOG_LEVEL", "INFO"),
+        log_truncate=os.getenv("LOG_TRUNCATE", "1") == "1"
     )
