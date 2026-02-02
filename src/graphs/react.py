@@ -42,9 +42,10 @@ def initialize_node(state: AgentState) -> AgentState:
     # Extract module headers from all design files
     module_header = extract_all_module_headers(config.design_files)
 
-    # Prepare RTL file lists for system prompt (backward compatibility)
+    # Prepare RTL file lists for system prompt with relative paths
+    # This helps the agent distinguish between design/ and design_context/ files
     all_rtl_files = config.design_files + config.design_context_files
-    rtl_file_names = [f.name for f in all_rtl_files]
+    rtl_file_names = [str(f.relative_to(config.design_dir)) for f in all_rtl_files]
 
     # Construct system prompt
     system_prompt = load_system_prompt(
@@ -54,7 +55,6 @@ def initialize_node(state: AgentState) -> AgentState:
         rtl_dir=config.design_dir,  # For backward compatibility
         rtl_files=rtl_file_names,
         module_header=module_header,
-        work_dir=config.work_dir,
         design_context_enabled=config.design_context_enabled,
         testplan_enabled=config.testplan_enabled,
         max_iterations=config.max_iterations,
@@ -149,7 +149,7 @@ def _log_agent_request(state: AgentState):
     no_progress = state.get("no_progress_count", 0)
     messages = state.get("messages", [])
 
-    logging.info("\n" + "="*80)
+    logging.info("="*80)
     logging.info(f"API REQUEST [API Call #{api_calls} | Iter {iteration} | Cumulative: {cumulative_coverage:.1f}% | Last: {current_coverage:.1f}% | Failures: {consecutive_failures} | No Progress: {no_progress}]")
     logging.info("="*80)
 

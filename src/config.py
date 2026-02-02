@@ -143,7 +143,7 @@ def load_config() -> Config:
     # Build work directory with RUN_ID
     run_id = os.getenv("RUN_ID", "default_run")
     work_base = Path(os.getenv("WORK_DIR", "./work"))
-    work_dir = work_base / run_id
+    work_dir = (work_base / run_id).resolve()
 
     # Determine design_dir from spec_path (spec is always in docs/ under design root)
     # spec_path.parent = docs/, spec_path.parent.parent = design root

@@ -71,7 +71,7 @@ def parse_coverage(coverage_db_path: str) -> Dict[str, Any]:
     global _cumulative_coverage_db
 
     try:
-        db_path = Path(coverage_db_path)
+        db_path = Path(coverage_db_path).resolve()
         if not db_path.exists():
             return {"success": False, "error": f"Coverage database not found: {coverage_db_path}"}
 

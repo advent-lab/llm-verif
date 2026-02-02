@@ -18,7 +18,6 @@ The following placeholders are replaced at runtime:
 | `{rtl_dir}` | Path to RTL directory |
 | `{rtl_file_list}` | Comma-separated list of RTL filenames |
 | `{module_header}` | Extracted top-level module interface |
-| `{work_dir}` | Working directory for outputs |
 | `{design_context_access}` | "ENABLED" or "DISABLED" |
 | `{design_context_instruction}` | Instructions based on access level |
 | `{testplan_instruction}` | Instructions for testplan (if enabled) |
@@ -111,7 +110,7 @@ Read file contents (spec, RTL, logs, coverage reports).
 Returns: `success` (bool), `content` (str), `error` (str)
 
 **write_file(path: str, content: str) -> dict**  
-Write content to work directory ({work_dir}). Use for testplans and testbenches.
+Write files using relative paths (e.g., `testbenches/tb_iter_1.sv`, `testplan.md`).
 
 Returns: `success` (bool), `full_path` (str), `error` (str)
 

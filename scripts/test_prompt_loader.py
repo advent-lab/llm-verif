@@ -99,7 +99,6 @@ prompt = load_system_prompt(
     rtl_dir=rtl_dir,
     rtl_files=rtl_files,
     module_header=module_header,
-    work_dir=work_dir,
     design_context_enabled=DESIGN_CONTEXT_ENABLED,
     testplan_enabled=TESTPLAN_ENABLED,
     max_iterations=MAX_ITERATIONS,
