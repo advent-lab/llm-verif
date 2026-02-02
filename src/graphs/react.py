@@ -152,6 +152,16 @@ def _log_agent_request(state: AgentState):
     if not logging.root.isEnabledFor(logging.INFO):
         return
 
+    messages = state.get("messages", [])
+    
+    # Skip logging if the latest message is an AIMessage (agent's own response)
+    # We only want to log when sending NEW input (HumanMessage, ToolMessage, SystemMessage)
+    if messages:
+        latest_msg = messages[-1]
+        msg_type = type(latest_msg).__name__
+        if msg_type == "AIMessage":
+            return  # Don't log agent's own message being sent back
+
     iteration = state.get("iteration", "?")
     api_calls = state.get("api_calls", "?")
     current_coverage = state.get("current_coverage", 0.0)
@@ -403,8 +413,12 @@ def create_react_graph() -> StateGraph:
                     return END
 
         # Check termination conditions
-        if state["iteration"] >= config.max_iterations:
-            logging.info("Max iterations reached")
+        if state["api_calls"] >= config.max_iterations:
+            logging.info(f"Max API calls reached: {state['api_calls']}/{config.max_iterations}")
+            return END
+
+        if state["iteration"] > config.max_iterations:
+            logging.info(f"Max coverage iterations reached: {state['iteration']}/{config.max_iterations}")
             return END
 
         if state["consecutive_failures"] >= config.max_retries:
@@ -441,8 +455,12 @@ def create_react_graph() -> StateGraph:
         config = state["config"]
 
         # Check termination conditions with UPDATED state
-        if state["iteration"] >= config.max_iterations:
-            logging.info(f"Max iterations reached: {state['iteration']}/{config.max_iterations}")
+        if state["api_calls"] >= config.max_iterations:
+            logging.info(f"Max API calls reached: {state['api_calls']}/{config.max_iterations}")
+            return END
+
+        if state["iteration"] > config.max_iterations:
+            logging.info(f"Max coverage iterations reached: {state['iteration']}/{config.max_iterations}")
             return END
 
         if state["consecutive_failures"] >= config.max_retries:
