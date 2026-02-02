@@ -6,6 +6,17 @@ from langchain_core.messages import SystemMessage, HumanMessage
 import logging
 from pathlib import Path
 
+# ANSI color codes for terminal output
+class Colors:
+    CYAN = '\033[96m'      # API Requests
+    GREEN = '\033[92m'     # Agent Responses
+    YELLOW = '\033[93m'    # Tool Calls and Results
+    MAGENTA = '\033[95m'   
+    RED = '\033[91m'       # Errors
+    BLUE = '\033[94m'      # Info
+    BOLD = '\033[1m'
+    RESET = '\033[0m'
+
 from ..state.schemas import AgentState
 from ..config import Config, load_config
 from ..utils.design_loader import scan_design_directory, extract_module_header, extract_all_module_headers
@@ -149,16 +160,16 @@ def _log_agent_request(state: AgentState):
     no_progress = state.get("no_progress_count", 0)
     messages = state.get("messages", [])
 
-    logging.info("="*80)
-    logging.info(f"API REQUEST [API Call #{api_calls} | Iter {iteration} | Cumulative: {cumulative_coverage:.1f}% | Last: {current_coverage:.1f}% | Failures: {consecutive_failures} | No Progress: {no_progress}]")
-    logging.info("="*80)
+    logging.info(f"{Colors.CYAN}{Colors.BOLD}{'='*80}{Colors.RESET}")
+    logging.info(f"{Colors.CYAN}{Colors.BOLD} API REQUEST [API Call #{api_calls} | Iter {iteration} | Cumulative: {cumulative_coverage:.1f}% | Last: {current_coverage:.1f}% | Failures: {consecutive_failures} | No Progress: {no_progress}]{Colors.RESET}")
+    logging.info(f"{Colors.CYAN}{'='*80}{Colors.RESET}")
 
     # Show only the latest message (the one being sent to LLM)
     if messages:
         latest_msg = messages[-1]
         msg_type = type(latest_msg).__name__
 
-        logging.info(f"[MESSAGE TYPE] {msg_type}")
+        logging.info(f"{Colors.CYAN}[MESSAGE TYPE] {msg_type}{Colors.RESET}")
 
         # Log message content
         if hasattr(latest_msg, 'content') and latest_msg.content:
@@ -166,15 +177,18 @@ def _log_agent_request(state: AgentState):
             # Truncate if very long (e.g., tool results with lots of data)
             if isinstance(content, str) and len(content) > 1000:
                 preview = content[:1000] + f"\n... ({len(content)} chars total)"
-                logging.info(f"[CONTENT]\n{preview}\n")
+                # Use YELLOW for tool results
+                color = Colors.YELLOW if msg_type == "ToolMessage" else Colors.CYAN
+                logging.info(f"{color}[CONTENT]\n{preview}\n{Colors.RESET}")
             else:
-                logging.info(f"[CONTENT]\n{content}\n")
+                color = Colors.YELLOW if msg_type == "ToolMessage" else Colors.CYAN
+                logging.info(f"{color}[CONTENT]\n{content}\n{Colors.RESET}")
 
         # If it's a tool message, show the tool name
         if hasattr(latest_msg, 'name') and latest_msg.name:
-            logging.info(f"[TOOL NAME] {latest_msg.name}")
+            logging.info(f"{Colors.YELLOW}[TOOL NAME] {latest_msg.name}{Colors.RESET}")
 
-    logging.info("="*80 + "\n")
+    logging.info(f"{Colors.CYAN}{'='*80}{Colors.RESET}\n")
 
 
 def _log_agent_response(response, state: AgentState):
@@ -190,35 +204,38 @@ def _log_agent_response(response, state: AgentState):
     consecutive_failures = state.get("consecutive_failures", 0)
     no_progress = state.get("no_progress_count", 0)
 
-    logging.info("="*80)
-    logging.info(f"AGENT RESPONSE [API Call #{api_calls} | Iter {iteration} | Cumulative: {cumulative_coverage:.1f}% | Last: {current_coverage:.1f}% | Failures: {consecutive_failures} | No Progress: {no_progress}]")
-    logging.info("="*80)
+    logging.info(f"{Colors.GREEN}{Colors.BOLD}{'='*80}{Colors.RESET}")
+    logging.info(f"{Colors.GREEN}{Colors.BOLD} AGENT RESPONSE [API Call #{api_calls} | Iter {iteration} | Cumulative: {cumulative_coverage:.1f}% | Last: {current_coverage:.1f}% | Failures: {consecutive_failures} | No Progress: {no_progress}]{Colors.RESET}")
+    logging.info(f"{Colors.GREEN}{'='*80}{Colors.RESET}")
 
     # Log reasoning text (if present)
-    if hasattr(response, 'content') and response.content:
-        logging.info(f"\n[REASONING]\n{response.content}\n")
+    if hasattr(response, 'content'):
+        if response.content:
+            logging.info(f"{Colors.GREEN}\n [REASONING]\n{response.content}\n{Colors.RESET}")
+        else:
+            logging.info(f"{Colors.GREEN}[REASONING] (empty response){Colors.RESET}")
 
     # Log tool calls (if present)
     if hasattr(response, 'tool_calls') and response.tool_calls:
-        logging.info(f"[TOOL CALLS] {len(response.tool_calls)} tool(s) requested:")
+        logging.info(f"{Colors.YELLOW}{Colors.BOLD} [TOOL CALLS] {len(response.tool_calls)} tool(s) requested:{Colors.RESET}")
         for i, tool_call in enumerate(response.tool_calls, 1):
             tool_name = tool_call.get('name', 'unknown')
             tool_args = tool_call.get('args', {})
 
-            logging.info(f"\n  {i}. {tool_name}")
+            logging.info(f"{Colors.YELLOW}\n  {i}. {tool_name}{Colors.RESET}")
 
             # Pretty-print arguments (handle long values)
             for arg_name, arg_value in tool_args.items():
                 if isinstance(arg_value, str) and len(arg_value) > 200:
                     # Truncate long string arguments (like file content)
                     preview = arg_value[:200] + f"... ({len(arg_value)} chars total)"
-                    logging.info(f"     {arg_name}: {preview}")
+                    logging.info(f"{Colors.YELLOW}     {arg_name}: {preview}{Colors.RESET}")
                 else:
-                    logging.info(f"     {arg_name}: {arg_value}")
+                    logging.info(f"{Colors.YELLOW}     {arg_name}: {arg_value}{Colors.RESET}")
     else:
-        logging.info("[NO TOOL CALLS] Agent did not request any tools")
+        logging.info(f"{Colors.GREEN}[NO TOOL CALLS] Agent did not request any tools{Colors.RESET}")
 
-    logging.info("="*80 + "\n")
+    logging.info(f"{Colors.GREEN}{'='*80}{Colors.RESET}\n")
 
 def router_node(state: AgentState) -> Literal["tools", "update_state", END]:
     """

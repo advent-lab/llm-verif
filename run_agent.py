@@ -76,7 +76,7 @@ def load_env_file(env_file_path: str) -> None:
 
     # Load the specified env file
     _load_dotenv_local(env_path, override=True)
-    print(f"✓ Loaded environment from: {env_path}")
+    print(f" Loaded environment from: {env_path}")
 
     # Print key configuration
     simulator = os.getenv("SIMULATOR", "not set")
@@ -175,7 +175,7 @@ Environment File Format:
         # Validate environment
         print("Validating configuration...")
         validate_environment()
-        print("✓ Configuration valid")
+        print(" Configuration valid")
         print()
 
         if args.validate_only:
@@ -229,10 +229,10 @@ Environment File Format:
             print(f"❌ No design files found")
             return 1
 
-        print(f"✓ Found specification: {config.spec_path.name}")
-        print(f"✓ Found {len(config.design_files)} design file(s): {', '.join(f.name for f in config.design_files)}")
+        print(f" Found specification: {config.spec_path.name}")
+        print(f" Found {len(config.design_files)} design file(s): {', '.join(f.name for f in config.design_files)}")
         if config.design_context_files:
-            print(f"✓ Found {len(config.design_context_files)} context file(s)")
+            print(f" Found {len(config.design_context_files)} context file(s)")
 
         # Create and run graph
         print("\n" + "=" * 70)
@@ -277,25 +277,25 @@ Environment File Format:
 
             if testbench_dir.exists():
                 testbenches = list(testbench_dir.glob("*.sv")) + list(testbench_dir.glob("*.v"))
-                print(f"✓ Testbenches:     {len(testbenches)} files in {testbench_dir}")
+                print(f"Testbenches:     {len(testbenches)} files in {testbench_dir}")
                 for tb in sorted(testbenches)[:5]:  # Show first 5
                     print(f"  - {tb.name}")
                 if len(testbenches) > 5:
                     print(f"  ... and {len(testbenches) - 5} more")
             else:
-                print(f"  Testbenches:     None generated")
+                print(f"Testbenches:     None generated")
 
             if logs_dir.exists():
                 logs = list(logs_dir.glob("*.log"))
-                print(f"✓ Logs:            {len(logs)} files in {logs_dir}")
+                print(f"Logs:            {len(logs)} files in {logs_dir}")
             else:
-                print(f"  Logs:            None generated")
+                print(f"Logs:            None generated")
 
             if coverage_dir.exists():
                 cov_files = list(coverage_dir.glob("*"))
-                print(f"✓ Coverage data:   {len(cov_files)} files in {coverage_dir}")
+                print(f"Coverage data:   {len(cov_files)} files in {coverage_dir}")
             else:
-                print(f"  Coverage data:   None generated")
+                print(f"Coverage data:   None generated")
 
             print("=" * 70)
             return 0
