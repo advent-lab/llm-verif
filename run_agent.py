@@ -195,11 +195,30 @@ Environment File Format:
         # Load configuration
         config = load_config()
 
-        # Setup logging
-        logging.basicConfig(
-            level=getattr(logging, config.log_level),
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
+        # Create work directory if it doesn't exist
+        config.work_dir.mkdir(parents=True, exist_ok=True)
+
+        # Setup logging with both console and file output
+        log_file = config.work_dir / "run.log"
+        
+        # Create formatters
+        console_formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
+        file_formatter = logging.Formatter('%(asctime)s - %(levelname)s:%(name)s:%(message)s')
+        
+        # Console handler (with colors)
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(console_formatter)
+        console_handler.setLevel(getattr(logging, config.log_level))
+        
+        # File handler (with colors preserved via ANSI codes)
+        file_handler = logging.FileHandler(log_file, mode='w', encoding='utf-8')
+        file_handler.setFormatter(file_formatter)
+        file_handler.setLevel(getattr(logging, config.log_level))
+        
+        # Configure root logger
+        logging.root.handlers = []  # Clear any existing handlers
+        logging.root.addHandler(console_handler)
+        logging.root.addHandler(file_handler)
         logging.root.setLevel(getattr(logging, config.log_level))
 
         # Print execution configuration
@@ -217,6 +236,7 @@ Environment File Format:
         print(f"Sim runs:         {config.sim_runs}")
         print(f"Sim timeout:      {config.sim_timeout} seconds")
         print(f"Log level:        {config.log_level}")
+        print(f"Log file:         {log_file}")
         print("=" * 70)
 
         # Verify design structure
