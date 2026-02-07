@@ -92,12 +92,17 @@ def compile_design(testbench_path: str) -> Dict[str, Any]:
             f.write(f"STDERR:\n{result.get('stderr', '(empty)')}\n")
         result["log_path"] = str(log_path)
 
-        # Add user-friendly error summary if compilation failed
-        if not result.get("success", False):
+        # Summarize output for the LLM (full output already saved to log file)
+        if result.get("success", False):
+            result["stdout"] = f"Compilation successful. Full log: {log_name}"
+            result.pop("stderr", None)
+        else:
             stderr = result.get("stderr", "")
             stdout = result.get("stdout", "")
             error_output = stderr or stdout or "Unknown error"
             result["error_summary"] = f"Compilation failed. Check {log_name} for details.\n{error_output[:500]}"
+            result["stdout"] = _adapter.filter_compile_output(result.get("stdout", ""))
+            result["stderr"] = _adapter.filter_compile_output(result.get("stderr", ""))
 
         # Add iteration and retry info to result
         result["iteration"] = iteration

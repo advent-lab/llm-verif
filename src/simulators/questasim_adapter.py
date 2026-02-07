@@ -29,7 +29,18 @@ class QuestasimAdapter(SimulatorAdapter):
     database merging.
     """
 
-    # Lines matching these patterns are QuestaSim boilerplate noise
+    # Lines matching these patterns are QuestaSim vlog (compile) boilerplate
+    _COMPILE_BOILERPLATE_PATTERNS = [
+        re.compile(r"^Questa Intel"),              # version banner
+        re.compile(r"^Start time:"),               # timestamp
+        re.compile(r"^vlog\s"),                    # echoed command with long paths
+        re.compile(r"^-- Compiling module\s"),     # per-module compilation status
+        re.compile(r"^Top level modules:"),         # top-level header
+        re.compile(r"^\t\w"),                       # indented module name under "Top level modules:"
+        re.compile(r"^End time:"),                 # end timestamp
+    ]
+
+    # Lines matching these patterns are QuestaSim vsim (simulate) boilerplate
     _BOILERPLATE_PATTERNS = [
         re.compile(r"^#\s*//"),                          # copyright / license banner
         re.compile(r"^#\s*Reading pref\.tcl"),            # QuestaSim preamble
@@ -45,20 +56,15 @@ class QuestasimAdapter(SimulatorAdapter):
         re.compile(r"^#\s*\*\* Note: \(vsim-12126\)"),   # "Error and warning message counts"
     ]
 
-    def filter_sim_output(self, output: str) -> str:
-        """Strip QuestaSim boilerplate from simulator output.
-
-        Removes copyright banners, loading messages, coverage commands, and
-        informational notes that waste LLM input tokens.  Keeps errors,
-        warnings, $finish, timing, seed, and run headers.
-        """
+    def _filter_by_patterns(self, output: str, patterns: list) -> str:
+        """Strip lines matching the given patterns and collapse excess blank lines."""
         if not output:
             return output
 
         filtered_lines = []
         for line in output.splitlines():
             stripped = line.strip()
-            if any(p.match(stripped) for p in self._BOILERPLATE_PATTERNS):
+            if any(p.match(stripped) for p in patterns):
                 continue
             filtered_lines.append(line)
 
@@ -75,6 +81,25 @@ class QuestasimAdapter(SimulatorAdapter):
                 result_lines.append(line)
 
         return "\n".join(result_lines)
+
+    def filter_compile_output(self, output: str) -> str:
+        """Strip QuestaSim vlog boilerplate from compiler output.
+
+        Removes the version banner, echoed command (with long absolute paths),
+        per-module ``-- Compiling module`` lines, and timestamps.  Keeps
+        ``** Error``, ``** Warning``, and the final ``Errors: N, Warnings: N``
+        summary.
+        """
+        return self._filter_by_patterns(output, self._COMPILE_BOILERPLATE_PATTERNS)
+
+    def filter_sim_output(self, output: str) -> str:
+        """Strip QuestaSim vsim boilerplate from simulator output.
+
+        Removes copyright banners, loading messages, coverage commands, and
+        informational notes that waste LLM input tokens.  Keeps errors,
+        warnings, $finish, timing, seed, and run headers.
+        """
+        return self._filter_by_patterns(output, self._BOILERPLATE_PATTERNS)
 
     def compile(self, testbench_path: Path, design_files: List[Path],
                 work_dir: Path, timeout: int) -> Dict[str, Any]:

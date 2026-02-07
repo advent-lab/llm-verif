@@ -113,6 +113,21 @@ class SimulatorAdapter(ABC):
         """
         pass
 
+    def filter_compile_output(self, output: str) -> str:
+        """Filter compiler output to remove boilerplate noise.
+
+        Override in subclasses to strip simulator-specific banners, echoed
+        commands, and per-module compilation lines that waste LLM input
+        tokens.  The default implementation returns the output unchanged.
+
+        Args:
+            output: Raw stdout or stderr from the compiler
+
+        Returns:
+            Filtered output string
+        """
+        return output
+
     def filter_sim_output(self, output: str) -> str:
         """Filter simulator output to remove boilerplate noise.
 
