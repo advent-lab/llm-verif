@@ -107,7 +107,8 @@ def parse_coverage(coverage_db_path: str) -> Dict[str, Any]:
 
         # Step 5: Create annotated source based on CUMULATIVE uncovered lines
         # (what still needs to be covered by future testbenches)
-        annotated_source = _create_annotated_source(cumulative_result.uncovered_lines)
+        max_holes = getattr(_config, 'num_feedback_holes', 3) if _config else 3
+        annotated_source = _create_annotated_source(cumulative_result.uncovered_lines, max_holes)
 
         return {
             "success": True,
@@ -132,8 +133,20 @@ def parse_coverage(coverage_db_path: str) -> Dict[str, Any]:
         logging.error(traceback.format_exc())
         return {"success": False, "error": str(e)}
 
-def _create_annotated_source(uncovered_lines: Dict[str, list[int]]) -> str:
-    """Create annotated source highlighting high-priority uncovered lines."""
+def _create_annotated_source(uncovered_lines: Dict[str, list[int]], max_holes: int = 3) -> str:
+    """Create annotated source highlighting high-priority uncovered lines.
+
+    Args:
+        uncovered_lines: Mapping of file paths to lists of uncovered line numbers.
+        max_holes: Number of priority holes to include. 0 disables output.
+
+    Returns:
+        Combined annotated snippets separated by hole headers, or empty string
+        if max_holes is 0.
+    """
+    if max_holes == 0:
+        return ""
+
     if not uncovered_lines:
         return "All lines covered!"
 
@@ -159,22 +172,42 @@ def _create_annotated_source(uncovered_lines: Dict[str, list[int]]) -> str:
     if not prioritized:
         return "Uncovered lines found but could not read source"
 
-    # Show top priority uncovered line with context
-    file_path, line_num, code = prioritized[0]
+    # Select top N holes, deduplicating by proximity to avoid overlapping snippets.
+    # Context window is 5 lines before + 5 lines after = 11 line span.
+    context_radius = 5
+    selected = []
+    for candidate in prioritized:
+        if len(selected) >= max_holes:
+            break
+        c_file, c_line, _ = candidate
+        # Skip if this candidate overlaps with an already-selected hole
+        overlaps = False
+        for s_file, s_line, _ in selected:
+            if c_file == s_file and abs(c_line - s_line) <= context_radius * 2:
+                overlaps = True
+                break
+        if not overlaps:
+            selected.append(candidate)
 
-    try:
-        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-            lines = f.readlines()
+    # Build snippets for each selected hole
+    snippets = []
+    total = len(selected)
+    for idx, (file_path, line_num, code) in enumerate(selected, 1):
+        header = f"--- Hole {idx}/{total}: {Path(file_path).name}:{line_num} ---"
+        try:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                file_lines = f.readlines()
 
-        # Mark the uncovered line
-        lines[line_num - 1] = lines[line_num - 1].rstrip('\n') + "\t// ##### UNCOVERED - TARGET THIS LINE #####\n"
+            # Mark the uncovered line
+            file_lines[line_num - 1] = file_lines[line_num - 1].rstrip('\n') + "\t// ##### UNCOVERED - TARGET THIS LINE #####\n"
 
-        # Extract module context (5 lines before and after)
-        start = max(0, line_num - 6)
-        end = min(len(lines), line_num + 5)
-        context = ''.join(lines[start:end])
+            # Extract context window (5 lines before and after)
+            start = max(0, line_num - context_radius - 1)
+            end = min(len(file_lines), line_num + context_radius)
+            context = ''.join(file_lines[start:end])
 
-        return f"Priority uncovered line in {Path(file_path).name}:{line_num}\n\n{context}"
+            snippets.append(f"{header}\n{context}")
+        except:
+            snippets.append(f"{header}\nUncovered line: {file_path}:{line_num} - {code}")
 
-    except:
-        return f"Uncovered line: {file_path}:{line_num} - {code}"
+    return "\n\n".join(snippets)

@@ -34,6 +34,7 @@ class Config:
     sim_runs: int
     sim_timeout: int
     testplan_enabled: bool
+    num_feedback_holes: int  # Number of priority coverage holes in feedback (0 = none)
 
     # Debug
     log_level: str
@@ -171,6 +172,7 @@ def load_config() -> Config:
         sim_runs=int(os.getenv("SIM_RUNS", "5")),
         sim_timeout=int(os.getenv("SIM_TIMEOUT", "60")),
         testplan_enabled=os.getenv("TESTPLAN", "1") == "1",
+        num_feedback_holes=int(os.getenv("NUM_FEEDBACK_HOLES", "3")),
         log_level=os.getenv("LOG_LEVEL", "INFO"),
         log_truncate=os.getenv("LOG_TRUNCATE", "1") == "1"
     )
