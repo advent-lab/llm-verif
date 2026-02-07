@@ -175,7 +175,7 @@ def _log_agent_request(state: AgentState):
     config = state.get("config")
     model = config.model if config else "gpt-4"
     token_count = count_message_tokens(messages, model)
-    token_display = format_token_count(token_count)
+    token_display = format_token_count(token_count, config.context_window) if config else format_token_count(token_count)
 
     logging.info(f"{Colors.CYAN}{Colors.BOLD}{'='*80}{Colors.RESET}")
     logging.info(f"{Colors.CYAN}{Colors.BOLD}API REQUEST [API Call #{api_calls} | Iter {iteration} | Cumulative: {cumulative_coverage:.1f}% | Last: {current_coverage:.1f}% | Failures: {consecutive_failures} | No Progress: {no_progress} | Tokens: {token_display}]{Colors.RESET}")
@@ -227,7 +227,7 @@ def _log_agent_response(response, state: AgentState):
     config = state.get("config")
     model = config.model if config else "gpt-4"
     token_count = count_message_tokens(messages, model)
-    token_display = format_token_count(token_count)
+    token_display = format_token_count(token_count, config.context_window) if config else format_token_count(token_count)
 
     logging.info(f"{Colors.GREEN}{Colors.BOLD}{'='*80}{Colors.RESET}")
     logging.info(f"{Colors.GREEN}{Colors.BOLD} AGENT RESPONSE [API Call #{api_calls} | Iter {iteration} | Cumulative: {cumulative_coverage:.1f}% | Last: {current_coverage:.1f}% | Failures: {consecutive_failures} | No Progress: {no_progress} | Tokens: {token_display}]{Colors.RESET}")
@@ -444,6 +444,12 @@ def create_react_graph() -> StateGraph:
             logging.info(f"No progress after {state['no_progress_count']} attempts (MAX_NO_PROGRESS={config.max_no_progress}) - cumulative coverage stuck at {state.get('cumulative_coverage', 0.0):.1f}%")
             return END
 
+        # Check context window limit
+        token_count = count_message_tokens(state["messages"], config.model)
+        if token_count >= config.context_window:
+            logging.info(f"Context window limit reached: {format_token_count(token_count, config.context_window)} (CONTEXT_WINDOW={config.context_window:,})")
+            return END
+
         # Route to tools if tool calls present
         if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
             return "tools"
@@ -484,6 +490,12 @@ def create_react_graph() -> StateGraph:
 
         if state["no_progress_count"] >= config.max_no_progress:
             logging.info(f"No progress after {state['no_progress_count']} attempts (MAX_NO_PROGRESS={config.max_no_progress}) - cumulative coverage stuck at {state.get('cumulative_coverage', 0.0):.1f}%")
+            return END
+
+        # Check context window limit
+        token_count = count_message_tokens(state["messages"], config.model)
+        if token_count >= config.context_window:
+            logging.info(f"Context window limit reached: {format_token_count(token_count, config.context_window)} (CONTEXT_WINDOW={config.context_window:,})")
             return END
 
         # Continue to agent
