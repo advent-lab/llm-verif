@@ -169,13 +169,21 @@ def run_simulation(testbench_name: str = "tb_llm", num_runs: int = None) -> Dict
                 f.write(f"\nSTDERR:\n{result.get('stderr', '(empty)')}\n")
         result["log_path"] = str(log_path)
 
-        # Add user-friendly error summary if simulation failed
-        if not result.get("success", False):
+        # Summarize output for the LLM (full output already saved to log file)
+        if result.get("success", False):
+            result["stdout"] = (
+                f"Simulation completed: {result.get('num_runs_completed', num_runs)}/{num_runs} "
+                f"runs successful. Full log: {log_name}"
+            )
+            result.pop("stderr", None)
+        else:
             error_msg = result.get("error", "")
             stderr = result.get("stderr", "")
             stdout = result.get("stdout", "")
             error_output = error_msg or stderr or stdout or "Unknown error"
             result["error_summary"] = f"Simulation failed. Check {log_name} for details.\n{error_output[:500]}"
+            result["stdout"] = _adapter.filter_sim_output(result.get("stdout", ""))
+            result["stderr"] = _adapter.filter_sim_output(result.get("stderr", ""))
 
         # Add iteration and retry info to result
         result["iteration"] = iteration

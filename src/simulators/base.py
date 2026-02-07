@@ -113,6 +113,21 @@ class SimulatorAdapter(ABC):
         """
         pass
 
+    def filter_sim_output(self, output: str) -> str:
+        """Filter simulator output to remove boilerplate noise.
+
+        Override in subclasses to strip simulator-specific banners, loading
+        messages, and other lines that waste LLM input tokens.  The default
+        implementation returns the output unchanged.
+
+        Args:
+            output: Raw stdout or stderr from the simulator
+
+        Returns:
+            Filtered output string
+        """
+        return output
+
     @staticmethod
     @abstractmethod
     def cleanup(work_dir: Path) -> None:

@@ -5,6 +5,7 @@ simulation, and coverage parsing. QuestaSim is a commercial HDL simulator
 that uses .ucdb (Universal Coverage Database) files and XML reports.
 """
 
+import re
 import subprocess
 import logging
 import xml.etree.ElementTree as ET
@@ -27,6 +28,53 @@ class QuestasimAdapter(SimulatorAdapter):
     Uses vlog for compilation, vsim for simulation, and vcover for coverage
     database merging.
     """
+
+    # Lines matching these patterns are QuestaSim boilerplate noise
+    _BOILERPLATE_PATTERNS = [
+        re.compile(r"^#\s*//"),                          # copyright / license banner
+        re.compile(r"^#\s*Reading pref\.tcl"),            # QuestaSim preamble
+        re.compile(r"^#\s*\d{4}\.\d"),                   # version echo e.g. "# 2023.3"
+        re.compile(r"^#\s*Loading sv_std"),               # Loading sv_std.std
+        re.compile(r"^#\s*Loading work\."),               # Loading work.*
+        re.compile(r"^#\s*coverage exclude"),             # coverage commands
+        re.compile(r"^#\s*coverage save"),                # coverage save commands
+        re.compile(r"^#\s*run -all"),                     # simulation start command
+        re.compile(r"^#\s*Saving coverage database on exit"),
+        re.compile(r"^#\s*\*\* Note: \(vsim-8009\)"),    # "Loading existing optimized design"
+        re.compile(r"^#\s*\*\* Note: \(vsim-3812\)"),    # "Design is being optimized"
+        re.compile(r"^#\s*\*\* Note: \(vsim-12126\)"),   # "Error and warning message counts"
+    ]
+
+    def filter_sim_output(self, output: str) -> str:
+        """Strip QuestaSim boilerplate from simulator output.
+
+        Removes copyright banners, loading messages, coverage commands, and
+        informational notes that waste LLM input tokens.  Keeps errors,
+        warnings, $finish, timing, seed, and run headers.
+        """
+        if not output:
+            return output
+
+        filtered_lines = []
+        for line in output.splitlines():
+            stripped = line.strip()
+            if any(p.match(stripped) for p in self._BOILERPLATE_PATTERNS):
+                continue
+            filtered_lines.append(line)
+
+        # Collapse runs of 3+ blank lines into a single blank line
+        result_lines = []
+        blank_count = 0
+        for line in filtered_lines:
+            if line.strip() == "":
+                blank_count += 1
+                if blank_count <= 1:
+                    result_lines.append(line)
+            else:
+                blank_count = 0
+                result_lines.append(line)
+
+        return "\n".join(result_lines)
 
     def compile(self, testbench_path: Path, design_files: List[Path],
                 work_dir: Path, timeout: int) -> Dict[str, Any]:
