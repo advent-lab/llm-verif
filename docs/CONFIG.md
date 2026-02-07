@@ -43,17 +43,20 @@ You must configure *either* Dashboard mode (recommended) or Direct mode.
 
 | Variable | Required | Description |
 |---|---:|---|
-| `MAX_ITERATIONS` | No | Maximum number of successful verification iterations before stopping (caps the agent loop). |
+| `MAX_ITERATIONS` | No | Maximum number of API calls before stopping (caps the agent loop). |
 | `MAX_RETRIES` | No | Maximum consecutive failures (compile/sim) before terminating the run. |
 | `MAX_NO_PROGRESS` | No | Maximum consecutive iterations with no coverage improvement before stopping (prevents infinite “stuck” loops). |
 | `SIM_RUNS` | No | Number of simulation runs (seeds) per generated testbench; higher values can improve coverage at the cost of runtime. |
 | `SIM_TIMEOUT` | No | Per-simulation timeout in seconds (used to kill/abort long or stuck simulations). |
 | `TESTPLAN` | No | Enables testplan generation when set to `1`; when `0`, the agent skips writing a testplan and goes directly to testbench generation. |
+| `NUM_FEEDBACK_HOLES` | No | Number of priority coverage holes included in feedback after `parse_coverage` (0 = none). Higher values give the agent more coverage context at the cost of token usage. |
+| `CONTEXT_WINDOW` | No | Maximum token count before the agent terminates the run. Should match or stay below the model's actual context window to prevent API errors. Default: `128000`. |
 
 ## Logging / Debug
 
 | Variable | Required | Description |
 |---|---:|---|
 | `LOG_LEVEL` | No | Python logging verbosity (e.g., `DEBUG`, `INFO`, `WARNING`); controls console + file log detail where applicable. |
+| `LOG_TRUNCATE` | No | When set to `1` (default), truncates long tool-call results in log output; set to `0` to see full content. |
 | `TEST_MODE` | No | When set to `1`, uses mock simulator/coverage tools so the graph can be exercised without an installed simulator; also relaxes certain validations (e.g., `OPENAI_API_KEY`). |
 

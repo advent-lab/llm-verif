@@ -99,70 +99,46 @@ Each component has a single, well-defined responsibility:
 
 ### High-Level Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         ENTRY POINT                              │
-│                         src/main.py                              │
-│  - Load .env                                                     │
-│  - Initialize logging                                            │
-│  - Create and invoke graph                                       │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      LANGGRAPH EXECUTION                         │
-│                     graphs/react.py                              │
-│                                                                  │
-│  ┌────────────┐      ┌────────────┐      ┌────────────┐        │
-│  │ Initialize │─────▶│   Agent    │◀────▶│   Tools    │        │
-│  │   Node     │      │   Node     │      │   Node     │        │
-│  └────────────┘      └─────┬──────┘      └────────────┘        │
-│                            │                                     │
-│                            ▼                                     │
-│                      ┌──────────┐                                │
-│                      │   END    │                                │
-│                      └──────────┘                                │
-└─────────────────────────────────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                        TOOL SYSTEM                               │
-│                    tools/__init__.py                             │
-│                                                                  │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
-│  │  Filesystem  │  │  Simulation  │  │   Analysis   │          │
-│  │    Tools     │  │    Tools     │  │    Tools     │          │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘          │
-│         │                 │                  │                  │
-│         ▼                 ▼                  ▼                  │
-│  ┌──────────────────────────────────────────────────┐          │
-│  │            External Systems                       │          │
-│  │  - Filesystem (read/write)                        │          │
-│  │  - QuestaSim (vlog, vsim, vcover)                │          │
-│  └──────────────────────────────────────────────────┘          │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph Entry["run_agent.py"]
+        E1[Load .env] --> E2[Initialize logging] --> E3[Create and invoke graph]
+    end
+
+    subgraph Graph["LangGraph Execution — graphs/react.py"]
+        Init[Initialize] --> Agent[Agent]
+        Agent -->|tool calls| Tools[Tools]
+        Tools --> Update[Update State]
+        Update -->|continue| Agent
+        Agent -->|done| Stop[END]
+        Update -->|limit reached| Stop
+    end
+
+    subgraph ToolSystem["Tool System — tools/"]
+        FS[Filesystem Tools]
+        Sim[Simulation Tools]
+        Ana[Analysis Tools]
+        FS --> Ext[External Systems: Filesystem · QuestaSim · Verilator]
+        Sim --> Ext
+        Ana --> Ext
+    end
+
+    E3 --> Init
+    Tools --> FS
+    Tools --> Sim
+    Tools --> Ana
 ```
 
 ### Component Diagram
 
-```
-┌─────────────┐
-│   main.py   │
-└──────┬──────┘
-       │
-       ├──────────┐
-       │          │
-       ▼          ▼
-┌─────────┐  ┌──────────┐
-│ config  │  │  graphs  │
-└─────────┘  └────┬─────┘
-                  │
-       ┌──────────┼──────────┬──────────┐
-       │          │          │          │
-       ▼          ▼          ▼          ▼
-  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
-  │ state  │ │ tools  │ │prompts │ │ utils  │
-  └────────┘ └────────┘ └────────┘ └────────┘
+```mermaid
+graph TD
+    Main[run_agent.py] --> Config[config]
+    Main --> Graphs[graphs]
+    Graphs --> State[state]
+    Graphs --> Tools[tools]
+    Graphs --> Prompts[prompts]
+    Graphs --> Utils[utils]
 ```
 
 ---
@@ -180,30 +156,43 @@ class AgentState(TypedDict):
     # Message history (LangGraph managed)
     messages: Annotated[list[BaseMessage], add_messages]
 
+    # Configuration (loaded once during initialization)
+    config: Any  # Config object stored in state to avoid repeated loading
+
     # Design context (immutable after init)
     design_name: str
     design_dir: str
     spec_path: str
-    rtl_dir: str
+    design_files: List[str]      # Main design RTL files (DUT)
+    design_context_files: List[str]  # Supporting files (submodules/dependencies)
+    rtl_dir: str                 # Deprecated - kept for compatibility
     module_header: str
     work_dir: str
 
     # Tracking (mutable)
-    iteration: int
-    consecutive_failures: int
-    current_coverage: float
-    max_coverage: float
+    iteration: int               # Increments after successful compile+sim+coverage cycle
+    attempt: int                 # Individual tool attempts (compile or sim calls)
+    api_calls: int               # Total LLM API calls - for max_iterations limit
+    consecutive_failures: int    # Compile/sim failures in a row - for max_retries limit
+    no_progress_count: int       # Consecutive cycles with no coverage improvement
 
-    # Termination (mutable)
+    # Coverage tracking
+    current_coverage: float      # Latest coverage percentage (0-100) - single iteration
+    max_coverage: float          # Best single-iteration coverage achieved
+    cumulative_coverage: float   # Merged coverage across ALL iterations
+    cumulative_coverage_db: Optional[str]  # Path to merged coverage database
+
+    # Termination
     is_done: bool
     done_reason: Optional[str]
 ```
 
 **Design Decisions**:
 - `messages` uses `add_messages` reducer for automatic message list merging
+- `config` stored in state so nodes access it without reloading
 - All file paths stored as strings (not Path objects) for JSON serialization
 - Coverage as float (0-100) for easy comparison
-- Separate `current_coverage` and `max_coverage` to detect regressions
+- Separate `current_coverage`, `max_coverage`, and `cumulative_coverage` to track per-iteration vs merged progress
 
 ### 2. Configuration (`config.py`)
 
@@ -221,26 +210,36 @@ class Config:
     max_tokens: int
 
     # Design settings
+    design_name: str
     design_dir: Path
+    spec_path: Path
+    design_files: List[Path]
+    design_context_files: List[Path]
     design_context_enabled: bool
 
     # Paths
     work_dir: Path
     simulator_path: Path
+    simulator_type: str  # 'questasim' or 'verilator'
 
     # Workflow
     run_id: str
     max_iterations: int
     max_retries: int
+    max_no_progress: int
     sim_runs: int
     sim_timeout: int
     testplan_enabled: bool
+    num_feedback_holes: int
+    context_window: int  # Max tokens before terminating run
 
     # Debug
     log_level: str
+    log_truncate: bool
 
     # Runtime (mutable)
     current_iteration: int = 1
+    current_attempt: int = 1
 ```
 
 **Validation Strategy**:
@@ -490,16 +489,21 @@ def agent_node(state: AgentState) -> AgentState:
 ```python
 def route_after_agent(state: AgentState) -> Literal["tools", "agent", END]:
     # 1. Check for signal_done tool call → END
-    # 2. Check iteration >= max_iterations → END
-    # 3. Check consecutive_failures >= max_retries → END
-    # 4. Check for tool calls → "tools"
-    # 5. Otherwise → "agent" (continue reasoning)
+    # 2. Check api_calls >= max_iterations → END
+    # 3. Check iteration > max_iterations → END
+    # 4. Check consecutive_failures >= max_retries → END
+    # 5. Check no_progress_count >= max_no_progress → END
+    # 6. Check token count >= context_window → END
+    # 7. Check for tool calls → "tools"
+    # 8. Otherwise → "agent" (continue reasoning)
 ```
 
 **Termination Logic**:
 - **Priority 1**: Explicit `signal_done` from agent
-- **Priority 2**: Hard limits (max iterations, max retries)
+- **Priority 2**: Hard limits (max API calls, max iterations, max retries, no progress, context window)
 - **Priority 3**: Tool execution or continued reasoning
+
+A second routing function `route_after_update` re-checks termination conditions after state is updated by `update_state_node`, catching cases where tool results push the state past limits.
 
 #### Graph Construction
 
@@ -511,6 +515,7 @@ def create_react_graph() -> StateGraph:
     graph.add_node("initialize", initialize_node)
     graph.add_node("agent", agent_node)
     graph.add_node("tools", ToolNode(get_all_tools()))
+    graph.add_node("update_state", update_state_node)
 
     # Add edges
     graph.set_entry_point("initialize")
@@ -523,34 +528,35 @@ def create_react_graph() -> StateGraph:
         {"tools": "tools", "agent": "agent", END: END}
     )
 
-    # Tools always return to agent
-    graph.add_edge("tools", "agent")
+    # After tools, update state then check termination
+    graph.add_edge("tools", "update_state")
+
+    graph.add_conditional_edges(
+        "update_state",
+        route_after_update,
+        {"agent": "agent", END: END}
+    )
 
     return graph.compile()
 ```
 
 **Graph Visualization**:
-```
-START
-  │
-  ▼
-initialize
-  │
-  ▼
-agent ←──┐
-  │      │
-  ├──→ tools
-  │      │
-  └──────┘
-  │
-  ▼
-END
+
+```mermaid
+graph TD
+    START --> initialize
+    initialize --> agent
+    agent -->|tool calls| tools
+    tools --> update_state
+    update_state -->|continue| agent
+    agent -->|done| END
+    update_state -->|limit reached| END
 ```
 
 **Design Decisions**:
-- **No update_state node**: Coverage tracking would be better in a separate node, but simplified here by checking messages in router
+- **update_state node**: Dedicated node after tool execution tracks coverage progress, iteration counts, and failure states
 - **ToolNode**: LangGraph's built-in ToolNode handles tool execution and message formatting
-- **Stateless nodes**: Each node function is pure (no side effects beyond return value)
+- **Dual routing**: `route_after_agent` checks termination before tool execution; `route_after_update` re-checks after state updates
 
 ---
 
@@ -558,64 +564,58 @@ END
 
 ### Initialization Flow
 
-```
-main.py
-  │
-  ├─→ load_dotenv()
-  ├─→ load_config()
-  │     │
-  │     ├─→ Validate OPENAI_API_KEY
-  │     ├─→ Validate DESIGN path
-  │     ├─→ Validate SIMULATOR path
-  │     └─→ Return Config object
-  │
-  ├─→ create_react_graph()
-  │     │
-  │     └─→ Return compiled StateGraph
-  │
-  └─→ graph.invoke({})
-        │
-        └─→ START
+```mermaid
+graph TD
+    A[run_agent.py] --> B[load_dotenv]
+    A --> C[load_config]
+    C --> C1[Validate OPENAI_API_KEY]
+    C --> C2[Validate DESIGN path]
+    C --> C3[Validate SIMULATOR path]
+    C1 & C2 & C3 --> C4[Return Config]
+    A --> D[create_react_graph]
+    D --> D1[Return compiled StateGraph]
+    A --> E["graph.invoke({})"]
+    E --> F[START]
 ```
 
 ### Iteration Flow (Typical Success Case)
 
-```
-Agent Node
-  │
-  ├─→ Reasoning: "I need to read the specification"
-  └─→ Tool Call: read_file(spec_path)
-        │
-        ▼
-Router: Has tool calls → "tools"
-        │
-        ▼
-Tools Node
-  │
-  ├─→ Execute read_file()
-  ├─→ Return {success: true, content: "..."}
-  └─→ Append ToolMessage to state
-        │
-        ▼
-Agent Node
-  │
-  ├─→ Reasoning: "Based on spec, I'll generate testbench"
-  └─→ Tool Call: write_file("testbenches/tb_iter_1.sv", "...")
-        │
-        ▼
-Router: Has tool calls → "tools"
-        │
-        ▼
-Tools Node → Agent Node → compile_design() → run_simulation() → parse_coverage()
-        │
-        ▼
-Agent Node
-  │
-  ├─→ Reasoning: "Coverage is 65%. I need to target uncovered lines..."
-  └─→ Tool Call: write_file("testbenches/tb_iter_2.sv", "...")
-        │
-        ▼
-[Loop continues until coverage complete or termination condition]
+```mermaid
+sequenceDiagram
+    participant A as Agent
+    participant R as Router
+    participant T as Tools
+    participant U as Update State
+
+    A->>R: read_file(spec_path)
+    R->>T: Has tool calls → tools
+    T->>U: Execute read_file → ToolMessage
+    U->>A: Continue
+
+    A->>R: write_file("tb_iter_1.sv", ...)
+    R->>T: Has tool calls → tools
+    T->>U: Execute write_file → ToolMessage
+    U->>A: Continue
+
+    A->>R: compile_design(...)
+    R->>T: Has tool calls → tools
+    T->>U: Execute compile_design
+    U->>A: Continue
+
+    A->>R: run_simulation(...)
+    R->>T: Has tool calls → tools
+    T->>U: Execute run_simulation
+    U->>A: Continue
+
+    A->>R: parse_coverage(...)
+    R->>T: Has tool calls → tools
+    T->>U: Execute parse_coverage → update coverage state
+    U->>A: Continue
+
+    Note over A: Coverage is 65%, target uncovered lines...
+    A->>R: write_file("tb_iter_2.sv", ...)
+
+    Note over A,U: Loop continues until coverage complete or termination
 ```
 
 ### State Evolution
@@ -643,22 +643,26 @@ After coverage improvement:
 {
   iteration: 2,  # Incremented
   current_coverage: 82.0,
+  cumulative_coverage: 82.0,
   max_coverage: 82.0,
   consecutive_failures: 0,  # Reset
+  no_progress_count: 0,  # Reset
   messages: [...]
 }
 
-After no improvement:
+After no cumulative improvement:
 {
-  iteration: 2,  # NOT incremented
-  current_coverage: 82.0,  # Same
+  iteration: 3,  # Still incremented (cycle was successful)
+  current_coverage: 75.0,  # This iteration's coverage
+  cumulative_coverage: 82.0,  # Unchanged (merged didn't improve)
   max_coverage: 82.0,
-  consecutive_failures: 1,  # Incremented
+  consecutive_failures: 0,  # Reset (cycle was successful)
+  no_progress_count: 1,  # Incremented
   messages: [...]
 }
 ```
 
-**Note**: Current implementation doesn't have explicit state update node, so iteration tracking needs refinement. This is a known limitation.
+State updates are handled by the dedicated `update_state_node` which runs after every tool execution.
 
 ---
 
@@ -705,10 +709,15 @@ Router function receives current state and returns next node name:
 def route_after_agent(state):
     if has_signal_done():
         return END
-    if at_limits():
+    if at_limits():  # api_calls, iterations, retries, no_progress, context_window
         return END
     if has_tool_calls():
         return "tools"
+    return "agent"
+
+def route_after_update(state):
+    if at_limits():  # Re-check with updated state
+        return END
     return "agent"
 ```
 
@@ -717,8 +726,8 @@ LangGraph follows returned edge to next node.
 ### Termination
 
 Graph terminates when:
-1. Node returns `END` constant
-2. Router function returns `END`
+1. Agent calls `signal_done` tool
+2. Router function returns `END` (limits exceeded: max API calls, max iterations, max retries, no progress, or context window)
 3. Exception raised (error termination)
 
 ---
@@ -751,29 +760,18 @@ def example_tool(arg1: str, arg2: int) -> dict:
 
 ### Tool Calling Flow
 
-```
-Agent generates tool call:
-{
-  "name": "read_file",
-  "args": {"path": "/path/to/spec.md"},
-  "id": "call_xyz123"
-}
-  │
-  ▼
-ToolNode receives tool call
-  │
-  ├─→ Lookup tool by name
-  ├─→ Validate args against schema
-  ├─→ Invoke tool function
-  └─→ Capture return value
-        │
-        ▼
-ToolNode creates ToolMessage:
-{
-  "tool_call_id": "call_xyz123",
-  "name": "read_file",
-  "content": '{"success": true, "content": "..."}'
-}
+```mermaid
+sequenceDiagram
+    participant Agent
+    participant ToolNode
+    participant Tool as Tool Function
+
+    Agent->>ToolNode: Tool call: read_file(path="/path/to/spec.md", id="call_xyz123")
+    ToolNode->>ToolNode: Lookup tool by name
+    ToolNode->>ToolNode: Validate args against schema
+    ToolNode->>Tool: Invoke read_file(path)
+    Tool-->>ToolNode: {"success": true, "content": "..."}
+    ToolNode-->>Agent: ToolMessage(tool_call_id="call_xyz123", content=...)
 ```
 
 ### Tool Configuration Pattern
@@ -933,23 +931,17 @@ new_state = {
 ### Environment Variable Loading
 
 **Flow**:
-```
-.env file
-  │
-  ├─→ load_dotenv()  # Load into os.environ
-  │
-  └─→ load_config()
-        │
-        ├─→ os.getenv("OPENAI_API_KEY")
-        ├─→ os.getenv("DESIGN")
-        ├─→ ...
-        │
-        ├─→ Validation
-        │     ├─→ Required fields set?
-        │     ├─→ Paths exist?
-        │     └─→ Types correct?
-        │
-        └─→ Config(...)
+
+```mermaid
+graph TD
+    ENV[.env file] --> LD[load_dotenv — load into os.environ]
+    LD --> LC[load_config]
+    LC --> R1[Read env vars: OPENAI_API_KEY, DESIGN, ...]
+    R1 --> V[Validation]
+    V --> V1[Required fields set?]
+    V --> V2[Paths exist?]
+    V --> V3[Types correct?]
+    V1 & V2 & V3 --> CFG["Config(...)"]
 ```
 
 ### Validation Strategy
@@ -1118,18 +1110,15 @@ else:
 - Assignments uncovered = less critical
 - Agent should target high-value coverage first
 
-### 7. Why No Explicit State Update Node?
+### 7. Explicit State Update Node
 
-**Current**: Coverage tracking done by checking messages in router.
+The graph includes a dedicated `update_state` node between `tools` and `agent`. After every tool execution, `update_state_node` inspects recent tool results (compile, simulation, coverage) and updates:
+- `consecutive_failures` — incremented on compile/sim failure, reset on successful cycle
+- `iteration` — incremented after each successful compile+sim+coverage cycle
+- `current_coverage` / `cumulative_coverage` — updated from `parse_coverage` results
+- `no_progress_count` — incremented when cumulative coverage doesn't improve
 
-**Better**: Separate update_state node after tools.
-
-**Why current approach**:
-- Simplified for initial implementation
-- Demonstrates basic pattern
-
-**Future refinement**:
-Add explicit state update node for cleaner separation.
+This keeps state transitions explicit and auditable rather than scattered across routing logic.
 
 ---
 
@@ -1162,9 +1151,9 @@ def get_all_tools():
 
 ### 2. Adding New Simulators
 
-**Current**: Only QuestaSim supported.
+**Current**: QuestaSim (full UCDB coverage) and Verilator (line coverage) are supported.
 
-**Extension Pattern**:
+**Extension Pattern** (e.g., adding VCS):
 1. Create `utils/verilator.py` (or `vcs.py`)
 2. Implement command builders
 3. Implement output parsers
