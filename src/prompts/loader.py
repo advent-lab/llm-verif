@@ -1,12 +1,12 @@
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 def load_system_prompt(
     design_name: str,
     design_dir: Path,
     spec_path: Path,
-    rtl_dir: Path,
-    rtl_files: list[str],
+    design_files: List[Path],
+    design_context_files: List[Path],
     module_header: str,
     design_context_enabled: bool,
     testplan_enabled: bool,
@@ -41,6 +41,22 @@ def load_system_prompt(
 
     template = full_content[start_idx:end_idx]
 
+    # Format file lists for prompt based on design_context_enabled
+    if design_context_enabled:
+        design_files_str = "\n".join([f"   - {f}" for f in design_files])
+        if not design_files_str:
+            design_files_str = "   (none)"
+        
+        design_context_files_str = "\n".join([f"   - {f}" for f in design_context_files])
+        if not design_context_files_str:
+            design_context_files_str = "   (none)"
+        
+        file_access_note = "You can read all design and design context files listed above using `read_file` to understand implementation details when needed."
+    else:
+        design_files_str = "   (not accessible - design context disabled)"
+        design_context_files_str = "   (not accessible - design context disabled)"
+        file_access_note = "You can only read the specification file. Design and design context files are not accessible for reading."
+
     # Prepare conditional sections
     if testplan_enabled:
         testplan_instruction = """### Step 2: Create Verification Plan
@@ -57,38 +73,15 @@ This plan will guide your testbench development and help ensure comprehensive co
     else:
         testplan_instruction = "(Testplan generation is disabled - proceed directly to testbench generation)"
 
-    if design_context_enabled:
-        design_context_access = "ENABLED"
-        design_context_instruction = f"""**RTL Access:** ENABLED  
-You can read the RTL source files to understand implementation details.
-Use `read_file` on files in {rtl_dir}/ when you need to:
-- Understand how to trigger specific code paths
-- See the exact conditions for uncovered branches
-- Understand state machine implementations
-- Trace signal connections between modules
-
-This is especially useful when trying to cover specific lines shown in coverage reports."""
-    else:
-        design_context_access = "DISABLED"
-        design_context_instruction = f"""**RTL Access:** DISABLED  
-You cannot read files in the {rtl_dir}/ directory.
-Generate stimulus based solely on:
-- The specification document
-- The module interface shown above
-- Coverage feedback (uncovered line numbers, but not source)
-
-Focus on black-box testing: exercise all specified functionality through the ports."""
-
     # Interpolate variables
     prompt = template.format(
         design_name=design_name,
         design_dir=str(design_dir),
         spec_path=str(spec_path),
-        rtl_dir=str(rtl_dir),
-        rtl_file_list=", ".join(rtl_files),
+        design_files=design_files_str,
+        design_context_files=design_context_files_str,
+        file_access_note=file_access_note,
         module_header=module_header,
-        design_context_access=design_context_access,
-        design_context_instruction=design_context_instruction,
         testplan_instruction=testplan_instruction,
         max_iterations=max_iterations,
         sim_runs=sim_runs

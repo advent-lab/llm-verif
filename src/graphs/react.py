@@ -54,18 +54,13 @@ def initialize_node(state: AgentState) -> AgentState:
     # Extract module headers from all design files
     module_header = extract_all_module_headers(config.design_files)
 
-    # Prepare RTL file lists for system prompt with relative paths
-    # This helps the agent distinguish between design/ and design_context/ files
-    all_rtl_files = config.design_files + config.design_context_files
-    rtl_file_names = [str(f.relative_to(config.design_dir)) for f in all_rtl_files]
-
     # Construct system prompt
     system_prompt = load_system_prompt(
         design_name=config.design_name,
         design_dir=config.design_dir,
         spec_path=config.spec_path,
-        rtl_dir=config.design_dir,  # For backward compatibility
-        rtl_files=rtl_file_names,
+        design_files=config.design_files,
+        design_context_files=config.design_context_files,
         module_header=module_header,
         design_context_enabled=config.design_context_enabled,
         testplan_enabled=config.testplan_enabled,

@@ -88,16 +88,14 @@ print(f"\nGenerating system prompt...")
 
 # Prepare paths for prompt loader
 design_dir = config.design_files[0].parent.parent  # Go up from rtl/ to design root
-rtl_dir = config.design_files[0].parent
-rtl_files = [f.name for f in config.design_files]
 work_dir = project_root / "test_output" / config.design_name
 
 prompt = load_system_prompt(
     design_name=config.design_name,
     design_dir=design_dir,
     spec_path=config.spec_path,
-    rtl_dir=rtl_dir,
-    rtl_files=rtl_files,
+    design_files=config.design_files,
+    design_context_files=config.design_context_files,
     module_header=module_header,
     design_context_enabled=DESIGN_CONTEXT_ENABLED,
     testplan_enabled=TESTPLAN_ENABLED,
