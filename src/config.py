@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 import os
 import logging
 from dotenv import load_dotenv
@@ -36,6 +36,11 @@ class Config:
     testplan_enabled: bool
     num_feedback_holes: int  # Number of priority coverage holes in feedback (0 = none)
     context_window: int  # Max tokens before terminating run
+
+    # Functional Coverage (NEW)
+    functional_coverage_enabled: bool  # Enable functional coverage mode
+    functional_coverage_target: float  # Target functional coverage percentage
+    functional_coverage_testbench_path: Optional[Path]  # Path to user-provided testbench
 
     # Debug
     log_level: str
@@ -152,6 +157,35 @@ def load_config() -> Config:
     # spec_path.parent = docs/, spec_path.parent.parent = design root
     design_dir = design_config.spec_path.parent.parent
 
+    # Functional Coverage Configuration (NEW)
+    funcov_enabled = os.getenv("FUNCTIONAL_COVERAGE_ENABLED", "0") == "1"
+    funcov_target = float(os.getenv("FUNCTIONAL_COVERAGE_TARGET", "100.0"))
+    
+    # Get functional coverage testbench path
+    funcov_testbench_path = None
+    if funcov_enabled:
+        # Try environment variable first
+        funcov_tb_env = os.getenv("FUNCTIONAL_COVERAGE_TESTBENCH")
+        if funcov_tb_env:
+            funcov_testbench_path = Path(funcov_tb_env)
+        # Try dashboard config
+        elif hasattr(design_config, 'functional_coverage_testbench_path'):
+            funcov_testbench_path = design_config.functional_coverage_testbench_path
+        
+        # Validate existence
+        if funcov_testbench_path and not funcov_testbench_path.exists():
+            raise FileNotFoundError(
+                f"Functional coverage testbench not found: {funcov_testbench_path}"
+            )
+        
+        if not funcov_testbench_path:
+            raise ValueError(
+                "FUNCTIONAL_COVERAGE_ENABLED=1 but no testbench provided. "
+                "Set FUNCTIONAL_COVERAGE_TESTBENCH or add to dashboard.json"
+            )
+        
+        logging.info(f"Functional coverage mode enabled with testbench: {funcov_testbench_path}")
+
     return Config(
         openai_api_key=api_key,
         model=os.getenv("MODEL", "gpt-4o"),
@@ -175,6 +209,9 @@ def load_config() -> Config:
         testplan_enabled=os.getenv("TESTPLAN", "1") == "1",
         num_feedback_holes=int(os.getenv("NUM_FEEDBACK_HOLES", "3")),
         context_window=int(os.getenv("CONTEXT_WINDOW", "128000")),
+        functional_coverage_enabled=funcov_enabled,
+        functional_coverage_target=funcov_target,
+        functional_coverage_testbench_path=funcov_testbench_path,
         log_level=os.getenv("LOG_LEVEL", "INFO"),
         log_truncate=os.getenv("LOG_TRUNCATE", "1") == "1"
     )

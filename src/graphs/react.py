@@ -97,6 +97,19 @@ def initialize_node(state: AgentState) -> AgentState:
         "max_coverage": 0.0,
         "cumulative_coverage": 0.0,
         "cumulative_coverage_db": None,
+        # Functional Coverage fields (NEW)
+        "functional_coverage_enabled": config.functional_coverage_enabled,
+        "functional_coverage_target": config.functional_coverage_target,
+        "functional_coverage_testbench_path": (
+            str(config.functional_coverage_testbench_path) 
+            if config.functional_coverage_testbench_path 
+            else None
+        ),
+        "current_functional_coverage": 0.0,
+        "max_functional_coverage": 0.0,
+        "functional_coverage_history": [],
+        "uncovered_bins": [],
+        # End functional coverage fields
         "is_done": False,
         "done_reason": None
     }
@@ -164,7 +177,6 @@ def _log_agent_request(state: AgentState):
     cumulative_coverage = state.get("cumulative_coverage", 0.0)
     consecutive_failures = state.get("consecutive_failures", 0)
     no_progress = state.get("no_progress_count", 0)
-    # messages = state.get("messages", [])
     
     # Count tokens in the message list
     config = state.get("config")
@@ -188,134 +200,73 @@ def _log_agent_request(state: AgentState):
             content = latest_msg.content
             # Truncate if very long (e.g., tool results with lots of data)
             # Can be disabled via LOG_TRUNCATE=0 in .env
-            if config and config.log_truncate and isinstance(content, str) and len(content) > 1000:
-                preview = content[:1000] + f"\n... ({len(content)} chars total)"
-                # Use YELLOW for tool results
-                color = Colors.YELLOW if msg_type == "ToolMessage" else Colors.CYAN
-                logging.info(f"{color}[CONTENT]\n{preview}\n{Colors.RESET}")
+            max_content_length = 500
+            should_truncate = config.log_truncate if config else True
+            
+            if should_truncate and len(content) > max_content_length:
+                truncated = content[:max_content_length] + f"... [truncated {len(content) - max_content_length} chars]"
+                logging.info(f"{Colors.CYAN}{truncated}{Colors.RESET}")
             else:
-                color = Colors.YELLOW if msg_type == "ToolMessage" else Colors.CYAN
-                logging.info(f"{color}[CONTENT]\n{content}\n{Colors.RESET}")
-
-        # If it's a tool message, show the tool name
-        if hasattr(latest_msg, 'name') and latest_msg.name:
-            logging.info(f"{Colors.YELLOW}[TOOL NAME] {latest_msg.name}{Colors.RESET}")
-
-    logging.info(f"{Colors.CYAN}{'='*80}{Colors.RESET}\n")
+                logging.info(f"{Colors.CYAN}{content}{Colors.RESET}")
 
 
 def _log_agent_response(response, state: AgentState):
-    """Log detailed agent response at INFO level."""
-    # Only log if INFO level or lower is enabled
-    if not logging.root.isEnabledFor(logging.INFO):
+    """Log the agent's response at DEBUG level."""
+    # Only log if DEBUG level is enabled
+    if not logging.root.isEnabledFor(logging.DEBUG):
         return
 
     iteration = state.get("iteration", "?")
     api_calls = state.get("api_calls", "?")
-    current_coverage = state.get("current_coverage", 0.0)
-    cumulative_coverage = state.get("cumulative_coverage", 0.0)
-    consecutive_failures = state.get("consecutive_failures", 0)
-    no_progress = state.get("no_progress_count", 0)
     
-    # Count tokens in the updated message list (includes the response)
-    messages = state.get("messages", [])
-    config = state.get("config")
-    model = config.model if config else "gpt-4"
-    token_count = count_message_tokens(messages, model)
-    token_display = format_token_count(token_count, config.context_window) if config else format_token_count(token_count)
+    logging.debug(f"{Colors.GREEN}{Colors.BOLD}{'='*80}{Colors.RESET}")
+    logging.debug(f"{Colors.GREEN}{Colors.BOLD}AGENT RESPONSE [API Call #{api_calls} | Iter {iteration}]{Colors.RESET}")
+    logging.debug(f"{Colors.GREEN}{'='*80}{Colors.RESET}")
 
-    logging.info(f"{Colors.GREEN}{Colors.BOLD}{'='*80}{Colors.RESET}")
-    logging.info(f"{Colors.GREEN}{Colors.BOLD} AGENT RESPONSE [API Call #{api_calls} | Iter {iteration} | Cumulative: {cumulative_coverage:.1f}% | Last: {current_coverage:.1f}% | Failures: {consecutive_failures} | No Progress: {no_progress} | Tokens: {token_display}]{Colors.RESET}")
-    logging.info(f"{Colors.GREEN}{'='*80}{Colors.RESET}")
+    # Log response content
+    if hasattr(response, 'content') and response.content:
+        logging.debug(f"{Colors.GREEN}[CONTENT]{Colors.RESET}")
+        logging.debug(f"{Colors.GREEN}{response.content}{Colors.RESET}")
 
-    # Log reasoning text (if present)
-    if hasattr(response, 'content'):
-        if response.content:
-            logging.info(f"{Colors.GREEN}\n [REASONING]\n{response.content}\n{Colors.RESET}")
-        else:
-            logging.info(f"{Colors.GREEN}[REASONING] (empty response){Colors.RESET}")
-
-    # Log tool calls (if present)
+    # Log tool calls
     if hasattr(response, 'tool_calls') and response.tool_calls:
-        logging.info(f"{Colors.YELLOW}{Colors.BOLD} [TOOL CALLS] {len(response.tool_calls)} tool(s) requested:{Colors.RESET}")
-        for i, tool_call in enumerate(response.tool_calls, 1):
-            tool_name = tool_call.get('name', 'unknown')
-            tool_args = tool_call.get('args', {})
+        logging.debug(f"{Colors.YELLOW}[TOOL CALLS]{Colors.RESET}")
+        for tool_call in response.tool_calls:
+            logging.debug(f"{Colors.YELLOW}  Tool: {tool_call['name']}{Colors.RESET}")
+            # Truncate args if too long
+            args_str = str(tool_call.get('args', {}))
+            if len(args_str) > 200:
+                args_str = args_str[:200] + "..."
+            logging.debug(f"{Colors.YELLOW}  Args: {args_str}{Colors.RESET}")
 
-            logging.info(f"{Colors.YELLOW}\n  {i}. {tool_name}{Colors.RESET}")
 
-            # Pretty-print arguments (handle long values)
-            for arg_name, arg_value in tool_args.items():
-                if isinstance(arg_value, str) and len(arg_value) > 200:
-                    # Truncate long string arguments (like file content)
-                    preview = arg_value[:200] + f"... ({len(arg_value)} chars total)"
-                    logging.info(f"{Colors.YELLOW}     {arg_name}: {preview}{Colors.RESET}")
-                else:
-                    logging.info(f"{Colors.YELLOW}     {arg_name}: {arg_value}{Colors.RESET}")
-    else:
-        logging.info(f"{Colors.GREEN}[NO TOOL CALLS] Agent did not request any tools{Colors.RESET}")
+def parse_tool_result(content: str) -> dict:
+    """Parse tool result from string content."""
+    try:
+        import json
+        return json.loads(content)
+    except:
+        return {"success": False, "error": "Failed to parse tool result"}
 
-    logging.info(f"{Colors.GREEN}{'='*80}{Colors.RESET}\n")
-
-def router_node(state: AgentState) -> Literal["tools", "update_state", END]:
-    """
-    Router node: Decide next action based on agent output.
-    """
-    config = state["config"]
-    last_message = state["messages"][-1]
-
-    # Check for signal_done tool call
-    if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-        for tool_call in last_message.tool_calls:
-            if tool_call['name'] == 'signal_done':
-                logging.info(f"Agent signaled done: {tool_call['args'].get('reason')}")
-                return END
-
-    # Check termination conditions
-    if state["api_calls"] >= config.max_iterations:
-        logging.info(f"Max iterations ({config.max_iterations}) reached - {state['api_calls']} API calls made")
-        return END
-
-    if state["consecutive_failures"] >= config.max_retries:
-        logging.info("Max retries reached")
-        return END
-
-    # Route to tools if tool calls present
-    if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-        return "tools"
-
-    # Otherwise continue with agent
-    return "agent"
 
 def update_state_node(state: AgentState) -> AgentState:
     """
-    Update state node: Track iterations, attempts, and coverage after tool executions.
-
-    Priority order:
-    1. Check compile failures (highest priority - stop immediately)
-    2. Check simulation failures
-    3. Check coverage improvement/no improvement
+    Update state based on tool results.
+    
+    Checks for:
+    1. compile_design failures → increment consecutive_failures
+    2. run_simulation failures → increment consecutive_failures  
+    3. parse_coverage success → update coverage metrics, increment iteration
+    
+    Note: Successful compilation/simulation resets consecutive_failures.
     """
     config = state["config"]
-
-    # Helper function to parse tool result from message content
-    def parse_tool_result(content):
-        if isinstance(content, str):
-            import json
-            try:
-                return json.loads(content)
-            except:
-                return {}
-        return content if isinstance(content, dict) else {}
-
+    
     # Priority 1: Check for compile_design failures
+    # Look backwards through recent messages for compile results
     for msg in reversed(state["messages"][-5:]):
         if hasattr(msg, 'name') and msg.name == 'compile_design':
             result = parse_tool_result(msg.content)
-
-            # NOTE: Do NOT sync config.current_attempt from tool result here.
-            # The tools use a "capture then increment" pattern - the result contains
-            # the value USED, not the incremented value. Syncing would reset the counter.
 
             if not result.get('success', False):
                 # Compilation failed - increment consecutive_failures

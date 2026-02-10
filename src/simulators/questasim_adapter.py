@@ -406,32 +406,44 @@ class QuestasimAdapter(SimulatorAdapter):
         logging.info(f"Updated cumulative coverage: {cumulative_ucdb}")
 
         return cumulative_ucdb
-
-    @staticmethod
-    def cleanup(work_dir: Path) -> None:
+    
+    def cleanup(self) -> None:
         """Clean up QuestaSim-specific files.
 
-        Removes:
-        - work/ library directory
-        - transcript file
-
-        Args:
-            work_dir: Working directory containing QuestaSim artifacts
+        QuestaSim manages its own work library, so minimal cleanup is needed.
+        This method is required by the SimulatorAdapter base class.
         """
-        import shutil
+        # QuestaSim cleanup is typically not needed as it manages work/ library
+        # This method exists to satisfy the abstract base class requirement
+        pass
 
-        try:
-            # Remove work library
-            work_lib = work_dir / "work"
-            if work_lib.exists():
-                shutil.rmtree(work_lib, ignore_errors=True)
-                logging.info(f"Cleaned up QuestaSim work library: {work_lib}")
 
-            # Remove transcript
-            transcript = work_dir / "transcript"
-            if transcript.exists():
-                transcript.unlink()
-                logging.info(f"Cleaned up QuestaSim transcript: {transcript}")
-
-        except Exception as e:
-            logging.warning(f"QuestaSim cleanup error: {e}")
+# MODULE-LEVEL FUNCTION (outside the class)
+def generate_functional_coverage_report(simulator_path: Path, ucdb_path: Path, 
+                                       output_txt: Path) -> bool:
+    """
+    Generate text-based functional coverage report.
+    
+    Args:
+        simulator_path: Path to simulator binaries
+        ucdb_path: Path to coverage database
+        output_txt: Path to output text file
+    
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        cmd = [
+            str(simulator_path / "vcover"),
+            "report",
+            "-details",
+            "-output", str(output_txt),
+            str(ucdb_path)
+        ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        return result.returncode == 0 and output_txt.exists()
+    
+    except Exception as e:
+        logging.error(f"Functional coverage report generation failed: {e}")
+        return False

@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Dict, Any
 from langchain.tools import tool
 import logging
+import re
 
 # Global config reference (set by graph initialization)
 _config = None
@@ -59,9 +60,17 @@ def write_file(path: str, content: str) -> Dict[str, Any]:
     """
     Write content to a file in the work directory.
 
+    FUNCTIONAL COVERAGE MODE:
+    - If functional_coverage_enabled=True, this tool handles STIMULUS INJECTION
+    - It loads the user's testbench, extracts the stimulus section, and replaces it
+    - The user's testbench MUST have // BEGIN_STIMULUS and // END_STIMULUS markers
+
+    NORMAL MODE (Code Coverage):
+    - Creates a new testbench file from scratch
+
     Args:
         path: Relative path within work directory (e.g., "testbenches/tb_iter_1.sv")
-        content: Content to write
+        content: Content to write (full testbench OR stimulus code depending on mode)
 
     Returns:
         Dictionary with success, full_path (if successful), error (if failed)
@@ -69,9 +78,28 @@ def write_file(path: str, content: str) -> Dict[str, Any]:
     Use this tool to:
     - Save testplans (e.g., "testplan.md")
     - Save testbenches (e.g., "testbenches/tb_iter_1.sv")
+    - In functional coverage mode: inject stimulus into user's template
 
     NOTE: You can ONLY write to the work directory.
     """
+    try:
+        # Check if functional coverage mode is enabled
+        funcov_enabled = getattr(_config, 'functional_coverage_enabled', False)
+        
+        if funcov_enabled and path.endswith('.sv'):
+            # FUNCTIONAL COVERAGE MODE: Inject stimulus into user's testbench
+            return _inject_stimulus_into_testbench(path, content)
+        else:
+            # NORMAL MODE: Write full file (testbench or testplan)
+            return _write_full_file(path, content)
+
+    except Exception as e:
+        logging.error(f"Write file error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def _write_full_file(path: str, content: str) -> Dict[str, Any]:
+    """Normal mode: Write a complete file (testbench, testplan, etc.)."""
     try:
         # Construct full path within work directory
         full_path = (_config.work_dir / path).resolve()
@@ -98,7 +126,160 @@ def write_file(path: str, content: str) -> Dict[str, Any]:
         }
 
     except Exception as e:
-        return {"success": False, "error": f"Write error: {str(e)}"}
+        logging.error(f"Write file error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def _inject_stimulus_into_testbench(path: str, content: str) -> Dict[str, Any]:
+    """
+    Functional coverage mode: Load user's testbench and inject new stimulus.
+    
+    This function:
+    1. Loads the user's functional coverage testbench template
+    2. Extracts new stimulus from agent's content (between markers or entire content)
+    3. Replaces the stimulus section in the template
+    4. Writes the modified testbench to the work directory
+    
+    Args:
+        path: Destination path for the modified testbench (relative to work_dir)
+        content: Either full testbench with markers OR just stimulus code
+    
+    Returns:
+        Success dict with path to modified testbench
+    """
+    try:
+        # Get the user's functional coverage testbench template
+        user_tb_path = _config.functional_coverage_testbench_path
+        
+        if not user_tb_path or not user_tb_path.exists():
+            return {
+                "success": False,
+                "error": f"Functional coverage testbench not found: {user_tb_path}. "
+                        f"Set FUNCTIONAL_COVERAGE_TESTBENCH in .env or add to dashboard.json"
+            }
+        
+        # Load the user's testbench template
+        logging.info(f"Loading functional coverage testbench template: {user_tb_path}")
+        with open(user_tb_path, 'r', encoding='utf-8') as f:
+            template = f.read()
+        
+        # Check if template has required markers
+        if '// BEGIN_STIMULUS' not in template or '// END_STIMULUS' not in template:
+            return {
+                "success": False,
+                "error": "Functional coverage testbench missing // BEGIN_STIMULUS and // END_STIMULUS markers. "
+                        "Please add these markers around the initial block in your testbench."
+            }
+        
+        # Check if content is a full testbench or just stimulus
+        if '// BEGIN_STIMULUS' in content and '// END_STIMULUS' in content:
+            # Agent provided full testbench with markers - extract just the stimulus
+            logging.info("Extracting stimulus from full testbench")
+            new_stimulus = _extract_stimulus_section(content)
+        else:
+            # Agent provided just the stimulus code
+            logging.info("Using provided content as stimulus")
+            new_stimulus = content.strip()
+        
+        # Inject the new stimulus into the template
+        logging.info("Injecting stimulus into template")
+        modified_testbench = _replace_stimulus_section(template, new_stimulus)
+        
+        # Write the modified testbench to work directory
+        full_path = (_config.work_dir / path).resolve()
+        
+        # Security: Prevent directory traversal
+        if not full_path.is_relative_to(_config.work_dir.resolve()):
+            return {
+                "success": False,
+                "error": f"Security violation: Path escapes work directory"
+            }
+        
+        full_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        with open(full_path, 'w', encoding='utf-8') as f:
+            f.write(modified_testbench)
+        
+        logging.info(f"Injected stimulus into testbench: {full_path}")
+        return {
+            "success": True,
+            "full_path": str(full_path)
+        }
+    
+    except Exception as e:
+        logging.error(f"Stimulus injection error: {e}")
+        import traceback
+        logging.error(traceback.format_exc())
+        return {"success": False, "error": str(e)}
+
+
+def _extract_stimulus_section(testbench_content: str) -> str:
+    """
+    Extract the stimulus code between // BEGIN_STIMULUS and // END_STIMULUS markers.
+    
+    Args:
+        testbench_content: Full testbench with markers
+    
+    Returns:
+        Just the stimulus code (without markers)
+    """
+    pattern = r'// BEGIN_STIMULUS\s*\n(.*?)\n\s*// END_STIMULUS'
+    match = re.search(pattern, testbench_content, re.DOTALL)
+    
+    if match:
+        stimulus = match.group(1).strip()
+        logging.debug(f"Extracted stimulus: {len(stimulus)} characters")
+        return stimulus
+    else:
+        # No markers found - return entire content as stimulus
+        logging.warning("No BEGIN_STIMULUS/END_STIMULUS markers found in content, using entire content")
+        return testbench_content.strip()
+
+
+def _replace_stimulus_section(template: str, new_stimulus: str) -> str:
+    """
+    Replace the stimulus section in the template with new stimulus code.
+    
+    Preserves:
+    - All covergroups and coverpoints
+    - DUT instantiation
+    - Signal declarations
+    - Clock generation
+    - Everything outside the markers
+    
+    Replaces:
+    - Only the code between // BEGIN_STIMULUS and // END_STIMULUS
+    
+    Args:
+        template: User's testbench with // BEGIN_STIMULUS and // END_STIMULUS markers
+        new_stimulus: New stimulus code to inject
+    
+    Returns:
+        Modified testbench with new stimulus
+    
+    Raises:
+        ValueError: If markers not found in template
+    """
+    # Verify markers exist (should have been checked earlier, but double-check)
+    if '// BEGIN_STIMULUS' not in template or '// END_STIMULUS' not in template:
+        raise ValueError(
+            "Testbench template missing // BEGIN_STIMULUS and // END_STIMULUS markers"
+        )
+    
+    # Replace everything between the markers, preserving markers themselves
+    pattern = r'(// BEGIN_STIMULUS\s*\n).*?(\n\s*// END_STIMULUS)'
+    replacement = f'\\1{new_stimulus}\\2'
+    
+    modified = re.sub(pattern, replacement, template, flags=re.DOTALL)
+    
+    # Verify replacement worked
+    if modified == template:
+        logging.warning("Stimulus replacement did not modify template - pattern may not have matched")
+    else:
+        logging.info("Successfully replaced stimulus section")
+    
+    return modified
+
 
 @tool
 def list_directory(path: str) -> Dict[str, Any]:

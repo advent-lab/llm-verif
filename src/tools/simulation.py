@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Dict, Any
 from langchain.tools import tool
 import logging
+import os
 
 _config = None
 _adapter = None  # Simulator adapter instance
@@ -35,6 +36,7 @@ def compile_design(testbench_path: str) -> Dict[str, Any]:
     Compile the testbench with all design files.
 
     Supports both QuestaSim and Verilator based on configuration.
+    Automatically enables functional coverage flags if FUNCTIONAL_COVERAGE_ENABLED=1.
 
     Args:
         testbench_path: Path to testbench file (relative to work directory)
@@ -43,8 +45,9 @@ def compile_design(testbench_path: str) -> Dict[str, Any]:
         Dictionary with success, return_code, stdout, stderr, log_path
 
     The compiler automatically includes all RTL files from the design directory.
-    Coverage instrumentation is enabled (statement coverage for QuestaSim,
-    line coverage for Verilator).
+    Coverage instrumentation:
+    - Code coverage mode: Statement coverage (QuestaSim) or line coverage (Verilator)
+    - Functional coverage mode: Full coverage including functional bins (+cover=sbfec)
     """
     try:
         # Get current iteration for naming
@@ -67,7 +70,7 @@ def compile_design(testbench_path: str) -> Dict[str, Any]:
         # Get design files from config (includes both main design and context files)
         design_files = _config.design_files + _config.design_context_files
 
-        # Delegate to adapter
+        # Delegate to adapter (adapter checks FUNCTIONAL_COVERAGE_ENABLED env var)
         result = _adapter.compile(
             testbench_path=tb_path,
             design_files=design_files,
@@ -119,6 +122,7 @@ def run_simulation(testbench_name: str = "tb_llm", num_runs: int = None) -> Dict
     Run simulation with coverage collection.
 
     Supports both QuestaSim and Verilator based on configuration.
+    In functional coverage mode, automatically generates a text coverage report.
 
     Args:
         testbench_name: Name of testbench module (default: "tb_llm")
@@ -126,10 +130,15 @@ def run_simulation(testbench_name: str = "tb_llm", num_runs: int = None) -> Dict
 
     Returns:
         Dictionary with success, stdout, stderr, coverage_db_path, log_path
+        If functional coverage mode: Also includes functional_coverage_report_path
 
     Multiple runs help achieve better random coverage.
     For QuestaSim: Coverage databases are automatically merged.
     For Verilator: Coverage accumulates to a single .dat file.
+    
+    FUNCTIONAL COVERAGE MODE:
+    If FUNCTIONAL_COVERAGE_ENABLED=1, this tool also generates a text-based
+    functional coverage report using vcover report -details.
     """
     try:
         if num_runs is None:
@@ -174,6 +183,16 @@ def run_simulation(testbench_name: str = "tb_llm", num_runs: int = None) -> Dict
                 f.write(f"\nSTDERR:\n{result.get('stderr', '(empty)')}\n")
         result["log_path"] = str(log_path)
 
+        # If functional coverage is enabled, generate text report
+        funcov_enabled = getattr(_config, 'functional_coverage_enabled', False)
+        if funcov_enabled and result.get("success", False):
+            ucdb_path = Path(result.get("coverage_db_path"))
+            if ucdb_path and ucdb_path.exists():
+                funcov_report_path = _generate_functional_coverage_report(ucdb_path, iteration)
+                if funcov_report_path:
+                    result["functional_coverage_report_path"] = str(funcov_report_path)
+                    logging.info(f"Generated functional coverage report: {funcov_report_path}")
+
         # Summarize output for the LLM (full output already saved to log file)
         if result.get("success", False):
             result["stdout"] = (
@@ -198,3 +217,37 @@ def run_simulation(testbench_name: str = "tb_llm", num_runs: int = None) -> Dict
     except Exception as e:
         logging.error(f"Simulation error: {e}")
         return {"success": False, "error": str(e)}
+
+
+def _generate_functional_coverage_report(ucdb_path: Path, iteration: int) -> Path:
+    """
+    Generate text-based functional coverage report.
+    
+    Args:
+        ucdb_path: Path to coverage database (.ucdb)
+        iteration: Current iteration number
+    
+    Returns:
+        Path to generated text report, or None if generation failed
+    """
+    try:
+        from ..simulators.questasim_adapter import generate_functional_coverage_report
+        
+        coverage_dir = ucdb_path.parent
+        report_path = coverage_dir / f"functional_coverage_iter_{iteration}.txt"
+        
+        success = generate_functional_coverage_report(
+            simulator_path=_config.simulator_path,
+            ucdb_path=ucdb_path,
+            output_txt=report_path
+        )
+        
+        if success:
+            return report_path
+        else:
+            logging.error("Functional coverage report generation failed")
+            return None
+    
+    except Exception as e:
+        logging.error(f"Error generating functional coverage report: {e}")
+        return None

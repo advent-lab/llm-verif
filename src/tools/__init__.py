@@ -17,7 +17,7 @@ if TEST_MODE:
     from . import analysis_mock as analysis
 else:
     from .simulation import compile_design, run_simulation
-    from .analysis import parse_coverage
+    from .analysis import parse_coverage, parse_functional_coverage
     from . import simulation
     from . import analysis
 
@@ -26,7 +26,7 @@ from . import filesystem
 
 def get_all_tools():
     """Get all tools for the agent."""
-    return [
+    tools = [
         read_file,
         write_file,
         list_directory,
@@ -35,6 +35,12 @@ def get_all_tools():
         parse_coverage,
         signal_done
     ]
+    
+    # Add functional coverage tool if not in test mode
+    if not TEST_MODE:
+        tools.append(parse_functional_coverage)
+    
+    return tools
 
 def set_tool_config(config):
     """Set config for all tools that need it."""

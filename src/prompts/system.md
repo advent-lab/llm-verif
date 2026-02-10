@@ -156,6 +156,46 @@ Returns: `success` (bool), `message` (str)
 
 When generating SystemVerilog testbenches, follow these rules:
 
+## Functional Coverage Mode (EXPERIMENTAL)
+
+When `FUNCTIONAL_COVERAGE_ENABLED=1`, the workflow changes:
+
+### Key Differences
+- You are provided with a FIXED testbench that already contains covergroups, coverpoints, and crosses
+- Your ONLY task is to generate stimulus that hits uncovered bins
+- Do NOT modify the testbench structure, DUT instantiation, or coverage definitions
+- Do NOT create a new testbench from scratch
+
+### Stimulus Markers
+The testbench has clearly marked regions:
+```systemverilog
+// BEGIN_STIMULUS
+initial begin
+    // Your stimulus code goes here
+    // Modify ONLY this section
+end
+// END_STIMULUS
+```
+
+### Workflow (Functional Coverage Mode)
+1. Read the provided testbench to understand signal names and coverage goals
+2. Compile and simulate to get baseline coverage
+3. Use `parse_functional_coverage` tool to analyze uncovered bins
+4. Generate stimulus targeting specific uncovered bins
+5. Iteratively refine stimulus until target coverage is reached
+
+### Stimulus Generation Strategies
+- **Directed Testing**: Create specific sequences to hit known bins
+- **Constrained Random**: Use `$urandom_range()` with constraints
+- **Corner Cases**: Target boundary values, special patterns
+- **Cross Coverage**: Generate combinations that satisfy cross bins
+
+### Example: Targeting Specific Bins
+If you see uncovered bins like:
+- `bin invalid[8]` → Generate opcode = 8
+- `bin <div,zero,*>` → Generate division with operand2 = 0
+- `bin power_of_2[1024]` → Generate operand = 1024
+
 ### Module Structure
 1. Module name MUST be `tb_llm`
 2. No ports on testbench module (top-level test)
