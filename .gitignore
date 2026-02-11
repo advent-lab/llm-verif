@@ -1,6 +1,8 @@
 # Custom
 configs/
-
+temp/
+docs/plans/
+docs/tasks/
 
 
 # Project specific ignores
