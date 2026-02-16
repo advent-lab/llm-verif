@@ -36,7 +36,7 @@ if sys.platform == 'win32':
 # Method 1: Load from dashboard.json (recommended)
 USE_DASHBOARD = True
 DASHBOARD_PATH = project_root / "dashboard.json"
-DESIGN_NAME = "cvdp_agentic_spi_complex_mult"  # Change to any design in dashboard.json
+DESIGN_NAME = "ethmac_eth_with_cop"  # Change to any design in dashboard.json
 
 # Method 2: Auto-discover from directory (fallback)
 AUTO_DISCOVER_DIR = project_root / "data" / "cvdp_agentic_alu"  # Used if USE_DASHBOARD=False

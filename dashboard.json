@@ -611,11 +611,11 @@
     },
     "ethmac_eth_with_cop": {
         "verif": [
-            "$(BASE_DIR)/ethmac_eth_with_cop/verif/tb_ethernet.v"
+            "$(BASE_DIR)/ethmac_eth_with_cop/verif/tb_ethernet_with_cop.v"
         ],
         "verif_context": [
-            "$(BASE_DIR)/ethmac_eth_with_cop/verif/eth_host.v",
-            "$(BASE_DIR)/ethmac_eth_with_cop/verif/eth_memory.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_host.v",
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_memory.v",
             "$(BASE_DIR)/ethmac_eth_with_cop/verif/eth_phy_defines.v",
             "$(BASE_DIR)/ethmac_eth_with_cop/verif/eth_phy.v",
             "$(BASE_DIR)/ethmac_eth_with_cop/verif/tb_eth_defines.v"
@@ -659,8 +659,7 @@
             "$(BASE_DIR)/ethmac_eth_with_cop/design_context/wb_slave_behavioral.v"
         ],
         "spec": [
-            "$(BASE_DIR)/ethmac_eth_with_cop/spec/Spec0.pdf",
-            "$(BASE_DIR)/ethmac_eth_with_cop/spec/Spec1.pdf"
+            "$(BASE_DIR)/ethmac_eth_with_cop/spec/Spec1.md"
         ],
         "makefile": [
             "$(BASE_DIR)/ethmac_eth_with_cop/questa/Makefile"
