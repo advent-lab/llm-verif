@@ -1,7 +1,7 @@
 ﻿# AGENTS.md - Coding Agent Alignment
 
 ## 1) Project Scope (Overview)
-Spec2Cov builds agentic workflows (LangGraph) for automated hardware verification.
+CovAgent builds agentic workflows (LangGraph) for automated hardware verification.
 Given a design spec + RTL, the system iterates on generated testbenches, simulation runs,
 and coverage analysis to drive toward coverage closure.
 
@@ -13,15 +13,15 @@ Tech stack (core):
 
 ## 2) Project Structure (Root)
 - src/   : main Python package (graphs, tools, prompts, utilities)
-- docs/  : project documentation (architecture, tool docs, tasks, plans, notes)
+- docs/  : project documentation (architecture, config, development, tool docs, tasks, plans, notes)
 - data/  : design corpus (each design typically contains rtl/ and docs/)
 
-## 3) Instructions (Follow for Every Prompt)
+## 3) Guidelines
 
 ### A) Always Ground Yourself First
 - Read the most relevant docs in docs/ before coding (ARCH, tool docs, task specs).
-- Inspect existing code before adding abstractions; match local conventions.
-- Prefer searching for existing patterns/usages over inventing new APIs.
+- Inspect existing code before adding abstractions; try to match local conventions.
+- Prefer searching for existing patterns and usages over inventing new APIs.
 
 ### B) LangGraph: Use the MCP Docs (Do Not Guess)
 - Use the LangGraph MCP server to look up the correct APIs, patterns, and best practices.
@@ -44,7 +44,7 @@ Ask clarifying questions whenever requirements are ambiguous, especially around:
 
 ### E) Documentation is Part of the Feature
 - Update docs/ARCH.md when architecture or state/tool contracts change.
-- Add/extend docs/tool documentation when tool behavior or outputs change.
+- Add or extend docs/tool documentation when tool behavior or outputs change.
 - Keep documentation concise and task-oriented.
 
 ### F) Track Debt, Workarounds, and Risks

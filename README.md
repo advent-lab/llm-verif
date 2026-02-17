@@ -1,4 +1,4 @@
-# Spec2Cov
+# CovAgent
 
 LLM-powered automated hardware verification using LangGraph. The agent reads design specifications, generates SystemVerilog testbenches, runs simulations, and iteratively improves coverage.
 

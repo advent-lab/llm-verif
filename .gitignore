@@ -3,6 +3,7 @@ configs/
 temp/
 docs/plans/
 docs/tasks/
+.claude/
 
 
 # Project specific ignores

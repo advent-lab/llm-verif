@@ -1,4 +1,4 @@
-# Spec2Cov Architecture Documentation
+# CovAgent Architecture Documentation
 
 ## Table of Contents
 
@@ -19,7 +19,7 @@
 
 ## Overview
 
-Spec2Cov is an agentic framework that automates hardware verification using a ReAct (Reasoning + Acting) pattern implemented with LangGraph. The system orchestrates an LLM-powered agent that iteratively generates SystemVerilog testbenches, compiles and simulates them with QuestaSim, analyzes coverage, and refines its approach until achieving complete statement coverage.
+CovAgent is an agentic framework that automates hardware verification using a ReAct (Reasoning + Acting) pattern implemented with LangGraph. The system orchestrates an LLM-powered agent that iteratively generates SystemVerilog testbenches, compiles and simulates them with QuestaSim, analyzes coverage, and refines its approach until achieving complete statement coverage.
 
 ### Key Characteristics
 
@@ -1350,7 +1350,7 @@ print(f"Messages: {len(state['messages'])}")
 
 ## Summary
 
-Spec2Cov implements a ReAct agent using LangGraph with:
+CovAgent implements a ReAct agent using LangGraph with:
 
 1. **Modular Architecture**: Clear separation of state, config, utils, tools, prompts, and graph
 2. **Tool-Based Abstraction**: Well-defined tools with structured I/O contracts
@@ -1364,4 +1364,4 @@ The architecture prioritizes:
 - **Maintainability**: Pure functions, clear responsibilities
 - **Extensibility**: Plugin-style tool system, configurable behavior
 
-This document serves as the technical reference for understanding, debugging, and extending the Spec2Cov framework.
+This document serves as the technical reference for understanding, debugging, and extending the CovAgent framework.

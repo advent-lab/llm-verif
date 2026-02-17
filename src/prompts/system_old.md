@@ -1,6 +1,6 @@
-# SYSTEM_PROMPT.md - Spec2Cov Agent System Prompt
+# SYSTEM_PROMPT.md - CovAgent Agent System Prompt
 
-> **Purpose**: This is the master system prompt template for the Spec2Cov ReAct agent. It defines the agent's role, capabilities, workflow, and guidelines for achieving hardware verification coverage closure.
+> **Purpose**: This is the master system prompt template for the CovAgent ReAct agent. It defines the agent's role, capabilities, workflow, and guidelines for achieving hardware verification coverage closure.
 
 ---
 
