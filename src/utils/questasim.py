@@ -14,6 +14,34 @@ def build_vlog_command(simulator_path: Path, testbench: Path, design_files: List
         str(testbench)
     ] + [str(f) for f in design_files]
 
+
+def build_vlog_commands(simulator_path: Path, testbench: Path, design_files: List[Path]) -> List[List[str]]:
+    """Build vlog compilation commands, splitting Verilog and SystemVerilog files.
+
+    Legacy .v files may use identifiers (e.g. ``return``) that are reserved
+    keywords in SystemVerilog.  Compiling them with ``-sv`` causes parse
+    errors.  We therefore emit **two** commands:
+
+    1. ``.v`` files compiled in Verilog mode (no ``-sv``).
+    2. ``.sv`` files compiled in SystemVerilog mode (with ``-sv``).
+
+    Both write into the same ``work`` library so all modules remain visible.
+    """
+    all_files = [testbench] + list(design_files)
+
+    v_files = [f for f in all_files if str(f).endswith('.v')]
+    sv_files = [f for f in all_files if not str(f).endswith('.v')]
+
+    commands: List[List[str]] = []
+    vlog = str(simulator_path / "vlog")
+
+    if v_files:
+        commands.append([vlog, "+cover=s"] + [str(f) for f in v_files])
+    if sv_files:
+        commands.append([vlog, "-sv", "+cover=s"] + [str(f) for f in sv_files])
+
+    return commands
+
 def build_vsim_command(simulator_path: Path, ucdb_path: Path) -> List[str]:
     """Build vsim simulation command with coverage collection."""
     do_script = f"coverage exclude -du tb_llm;coverage save -onexit {ucdb_path};run -all;exit;"

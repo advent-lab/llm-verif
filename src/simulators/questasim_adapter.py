@@ -15,6 +15,7 @@ from typing import Dict, Any, List, Tuple
 from .base import SimulatorAdapter, CoverageResult
 from ..utils.questasim import (
     build_vlog_command,
+    build_vlog_commands,
     build_vsim_command,
     build_vcover_merge_command,
     check_questasim_success
@@ -115,28 +116,49 @@ class QuestasimAdapter(SimulatorAdapter):
             Compilation result dictionary with success status and outputs
         """
         try:
-            # Build vlog command with statement coverage enabled
-            command = build_vlog_command(self.simulator_path, testbench_path, design_files)
+            # Build separate vlog commands for .v (Verilog) and .sv (SystemVerilog)
+            # files.  Legacy .v files may use identifiers like ``return`` that
+            # clash with SystemVerilog reserved keywords.
+            commands = build_vlog_commands(self.simulator_path, testbench_path, design_files)
 
-            logging.info(f"QuestaSim compile: {' '.join(str(c) for c in command)}")
+            all_stdout = []
+            all_stderr = []
+            last_returncode = 0
 
-            # Execute compilation
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                cwd=str(work_dir)  # Run in work directory for work library
-            )
+            for command in commands:
+                logging.info(f"QuestaSim compile: {' '.join(str(c) for c in command)}")
 
-            # Check success by parsing output
-            success = check_questasim_success(result.stdout)
+                result = subprocess.run(
+                    command,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout,
+                    cwd=str(work_dir)  # Run in work directory for work library
+                )
+
+                all_stdout.append(result.stdout)
+                all_stderr.append(result.stderr)
+                last_returncode = result.returncode
+
+                # Fail fast: if this pass has errors, stop immediately
+                if not check_questasim_success(result.stdout):
+                    return {
+                        "success": False,
+                        "return_code": result.returncode,
+                        "stdout": "\n".join(all_stdout),
+                        "stderr": "\n".join(all_stderr),
+                        "log_path": ""
+                    }
+
+            combined_stdout = "\n".join(all_stdout)
+            combined_stderr = "\n".join(all_stderr)
+            success = check_questasim_success(all_stdout[-1]) if all_stdout else False
 
             return {
                 "success": success,
-                "return_code": result.returncode,
-                "stdout": result.stdout,
-                "stderr": result.stderr,
+                "return_code": last_returncode,
+                "stdout": combined_stdout,
+                "stderr": combined_stderr,
                 "log_path": ""  # Log saving handled by tool layer
             }
 
@@ -198,7 +220,19 @@ class QuestasimAdapter(SimulatorAdapter):
                         cwd=str(work_dir)
                     )
 
-                    all_stdout.append(f"=== Run {run_idx} ===\n{result.stdout}")
+                    run_stdout = result.stdout
+
+                    # Fallback: when vsim fails during optimization/loading,
+                    # stdout is empty but errors are in the transcript file.
+                    if not run_stdout.strip():
+                        transcript_path = work_dir / "transcript"
+                        if transcript_path.exists():
+                            try:
+                                run_stdout = transcript_path.read_text()
+                            except OSError:
+                                pass
+
+                    all_stdout.append(f"=== Run {run_idx} ===\n{run_stdout}")
                     all_stderr.append(result.stderr)
 
                     # Check if this run succeeded and UCDB file was created
@@ -214,7 +248,9 @@ class QuestasimAdapter(SimulatorAdapter):
             if not ucdb_files:
                 return {
                     "success": False,
-                    "error": "All simulation runs failed"
+                    "error": "All simulation runs failed",
+                    "stdout": "\n\n".join(all_stdout),
+                    "stderr": "\n".join(all_stderr),
                 }
 
             # Merge coverage databases if multiple runs succeeded
