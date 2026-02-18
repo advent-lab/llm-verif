@@ -205,7 +205,9 @@ module list 2>&1 | grep -E "(gcc|ccache)" || echo "WARNING: Required modules may
             if successful_runs == 0:
                 return {
                     "success": False,
-                    "error": "All simulation runs failed"
+                    "error": "All simulation runs failed",
+                    "stdout": f"{all_stdout[0]}\n\n(All {len(all_stdout)} runs failed with the same error)" if all_stdout else "",
+                    "stderr": all_stderr[0] if all_stderr else "",
                 }
 
             # Verify coverage file was created

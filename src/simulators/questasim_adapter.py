@@ -249,8 +249,8 @@ class QuestasimAdapter(SimulatorAdapter):
                 return {
                     "success": False,
                     "error": "All simulation runs failed",
-                    "stdout": "\n\n".join(all_stdout),
-                    "stderr": "\n".join(all_stderr),
+                    "stdout": f"{all_stdout[0]}\n\n(All {len(all_stdout)} runs failed with the same error)" if all_stdout else "",
+                    "stderr": all_stderr[0] if all_stderr else "",
                 }
 
             # Merge coverage databases if multiple runs succeeded
