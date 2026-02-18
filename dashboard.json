@@ -621,6 +621,7 @@
             "$(BASE_DIR)/ethmac_eth_with_cop/verif/tb_eth_defines.v"
         ],
         "design": [
+            "$(BASE_DIR)/ethmac_eth_with_cop/design/ethmac.v",
             "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_clockgen.v",
             "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_crc.v",
             "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_fifo.v",
@@ -646,7 +647,6 @@
             "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_txstatem.v",
             "$(BASE_DIR)/ethmac_eth_with_cop/design/eth_wishbone.v",
             "$(BASE_DIR)/ethmac_eth_with_cop/design/ethmac_defines.v",
-            "$(BASE_DIR)/ethmac_eth_with_cop/design/ethmac.v",
             "$(BASE_DIR)/ethmac_eth_with_cop/design/timescale.v",
             "$(BASE_DIR)/ethmac_eth_with_cop/design/xilinx_dist_ram_16x32.v"
         ],
