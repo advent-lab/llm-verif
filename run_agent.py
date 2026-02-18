@@ -21,9 +21,20 @@ Examples:
 """
 
 import argparse
+import logging
 import os
+import re
 import sys
 from pathlib import Path
+
+
+class _StripAnsiFilter(logging.Filter):
+    """Logging filter that strips ANSI escape codes from log messages."""
+    _ansi_re = re.compile(r'\033\[[0-9;]*m')
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.msg = self._ansi_re.sub('', str(record.msg))
+        return True
 
 
 def _load_dotenv_local(env_path: Path, override: bool = True) -> None:
@@ -210,8 +221,9 @@ Environment File Format:
         console_handler.setFormatter(console_formatter)
         console_handler.setLevel(getattr(logging, config.log_level))
         
-        # File handler (with colors preserved via ANSI codes)
+        # File handler (ANSI color codes stripped for clean file output)
         file_handler = logging.FileHandler(log_file, mode='w', encoding='utf-8')
+        file_handler.addFilter(_StripAnsiFilter())
         file_handler.setFormatter(file_formatter)
         file_handler.setLevel(getattr(logging, config.log_level))
         
