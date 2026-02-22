@@ -65,7 +65,8 @@ def initialize_node(state: AgentState) -> AgentState:
         design_context_enabled=config.design_context_enabled,
         testplan_enabled=config.testplan_enabled,
         max_iterations=config.max_iterations,
-        sim_runs=config.sim_runs
+        sim_runs=config.sim_runs,
+        sim_timeout=config.sim_timeout
     )
 
     # Set config for tools

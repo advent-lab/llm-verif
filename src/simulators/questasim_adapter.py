@@ -198,6 +198,7 @@ class QuestasimAdapter(SimulatorAdapter):
             ucdb_files = []
             all_stdout = []
             all_stderr = []
+            timed_out_runs = 0
 
             # Run multiple simulations with different random seeds
             for run_idx in range(num_runs):
@@ -242,13 +243,21 @@ class QuestasimAdapter(SimulatorAdapter):
                         logging.warning(f"QuestaSim run {run_idx} failed")
 
                 except subprocess.TimeoutExpired:
+                    timed_out_runs += 1
+                    all_stdout.append(f"=== Run {run_idx} ===\nTIMEOUT: Simulation exceeded {timeout}s limit")
                     logging.warning(f"QuestaSim run {run_idx} timed out")
                     continue
 
             if not ucdb_files:
+                if timed_out_runs == num_runs:
+                    error_msg = f"All {num_runs} simulation runs timed out (limit: {timeout}s). The testbench likely has an infinite loop or excessively long execution."
+                elif timed_out_runs > 0:
+                    error_msg = f"All simulation runs failed ({timed_out_runs}/{num_runs} timed out, limit: {timeout}s)"
+                else:
+                    error_msg = "All simulation runs failed"
                 return {
                     "success": False,
-                    "error": "All simulation runs failed",
+                    "error": error_msg,
                     "stdout": f"{all_stdout[0]}\n\n(All {len(all_stdout)} runs failed with the same error)" if all_stdout else "",
                     "stderr": all_stderr[0] if all_stderr else "",
                 }
@@ -273,13 +282,16 @@ class QuestasimAdapter(SimulatorAdapter):
             else:
                 coverage_db_path = ucdb_files[0]
 
-            return {
+            result = {
                 "success": True,
                 "stdout": "\n\n".join(all_stdout),
                 "stderr": "\n".join(all_stderr),
                 "coverage_db_path": str(coverage_db_path),
                 "num_runs_completed": len(ucdb_files)
             }
+            if timed_out_runs > 0:
+                result["warning"] = f"{timed_out_runs}/{num_runs} runs timed out (limit: {timeout}s)"
+            return result
 
         except Exception as e:
             logging.error(f"QuestaSim simulation error: {e}")

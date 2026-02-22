@@ -11,7 +11,8 @@ def load_system_prompt(
     design_context_enabled: bool,
     testplan_enabled: bool,
     max_iterations: int,
-    sim_runs: int
+    sim_runs: int,
+    sim_timeout: int = 60
 ) -> str:
     """
     Load system prompt template and interpolate variables.
@@ -84,7 +85,8 @@ This plan is your roadmap to 100% coverage — be specific about how you will re
         module_header=module_header,
         testplan_instruction=testplan_instruction,
         max_iterations=max_iterations,
-        sim_runs=sim_runs
+        sim_runs=sim_runs,
+        sim_timeout=sim_timeout
     )
 
     return prompt

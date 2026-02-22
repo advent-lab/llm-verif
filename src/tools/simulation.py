@@ -176,10 +176,14 @@ def run_simulation(testbench_name: str = "tb_llm", num_runs: int = None) -> Dict
 
         # Summarize output for the LLM (full output already saved to log file)
         if result.get("success", False):
-            result["stdout"] = (
+            summary = (
                 f"Simulation completed: {result.get('num_runs_completed', num_runs)}/{num_runs} "
-                f"runs successful. Full log: {log_name}"
+                f"runs successful."
             )
+            if result.get("warning"):
+                summary += f" Warning: {result['warning']}"
+            summary += f" Full log: {log_name}"
+            result["stdout"] = summary
             result.pop("stderr", None)
         else:
             error_msg = result.get("error", "")

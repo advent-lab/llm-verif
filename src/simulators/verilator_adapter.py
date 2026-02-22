@@ -169,6 +169,7 @@ module list 2>&1 | grep -E "(gcc|ccache)" || echo "WARNING: Required modules may
             all_stdout = []
             all_stderr = []
             successful_runs = 0
+            timed_out_runs = 0
 
             # Run simulation multiple times (coverage accumulates)
             for run_idx in range(num_runs):
@@ -199,13 +200,21 @@ module list 2>&1 | grep -E "(gcc|ccache)" || echo "WARNING: Required modules may
                         logging.warning(f"Verilator run {run_idx} failed with code {result.returncode}")
 
                 except subprocess.TimeoutExpired:
+                    timed_out_runs += 1
+                    all_stdout.append(f"=== Run {run_idx} ===\nTIMEOUT: Simulation exceeded {timeout}s limit")
                     logging.warning(f"Verilator run {run_idx} timed out")
                     continue
 
             if successful_runs == 0:
+                if timed_out_runs == num_runs:
+                    error_msg = f"All {num_runs} simulation runs timed out (limit: {timeout}s). The testbench likely has an infinite loop or excessively long execution."
+                elif timed_out_runs > 0:
+                    error_msg = f"All simulation runs failed ({timed_out_runs}/{num_runs} timed out, limit: {timeout}s)"
+                else:
+                    error_msg = "All simulation runs failed"
                 return {
                     "success": False,
-                    "error": "All simulation runs failed",
+                    "error": error_msg,
                     "stdout": f"{all_stdout[0]}\n\n(All {len(all_stdout)} runs failed with the same error)" if all_stdout else "",
                     "stderr": all_stderr[0] if all_stderr else "",
                 }
@@ -230,13 +239,16 @@ module list 2>&1 | grep -E "(gcc|ccache)" || echo "WARNING: Required modules may
             logging.info(f"Verilator simulation complete: {successful_runs}/{num_runs} runs succeeded")
             logging.info(f"Coverage data saved to: {coverage_dat} ({coverage_dat.stat().st_size} bytes)")
 
-            return {
+            result = {
                 "success": True,
                 "stdout": "\n\n".join(all_stdout),
                 "stderr": "\n".join(all_stderr),
                 "coverage_db_path": str(coverage_dat),
                 "num_runs_completed": successful_runs
             }
+            if timed_out_runs > 0:
+                result["warning"] = f"{timed_out_runs}/{num_runs} runs timed out (limit: {timeout}s)"
+            return result
 
         except Exception as e:
             logging.error(f"Verilator simulation error: {e}")

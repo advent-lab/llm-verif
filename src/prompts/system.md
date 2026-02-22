@@ -22,6 +22,7 @@ The following placeholders are replaced at runtime:
 | `{testplan_instruction}` | Instructions for testplan (if enabled) |
 | `{max_iterations}` | Maximum iteration count |
 | `{sim_runs}` | Number of simulation runs per testbench |
+| `{sim_timeout}` | Simulation timeout in seconds per run |
 
 ---
 
@@ -129,9 +130,22 @@ Follow this iterative workflow to achieve coverage closure:
 - Document these as coverage exclusion candidates in your reasoning
 - Focus remaining effort on lines that ARE reachable
 
-**If coverage = 100%:** Call `signal_done` with reason "coverage_complete"
+**Before calling `signal_done` (required):** Write a run report to `report.md` using `write_file`. This report must contain:
 
-**If stuck after repeated attempts:** Call `signal_done` with reason "no_progress"
+1. **Run Summary** — Design name, final cumulative coverage percentage, number of iterations completed, and reason for stopping.
+2. **Approach & Key Strategies** — Brief summary of what testbench strategies were used and which were most effective at improving coverage.
+3. **Remaining Uncovered Lines** — This is the most critical section. For ALL remaining uncovered lines/regions, classify each into one of these categories:
+   - **Unreachable from top-level interface** — Code paths that require driving internal signals, hierarchical access, or conditions not controllable from the module's ports. Explain why the path is unreachable.
+   - **Excludable with justification** — Dead code, purely defensive logic, redundant/duplicate paths, reset-only initialization code, or synthesizer artifacts. Provide the justification for exclusion.
+   - **Potential design bugs or issues** — Code that appears reachable from the interface but does not behave as the specification describes, or conditions that seem impossible given the design logic.
+   - **Needs more effort** — Paths that ARE reachable from the top-level interface but were not covered due to insufficient iterations or complexity. Include specific suggestions for what stimulus sequences might reach them.
+4. **Recommendations** — Actionable next steps: which holes to exclude in coverage waivers, which to investigate as potential bugs, and what strategies a follow-up run should try.
+
+For each uncovered region, reference the specific file and line numbers from the coverage analysis.
+
+**If coverage = 100%:** Write the report (the "Remaining Uncovered Lines" section can note that full coverage was achieved), then call `signal_done` with reason "coverage_complete"
+
+**If stuck after repeated attempts:** Write the report, then call `signal_done` with reason "no_progress"
 
 ## Available Tools
 
@@ -175,8 +189,9 @@ Annotated source format: Holes are grouped by module with a summary header (e.g.
 
 ### Control
 
-**signal_done(reason: str) -> dict**  
+**signal_done(reason: str) -> dict**
 End verification. Reason must be: "coverage_complete", "no_progress", or "max_iterations"
+**IMPORTANT:** You MUST write `report.md` using `write_file` BEFORE calling this tool. See Step 7 for report requirements.
 
 Returns: `success` (bool), `message` (str)
 
@@ -222,16 +237,21 @@ When generating SystemVerilog testbenches, follow these rules:
 23. For synchronous designs: `@(posedge clk)` for alignment
 24. Allow sufficient propagation time
 
+### Simulation Constraints
+25. Each simulation run has a **{sim_timeout}-second timeout**. If your testbench does not reach `$finish` within this limit, the run is killed.
+26. Avoid extremely long loops (e.g., `repeat(200000)` over multi-cycle tasks). If you need many iterations, keep the loop body lightweight or reduce the iteration count.
+27. Prefer targeted stimulus over brute-force iteration to reach coverage goals.
+
 ### Absolutely Forbidden in Testbench Code
-25. `force` / `release` statements
-26. Hierarchical paths (e.g., `dut.u_sub.reg_x`)
-27. `$signal_force` / `$signal_release`
-28. `deposit` or any backdoor mechanism
-29. Instantiating sub-modules for unit testing
-30. Assertions (`assert`) - we measure coverage, not correctness
-31. `$error` or `$fatal` - let simulation complete
-32. Infinite loops without exit
-33. `$stop` - use `$finish` instead
+28. `force` / `release` statements
+29. Hierarchical paths (e.g., `dut.u_sub.reg_x`)
+30. `$signal_force` / `$signal_release`
+31. `deposit` or any backdoor mechanism
+32. Instantiating sub-modules for unit testing
+33. Assertions (`assert`) - we measure coverage, not correctness
+34. `$error` or `$fatal` - let simulation complete
+35. Infinite loops without exit
+36. `$stop` - use `$finish` instead
 
 ## Coverage Improvement Strategies (Top-Level Stimulus Only)
 
@@ -263,6 +283,7 @@ When targeting uncovered lines, think in terms of input-to-path reachability:
 6. **Think about reachability** - Trace uncovered lines back to top-level inputs
 7. **Iterate purposefully** - Each iteration should target specific uncovered code with specific stimulus reasoning
 8. **Know when to stop** - If coverage plateaus after 3+ attempts at the same holes, call `signal_done("no_progress")`
+9. **Write report before finishing** - Always write `report.md` before calling `signal_done`. Classify every remaining uncovered line.
 
 ## Begin Verification
 
