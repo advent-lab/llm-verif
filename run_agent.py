@@ -21,6 +21,8 @@ Examples:
 """
 
 import argparse
+import dataclasses
+import json
 import logging
 import os
 import re
@@ -296,6 +298,18 @@ Environment File Format:
             print(f"Merged Coverage:    {final_state.get('cumulative_coverage', 0):.1f}%")
             print(f"Termination:       {final_state.get('done_reason', 'N/A')}")
             print(f"Work Directory:    {final_state.get('work_dir', config.work_dir)}")
+
+            # Save final state to JSON for visualization
+            work_path = Path(final_state.get('work_dir', config.work_dir))
+            serializable = {k: v for k, v in final_state.items() if k != 'messages'}
+            if 'config' in serializable and serializable['config'] is not None:
+                config_dict = dataclasses.asdict(serializable['config'])
+                config_dict.pop('openai_api_key', None)
+                serializable['config'] = config_dict
+            state_path = work_path / "final_state.json"
+            with open(state_path, 'w') as f:
+                json.dump(serializable, f, indent=2, default=str)
+            print(f"\nFinal state saved: {state_path}")
 
             # Check for generated artifacts
             work_path = Path(final_state.get('work_dir', config.work_dir))

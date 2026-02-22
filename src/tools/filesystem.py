@@ -93,11 +93,18 @@ def write_file(path: str, content: str) -> Dict[str, Any]:
             }
 
         # Scan for forbidden testbench constructs
-        found = [kw for kw in FORBIDDEN_KEYWORDS if kw in content]
-        if found:
+        violations = []
+        for line_num, line in enumerate(content.split('\n'), 1):
+            for kw in FORBIDDEN_KEYWORDS:
+                if kw in line:
+                    violations.append((kw, line_num, line.strip()))
+        
+        if violations:
             logging.warning(
-                f"Forbidden testbench construct(s) detected in '{path}': {found}"
+                f"Forbidden testbench construct(s) detected in '{path}':"
             )
+            for kw, line_num, line in violations:
+                logging.warning(f"  Line {line_num}: {line}")
 
         # Create parent directories if needed
         full_path.parent.mkdir(parents=True, exist_ok=True)
