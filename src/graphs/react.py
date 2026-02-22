@@ -99,7 +99,8 @@ def initialize_node(state: AgentState) -> AgentState:
         "cumulative_coverage": 0.0,
         "cumulative_coverage_db": None,
         "is_done": False,
-        "done_reason": None
+        "done_reason": None,
+        "is_finalizing": False
     }
 
 def agent_node(state: AgentState) -> AgentState:
@@ -404,6 +405,39 @@ def update_state_node(state: AgentState) -> AgentState:
     # No updates needed
     return {}
 
+def finalize_node(state: AgentState) -> AgentState:
+    """
+    Finalize node: Inject a message telling the agent to write its final report.
+
+    Called when the framework detects no-progress termination. Gives the agent
+    one last turn to write report.md before the run ends.
+    """
+    no_progress = state.get("no_progress_count", 0)
+    cumulative_coverage = state.get("cumulative_coverage", 0.0)
+    iteration = state.get("iteration", 0)
+
+    finalize_message = (
+        f"FRAMEWORK NOTICE: Verification terminated — no cumulative coverage improvement "
+        f"after {no_progress} consecutive iterations. "
+        f"Current cumulative coverage: {cumulative_coverage:.1f}%. "
+        f"Iterations completed: {iteration - 1}.\n\n"
+        f"Write your final run report to `report.md` now using `write_file`. "
+        f"The report MUST include all remaining uncovered lines classified by category "
+        f"(see the report requirements in your system instructions under Step 7). "
+        f"After writing the report, call `signal_done` with reason \"no_progress\"."
+    )
+
+    logging.info(f"{Colors.MAGENTA}{Colors.BOLD}{'='*80}{Colors.RESET}")
+    logging.info(f"{Colors.MAGENTA}{Colors.BOLD}FINALIZE: Giving agent one last turn to write report.md{Colors.RESET}")
+    logging.info(f"{Colors.MAGENTA}Cumulative coverage: {cumulative_coverage:.1f}% | No-progress count: {no_progress}{Colors.RESET}")
+    logging.info(f"{Colors.MAGENTA}{'='*80}{Colors.RESET}\n")
+
+    return {
+        "messages": [HumanMessage(content=finalize_message)],
+        "is_finalizing": True
+    }
+
+
 def create_react_graph() -> StateGraph:
     """
     Create the ReAct agent graph.
@@ -422,11 +456,17 @@ def create_react_graph() -> StateGraph:
     graph.add_edge("initialize", "agent")
 
     # Conditional routing from agent
-    def route_after_agent(state: AgentState) -> Literal["tools", END]:
+    def route_after_agent(state: AgentState) -> Literal["tools", "agent", END]:
         """Route after agent decision."""
-        # Get config from state (no reload needed)
         config = state["config"]
         last_message = state["messages"][-1]
+
+        # In finalize mode: let tool calls execute (so write_file runs), then END
+        if state.get("is_finalizing", False):
+            if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+                return "tools"
+            # Agent responded without tool calls in finalize mode — done
+            return END
 
         # Check for signal_done tool call
         if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
@@ -478,10 +518,19 @@ def create_react_graph() -> StateGraph:
     # After tools, update state then check termination
     graph.add_edge("tools", "update_state")
 
-    def route_after_update(state: AgentState) -> Literal["agent", END]:
+    # Finalize node: injects message for agent to write report, then routes to agent
+    graph.add_node("finalize", finalize_node)
+    graph.add_edge("finalize", "agent")
+
+    def route_after_update(state: AgentState) -> Literal["agent", "finalize", END]:
         """Route after state update - check termination conditions with updated state."""
-        # Get config from state (no reload needed)
         config = state["config"]
+        is_finalizing = state.get("is_finalizing", False)
+
+        # If already finalizing, the agent had its last turn — end now
+        if is_finalizing:
+            logging.info("Finalize turn complete — ending run")
+            return END
 
         # Check termination conditions with UPDATED state
         if state["api_calls"] >= config.max_iterations:
@@ -496,9 +545,10 @@ def create_react_graph() -> StateGraph:
             logging.info(f"Max retries reached: {state['consecutive_failures']}/{config.max_retries}")
             return END
 
+        # No-progress: route to finalize so agent can write report
         if state["no_progress_count"] >= config.max_no_progress:
-            logging.info(f"No progress after {state['no_progress_count']} attempts (MAX_NO_PROGRESS={config.max_no_progress}) - cumulative coverage stuck at {state.get('cumulative_coverage', 0.0):.1f}%")
-            return END
+            logging.info(f"No progress after {state['no_progress_count']} attempts (MAX_NO_PROGRESS={config.max_no_progress}) - cumulative coverage stuck at {state.get('cumulative_coverage', 0.0):.1f}% — routing to finalize")
+            return "finalize"
 
         # Check context window limit
         token_count = count_message_tokens(state["messages"], config.model)
@@ -514,6 +564,7 @@ def create_react_graph() -> StateGraph:
         route_after_update,
         {
             "agent": "agent",
+            "finalize": "finalize",
             END: END
         }
     )

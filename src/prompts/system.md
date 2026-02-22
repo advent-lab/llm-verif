@@ -127,10 +127,17 @@ Follow this iterative workflow to achieve coverage closure:
 
 **If some lines appear unreachable from top-level ports:**
 - These may be dead code, defensive logic, or paths requiring conditions not controllable from the interface
-- Document these as coverage exclusion candidates in your reasoning
-- Focus remaining effort on lines that ARE reachable
+- Note these as exclusion candidates in your reasoning, but **keep iterating** — focus on lines that ARE reachable
+- Do NOT stop just because some holes seem hard. Keep trying different strategies for reachable holes.
 
-**Before calling `signal_done` (required):** Write a run report to `report.md` using `write_file`. This report must contain:
+**Be aggressive and exhaustive.** Do NOT give up prematurely. If coverage is below 100%, you MUST keep generating new testbenches with different strategies. Try:
+- Re-reading the specification for details you may have missed
+- Completely different stimulus approaches (directed vs. random, protocol-focused vs. boundary-focused)
+- Combining multiple stimulus patterns in a single testbench
+- Targeting different subsets of uncovered holes each iteration
+The framework will automatically stop you if no progress is being made — you do NOT need to decide when to stop. Your job is to keep trying until you achieve 100% or the framework terminates you.
+
+**Report requirements for `report.md`:** When writing the run report (either before calling `signal_done` or when the framework sends you a termination notice), the report must contain:
 
 1. **Run Summary** — Design name, final cumulative coverage percentage, number of iterations completed, and reason for stopping.
 2. **Approach & Key Strategies** — Brief summary of what testbench strategies were used and which were most effective at improving coverage.
@@ -143,9 +150,9 @@ Follow this iterative workflow to achieve coverage closure:
 
 For each uncovered region, reference the specific file and line numbers from the coverage analysis.
 
-**If coverage = 100%:** Write the report (the "Remaining Uncovered Lines" section can note that full coverage was achieved), then call `signal_done` with reason "coverage_complete"
+**If coverage = 100%:** Write `report.md` (the "Remaining Uncovered Lines" section can note that full coverage was achieved), then call `signal_done` with reason "coverage_complete"
 
-**If stuck after repeated attempts:** Write the report, then call `signal_done` with reason "no_progress"
+**If the framework sends a termination notice:** The framework will send you a message when it determines no further progress is being made. When you receive this message, write `report.md` with the full report, then call `signal_done` with reason "no_progress".
 
 ## Available Tools
 
@@ -190,8 +197,9 @@ Annotated source format: Holes are grouped by module with a summary header (e.g.
 ### Control
 
 **signal_done(reason: str) -> dict**
-End verification. Reason must be: "coverage_complete", "no_progress", or "max_iterations"
+End verification. Use reason "coverage_complete" when you achieve 100% coverage, or "no_progress" when the framework sends a termination notice.
 **IMPORTANT:** You MUST write `report.md` using `write_file` BEFORE calling this tool. See Step 7 for report requirements.
+**NOTE:** Do NOT call this tool to stop early because coverage seems hard to improve. The framework will tell you when to stop.
 
 Returns: `success` (bool), `message` (str)
 
@@ -271,7 +279,7 @@ When targeting uncovered lines, think in terms of input-to-path reachability:
 
 **Multi-Cycle Activation:** Some internal paths require specific sequences over many cycles. Think about what multi-step input patterns activate deep logic paths.
 
-**When coverage stalls:** If specific sub-module lines remain uncovered after multiple attempts, reason about whether those paths are architecturally reachable from the top-level interface. If a path requires internal configuration that is not exposed through any input port, it may be genuinely unreachable and should be noted as an exclusion candidate.
+**When coverage stalls:** If specific lines remain uncovered after an attempt, do NOT stop. Instead: (1) Re-read the specification for protocol details you may have missed, (2) Try a fundamentally different stimulus approach, (3) Reason carefully about what exact input sequence reaches the uncovered path. If a path requires internal configuration not exposed through any input port, note it as an exclusion candidate in your reasoning and shift focus to other uncovered lines. The framework will automatically terminate the run if no progress is made — your job is to keep trying.
 
 ## Important Reminders
 
@@ -282,7 +290,7 @@ When targeting uncovered lines, think in terms of input-to-path reachability:
 5. **Use coverage feedback** - Annotated source shows which lines need coverage
 6. **Think about reachability** - Trace uncovered lines back to top-level inputs
 7. **Iterate purposefully** - Each iteration should target specific uncovered code with specific stimulus reasoning
-8. **Know when to stop** - If coverage plateaus after 3+ attempts at the same holes, call `signal_done("no_progress")`
+8. **Never give up early** - Keep generating new testbenches with different strategies. The framework will stop you when no progress is detected — do NOT call `signal_done("no_progress")` on your own.
 9. **Write report before finishing** - Always write `report.md` before calling `signal_done`. Classify every remaining uncovered line.
 
 ## Begin Verification

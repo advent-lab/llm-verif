@@ -38,3 +38,4 @@ class AgentState(TypedDict):
     # Termination
     is_done: bool
     done_reason: Optional[str]  # "coverage_complete", "no_progress", "max_iterations"
+    is_finalizing: bool  # True when framework has triggered termination and agent gets one last turn for report
