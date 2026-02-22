@@ -116,7 +116,7 @@ def parse_coverage(coverage_db_path: str) -> Dict[str, Any]:
             "cumulative_coverage": cumulative_coverage,
             "total_coverage": cumulative_coverage,  # Backward compatibility
             "breakdown": cumulative_result.breakdown,
-            "uncovered_lines": cumulative_result.uncovered_lines,
+            # "uncovered_lines": cumulative_result.uncovered_lines,
             "annotated_source": annotated_source,
             "cumulative_coverage_db": str(cumulative_db_path)
         }

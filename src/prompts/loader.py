@@ -60,16 +60,16 @@ def load_system_prompt(
     # Prepare conditional sections
     if testplan_enabled:
         testplan_instruction = """### Step 2: Create Verification Plan
-Before generating testbenches, create a verification plan that outlines:
-- Key features to test
-- Corner cases and boundary conditions
+Before generating testbenches, create a verification plan that maps design features to coverage targets:
+- Key features and the RTL code paths they exercise
+- Corner cases and boundary conditions that may be hard to reach
 - Reset and initialization scenarios
-- Error conditions to verify
-- Expected coverage targets per feature
+- Error conditions and how to trigger them
+- For each feature, identify what stimulus is needed to cover it
 
 Save your testplan using `write_file` to `testplan.md`
 
-This plan will guide your testbench development and help ensure comprehensive coverage."""
+This plan is your roadmap to 100% coverage — be specific about how you will reach each code path."""
     else:
         testplan_instruction = "(Testplan generation is disabled - proceed directly to testbench generation)"
 
