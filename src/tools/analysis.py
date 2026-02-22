@@ -177,8 +177,7 @@ def _create_annotated_source(uncovered_lines: Dict[str, list[int]], max_holes: i
         return "Uncovered lines found but could not read source"
 
     # Select top N holes, deduplicating by proximity to avoid overlapping snippets.
-    # Context window is 5 lines before + 5 lines after = 11 line span.
-    context_radius = 5
+    context_radius = getattr(_config, 'coverage_hole_radius', 5) if _config else 5
     selected = []
     for candidate in prioritized:
         if len(selected) >= max_holes:

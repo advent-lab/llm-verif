@@ -35,6 +35,7 @@ class Config:
     sim_timeout: int
     testplan_enabled: bool
     num_feedback_holes: int  # Number of priority coverage holes in feedback (0 = none)
+    coverage_hole_radius: int  # Context lines above/below each coverage hole (1-20)
     context_window: int  # Max tokens before terminating run
 
     # LangGraph
@@ -177,6 +178,7 @@ def load_config() -> Config:
         sim_timeout=int(os.getenv("SIM_TIMEOUT", "60")),
         testplan_enabled=os.getenv("TESTPLAN", "1") == "1",
         num_feedback_holes=int(os.getenv("NUM_FEEDBACK_HOLES", "3")),
+        coverage_hole_radius=max(1, min(20, int(os.getenv("COVERAGE_HOLE_RADIUS", "5")))),
         context_window=int(os.getenv("CONTEXT_WINDOW", "128000")),
         recursion_limit=int(os.getenv("RECURSION_LIMIT", "300")),
         log_level=os.getenv("LOG_LEVEL", "INFO"),

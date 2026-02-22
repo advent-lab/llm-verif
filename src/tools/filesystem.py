@@ -6,6 +6,15 @@ import logging
 # Global config reference (set by graph initialization)
 _config = None
 
+# Keywords that indicate forbidden testbench constructs (per system prompt)
+FORBIDDEN_KEYWORDS = [
+    "force ", "release ",
+    "$signal_force", "$signal_release",
+    "deposit",
+    "$error", "$fatal",
+    "$stop",
+]
+
 def set_config(config):
     """Set global config reference for tools."""
     global _config
@@ -82,6 +91,13 @@ def write_file(path: str, content: str) -> Dict[str, Any]:
                 "success": False,
                 "error": f"Security violation: Path escapes work directory. Must write within {_config.work_dir}"
             }
+
+        # Scan for forbidden testbench constructs
+        found = [kw for kw in FORBIDDEN_KEYWORDS if kw in content]
+        if found:
+            logging.warning(
+                f"Forbidden testbench construct(s) detected in '{path}': {found}"
+            )
 
         # Create parent directories if needed
         full_path.parent.mkdir(parents=True, exist_ok=True)
