@@ -116,7 +116,7 @@ def parse_coverage(coverage_db_path: str) -> Dict[str, Any]:
             "cumulative_coverage": cumulative_coverage,
             "total_coverage": cumulative_coverage,  # Backward compatibility
             "breakdown": cumulative_result.breakdown,
-            # "uncovered_lines": cumulative_result.uncovered_lines,
+            # "uncovered_lines": cumulative_result.uncovered_lines, (optional) unnecessary tokens
             "annotated_source": annotated_source,
             "cumulative_coverage_db": str(cumulative_db_path)
         }
@@ -134,14 +134,15 @@ def parse_coverage(coverage_db_path: str) -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 def _create_annotated_source(uncovered_lines: Dict[str, list[int]], max_holes: int = 3) -> str:
-    """Create annotated source highlighting high-priority uncovered lines.
+    """Create annotated source highlighting high-priority uncovered lines,
+    grouped by module with total uncovered counts.
 
     Args:
         uncovered_lines: Mapping of file paths to lists of uncovered line numbers.
         max_holes: Number of priority holes to include. 0 disables output.
 
     Returns:
-        Combined annotated snippets separated by hole headers, or empty string
+        Grouped annotated snippets with summary header, or empty string
         if max_holes is 0.
     """
     if max_holes == 0:
@@ -149,6 +150,9 @@ def _create_annotated_source(uncovered_lines: Dict[str, list[int]], max_holes: i
 
     if not uncovered_lines:
         return "All lines covered!"
+
+    # Total uncovered hole count across all files (before selection)
+    total_uncovered = sum(len(lines) for lines in uncovered_lines.values())
 
     # Prioritize control flow statements
     prioritized = []
@@ -189,25 +193,35 @@ def _create_annotated_source(uncovered_lines: Dict[str, list[int]], max_holes: i
         if not overlaps:
             selected.append(candidate)
 
-    # Build snippets for each selected hole
-    snippets = []
-    total = len(selected)
-    for idx, (file_path, line_num, code) in enumerate(selected, 1):
-        header = f"--- Hole {idx}/{total}: {Path(file_path).name}:{line_num} ---"
-        try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                file_lines = f.readlines()
+    # Group selected holes by file, preserving insertion order
+    from collections import defaultdict
+    grouped: Dict[str, list] = defaultdict(list)
+    for file_path, line_num, code in selected:
+        grouped[file_path].append((line_num, code))
 
-            # Mark the uncovered line
-            file_lines[line_num - 1] = file_lines[line_num - 1].rstrip('\n') + "\t// ##### UNCOVERED - TARGET THIS LINE #####\n"
+    # Build output: summary header + per-module sections
+    parts = [f"Showing {len(selected)} of {total_uncovered} uncovered holes:"]
 
-            # Extract context window (5 lines before and after)
-            start = max(0, line_num - context_radius - 1)
-            end = min(len(file_lines), line_num + context_radius)
-            context = ''.join(file_lines[start:end])
+    for file_path, holes in grouped.items():
+        filename = Path(file_path).name
+        hole_word = "hole" if len(holes) == 1 else "holes"
+        parts.append(f"--- {filename}: {len(holes)} uncovered {hole_word} ---")
 
-            snippets.append(f"{header}\n{context}")
-        except:
-            snippets.append(f"{header}\nUncovered line: {file_path}:{line_num} - {code}")
+        for idx, (line_num, code) in enumerate(holes, 1):
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    file_lines = f.readlines()
 
-    return "\n\n".join(snippets)
+                # Mark the uncovered line
+                file_lines[line_num - 1] = file_lines[line_num - 1].rstrip('\n') + "\t// ##### UNCOVERED - TARGET THIS LINE #####\n"
+
+                # Extract context window (5 lines before and after)
+                start = max(0, line_num - context_radius - 1)
+                end = min(len(file_lines), line_num + context_radius)
+                context = ''.join(file_lines[start:end])
+
+                parts.append(f"  Hole {idx}: line {line_num}\n{context}")
+            except:
+                parts.append(f"  Hole {idx}: line {line_num}\n    {code}")
+
+    return "\n\n".join(parts)
