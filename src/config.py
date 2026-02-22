@@ -37,6 +37,9 @@ class Config:
     num_feedback_holes: int  # Number of priority coverage holes in feedback (0 = none)
     context_window: int  # Max tokens before terminating run
 
+    # LangGraph
+    recursion_limit: int  # LangGraph graph recursion limit
+
     # Debug
     log_level: str
     log_truncate: bool  # Whether to truncate long content in logs
@@ -175,6 +178,7 @@ def load_config() -> Config:
         testplan_enabled=os.getenv("TESTPLAN", "1") == "1",
         num_feedback_holes=int(os.getenv("NUM_FEEDBACK_HOLES", "3")),
         context_window=int(os.getenv("CONTEXT_WINDOW", "128000")),
+        recursion_limit=int(os.getenv("RECURSION_LIMIT", "300")),
         log_level=os.getenv("LOG_LEVEL", "INFO"),
         log_truncate=os.getenv("LOG_TRUNCATE", "1") == "1"
     )

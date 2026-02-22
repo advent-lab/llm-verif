@@ -30,7 +30,7 @@ def main():
         graph = create_react_graph()
         result = graph.invoke(
             {"messages": []},
-            config={"recursion_limit": 100}
+            config={"recursion_limit": config.recursion_limit}
         )
 
         logger.info("Verification complete")

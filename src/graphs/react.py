@@ -246,7 +246,7 @@ def _log_agent_response(response, state: AgentState):
 
             # Pretty-print arguments (handle long values)
             for arg_name, arg_value in tool_args.items():
-                if isinstance(arg_value, str) and len(arg_value) > 200:
+                if config and config.log_truncate and isinstance(arg_value, str) and len(arg_value) > 200:
                     # Truncate long string arguments (like file content)
                     preview = arg_value[:200] + f"... ({len(arg_value)} chars total)"
                     logging.info(f"{Colors.YELLOW}     {arg_name}: {preview}{Colors.RESET}")
