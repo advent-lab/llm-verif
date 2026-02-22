@@ -177,30 +177,42 @@ def _log_agent_request(state: AgentState):
     logging.info(f"{Colors.CYAN}{Colors.BOLD}API REQUEST [API Call #{api_calls} | Iter {iteration} | Cumulative: {cumulative_coverage:.1f}% | Last: {current_coverage:.1f}% | Failures: {consecutive_failures} | No Progress: {no_progress} | Tokens: {token_display}]{Colors.RESET}")
     logging.info(f"{Colors.CYAN}{'='*80}{Colors.RESET}")
 
-    # Show only the latest message (the one being sent to LLM)
+    # Collect all trailing ToolMessages (results from the latest tool execution batch)
+    # plus any non-ToolMessage that triggered them, logging each one
     if messages:
-        latest_msg = messages[-1]
-        msg_type = type(latest_msg).__name__
-
-        logging.info(f"{Colors.CYAN}[MESSAGE TYPE] {msg_type}{Colors.RESET}")
-
-        # Log message content
-        if hasattr(latest_msg, 'content') and latest_msg.content:
-            content = latest_msg.content
-            # Truncate if very long (e.g., tool results with lots of data)
-            # Can be disabled via LOG_TRUNCATE=0 in .env
-            if config and config.log_truncate and isinstance(content, str) and len(content) > 1000:
-                preview = content[:1000] + f"\n... ({len(content)} chars total)"
-                # Use YELLOW for tool results
-                color = Colors.YELLOW if msg_type == "ToolMessage" else Colors.CYAN
-                logging.info(f"{color}[CONTENT]\n{preview}\n{Colors.RESET}")
+        # Gather consecutive ToolMessages from the end of the list
+        tool_messages = []
+        for msg in reversed(messages):
+            if type(msg).__name__ == "ToolMessage":
+                tool_messages.append(msg)
             else:
-                color = Colors.YELLOW if msg_type == "ToolMessage" else Colors.CYAN
-                logging.info(f"{color}[CONTENT]\n{content}\n{Colors.RESET}")
+                break
+        tool_messages.reverse()
 
-        # If it's a tool message, show the tool name
-        if hasattr(latest_msg, 'name') and latest_msg.name:
-            logging.info(f"{Colors.YELLOW}[TOOL NAME] {latest_msg.name}{Colors.RESET}")
+        # If we found tool messages, log all of them; otherwise log the latest message
+        msgs_to_log = tool_messages if tool_messages else [messages[-1]]
+
+        for idx, msg in enumerate(msgs_to_log):
+            msg_type = type(msg).__name__
+            label = f" ({idx + 1}/{len(msgs_to_log)})" if len(msgs_to_log) > 1 else ""
+            logging.info(f"{Colors.CYAN}[MESSAGE TYPE] {msg_type}{label}{Colors.RESET}")
+
+            # If it's a tool message, show the tool name
+            if hasattr(msg, 'name') and msg.name:
+                logging.info(f"{Colors.YELLOW}[TOOL NAME] {msg.name}{Colors.RESET}")
+
+            # Log message content
+            if hasattr(msg, 'content') and msg.content:
+                content = msg.content
+                # Truncate if very long (e.g., tool results with lots of data)
+                # Can be disabled via LOG_TRUNCATE=0 in .env
+                if config and config.log_truncate and isinstance(content, str) and len(content) > 1000:
+                    preview = content[:1000] + f"\n... ({len(content)} chars total)"
+                    color = Colors.YELLOW if msg_type == "ToolMessage" else Colors.CYAN
+                    logging.info(f"{color}[CONTENT]\n{preview}\n{Colors.RESET}")
+                else:
+                    color = Colors.YELLOW if msg_type == "ToolMessage" else Colors.CYAN
+                    logging.info(f"{color}[CONTENT]\n{content}\n{Colors.RESET}")
 
     logging.info(f"{Colors.CYAN}{'='*80}{Colors.RESET}\n")
 
