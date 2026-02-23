@@ -5,9 +5,8 @@ import os
 # Check if in test mode
 TEST_MODE = os.getenv("TEST_MODE", "0") == "1"
 
-# Always import filesystem and workflow tools (no simulator dependency)
+# Always import filesystem tools (no simulator dependency)
 from .filesystem import read_file, write_file, list_directory
-from .workflow import signal_done
 
 # Conditionally import simulation/analysis tools
 if TEST_MODE:
@@ -33,7 +32,6 @@ def get_all_tools():
         compile_design,
         run_simulation,
         parse_coverage,
-        signal_done
     ]
 
 def set_tool_config(config):

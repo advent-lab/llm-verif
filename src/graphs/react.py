@@ -271,35 +271,6 @@ def _log_agent_response(response, state: AgentState):
 
     logging.info(f"{Colors.GREEN}{'='*80}{Colors.RESET}\n")
 
-def router_node(state: AgentState) -> Literal["tools", "update_state", END]:
-    """
-    Router node: Decide next action based on agent output.
-    """
-    config = state["config"]
-    last_message = state["messages"][-1]
-
-    # Check for signal_done tool call
-    if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-        for tool_call in last_message.tool_calls:
-            if tool_call['name'] == 'signal_done':
-                logging.info(f"Agent signaled done: {tool_call['args'].get('reason')}")
-                return END
-
-    # Check termination conditions
-    if state["api_calls"] >= config.max_iterations:
-        logging.info(f"Max iterations ({config.max_iterations}) reached - {state['api_calls']} API calls made")
-        return END
-
-    if state["consecutive_failures"] >= config.max_retries:
-        logging.info("Max retries reached")
-        return END
-
-    # Route to tools if tool calls present
-    if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-        return "tools"
-
-    # Otherwise continue with agent
-    return "agent"
 
 def update_state_node(state: AgentState) -> AgentState:
     """
@@ -409,32 +380,43 @@ def finalize_node(state: AgentState) -> AgentState:
     """
     Finalize node: Inject a message telling the agent to write its final report.
 
-    Called when the framework detects no-progress termination. Gives the agent
-    one last turn to write report.md before the run ends.
+    Called when the framework detects a termination condition (coverage complete
+    or no progress). Gives the agent one last turn to write report.md.
     """
-    no_progress = state.get("no_progress_count", 0)
     cumulative_coverage = state.get("cumulative_coverage", 0.0)
+    no_progress = state.get("no_progress_count", 0)
     iteration = state.get("iteration", 0)
 
-    finalize_message = (
-        f"FRAMEWORK NOTICE: Verification terminated — no cumulative coverage improvement "
-        f"after {no_progress} consecutive iterations. "
-        f"Current cumulative coverage: {cumulative_coverage:.1f}%. "
-        f"Iterations completed: {iteration - 1}.\n\n"
-        f"Write your final run report to `report.md` now using `write_file`. "
-        f"The report MUST include all remaining uncovered lines classified by category "
-        f"(see the report requirements in your system instructions under Step 7). "
-        f"After writing the report, call `signal_done` with reason \"no_progress\"."
-    )
+    if cumulative_coverage >= 100.0:
+        reason = "coverage_complete"
+        finalize_message = (
+            f"FRAMEWORK NOTICE: 100% coverage achieved. "
+            f"Iterations completed: {iteration - 1}.\n\n"
+            f"Write your final run report to `report.md` using `write_file`. "
+            f"Follow the report requirements from your instructions (Step 7)."
+        )
+    else:
+        reason = "no_progress"
+        finalize_message = (
+            f"FRAMEWORK NOTICE: Verification terminated — no cumulative coverage improvement "
+            f"after {no_progress} consecutive iterations. "
+            f"Final cumulative coverage: {cumulative_coverage:.1f}%. "
+            f"Iterations completed: {iteration - 1}.\n\n"
+            f"Write your final run report to `report.md` using `write_file`. "
+            f"The report MUST classify ALL remaining uncovered lines by category "
+            f"(unreachable, excludable, potential bugs, needs more effort). "
+            f"Follow the report requirements from your instructions (Step 7)."
+        )
 
     logging.info(f"{Colors.MAGENTA}{Colors.BOLD}{'='*80}{Colors.RESET}")
-    logging.info(f"{Colors.MAGENTA}{Colors.BOLD}FINALIZE: Giving agent one last turn to write report.md{Colors.RESET}")
+    logging.info(f"{Colors.MAGENTA}{Colors.BOLD}FINALIZE ({reason}): Giving agent one last turn to write report.md{Colors.RESET}")
     logging.info(f"{Colors.MAGENTA}Cumulative coverage: {cumulative_coverage:.1f}% | No-progress count: {no_progress}{Colors.RESET}")
     logging.info(f"{Colors.MAGENTA}{'='*80}{Colors.RESET}\n")
 
     return {
         "messages": [HumanMessage(content=finalize_message)],
-        "is_finalizing": True
+        "is_finalizing": True,
+        "done_reason": reason
     }
 
 
@@ -465,15 +447,7 @@ def create_react_graph() -> StateGraph:
         if state.get("is_finalizing", False):
             if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
                 return "tools"
-            # Agent responded without tool calls in finalize mode — done
             return END
-
-        # Check for signal_done tool call
-        if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-            for tool_call in last_message.tool_calls:
-                if tool_call['name'] == 'signal_done':
-                    logging.info(f"Agent signaled done: {tool_call['args'].get('reason')}")
-                    return END
 
         # Check termination conditions
         if state["api_calls"] >= config.max_iterations:
@@ -502,7 +476,7 @@ def create_react_graph() -> StateGraph:
         if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
             return "tools"
 
-        # Otherwise continue with agent
+        # No tool calls — loop back so agent tries again
         return "agent"
 
     graph.add_conditional_edges(
@@ -531,6 +505,12 @@ def create_react_graph() -> StateGraph:
         if is_finalizing:
             logging.info("Finalize turn complete — ending run")
             return END
+
+        # Coverage complete: route to finalize so agent can write report
+        cumulative = state.get("cumulative_coverage", 0.0)
+        if cumulative >= 100.0:
+            logging.info(f"Coverage complete ({cumulative:.1f}%) — routing to finalize")
+            return "finalize"
 
         # Check termination conditions with UPDATED state
         if state["api_calls"] >= config.max_iterations:
