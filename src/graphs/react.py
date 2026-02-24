@@ -256,7 +256,7 @@ def update_state_node(state: AgentState) -> AgentState:
     Checks for:
     1. compile_design failures → increment consecutive_failures
     2. run_simulation failures → increment consecutive_failures  
-    3. parse_coverage success → update coverage metrics, increment iteration
+    3. parse_coverage OR parse_functional_coverage success → update coverage metrics, increment iteration
     
     Note: Successful compilation/simulation resets consecutive_failures.
     """
@@ -293,21 +293,23 @@ def update_state_node(state: AgentState) -> AgentState:
                 }
             break  # Found sim result, move to next check
 
-    # Priority 3: Check for parse_coverage results (coverage improvement tracking)
-    # IMPORTANT: Only check the LATEST message to avoid re-processing old parse_coverage results
+    # Priority 3: Check for parse_coverage or parse_functional_coverage results
+    # IMPORTANT: Only check the LATEST message to avoid re-processing old coverage results
     # which would cause false no_progress_count increments after every tool call
     latest_msg = state["messages"][-1] if state["messages"] else None
-    if latest_msg and hasattr(latest_msg, 'name') and latest_msg.name == 'parse_coverage':
+    # ✅ FIX: Check for BOTH parse_coverage AND parse_functional_coverage
+    if latest_msg and hasattr(latest_msg, 'name') and latest_msg.name in ['parse_coverage', 'parse_functional_coverage']:
         result = parse_tool_result(latest_msg.content)
 
         if result.get('success'):
             # Get both iteration and cumulative coverage
+            # For functional coverage, use 'total_coverage' field
             iteration_coverage = result.get('iteration_coverage', result.get('total_coverage', 0.0))
             cumulative_coverage = result.get('cumulative_coverage', result.get('total_coverage', 0.0))
             cumulative_db = result.get('cumulative_coverage_db')
             next_iteration = state["iteration"] + 1
 
-            # Always increment iteration after successful parse_coverage
+            # Always increment iteration after successful coverage parsing
             # This ensures log files correlate with testbench iterations
             # "No progress" is NOT a retry - it's a successful cycle that didn't improve coverage
             config.current_iteration = next_iteration

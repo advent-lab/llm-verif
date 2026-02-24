@@ -33,7 +33,7 @@ module tb_llm;
             bins and_op = {4'h4};
             bins or_op = {4'h5};
             bins xor_op = {4'h6};
-            bins invalid[] = {[4'h7:4'hF]};  // Each invalid opcode gets its own bin
+            bins invalid[] = {[4'h7:4'hF]};
         }
         
         // Cover operand1 with challenging corner cases
@@ -223,72 +223,10 @@ module tb_llm;
     
     // BEGIN_STIMULUS
     initial begin
-        $display("Starting ALU Testbench with Advanced Functional Coverage");
-        
-        // Basic sanity: Test each valid opcode once with simple values
-        $display("\n=== Basic Opcode Sanity ===");
-        for (int op = 0; op < 7; op++) begin
-            opcode = op;
-            operand1 = 10;
-            operand2 = 5;
-            operand3 = 2;
-            #1;
-            $display("Op=%h, A=%0d, B=%0d, C=%0d, Result=%0d", 
-                     opcode, operand1, operand2, operand3, result);
-        end
-        
-        // Test a few corner cases (framework will fill in the rest)
-        $display("\n=== Corner Case Samples ===");
-        
-        // Zero test
-        opcode = 4'h0; operand1 = 0; operand2 = 0; operand3 = 0; #1;
-        $display("ADD zeros: Result=%0d", result);
-        
-        // Max values test
-        opcode = 4'h0; operand1 = 32'h7FFFFFFF; operand2 = 1; operand3 = 0; #1;
-        $display("ADD overflow attempt: Result=%0d", result);
-        
-        // Division by zero test
-        opcode = 4'h3; operand1 = 100; operand2 = 0; operand3 = 1; #1;
-        $display("DIV by zero: Result=%0d", result);
-        
-        // Invalid opcode test
-        opcode = 4'hF; operand1 = 42; operand2 = 13; operand3 = 7; #1;
-        $display("Invalid opcode: Result=%0d", result);
-        
-        // Small random sample (framework generates comprehensive stimulus)
-        $display("\n=== Random Samples ===");
-        repeat(10) begin
-            opcode = $urandom_range(0, 15);
-            operand1 = $random();
-            operand2 = $random();
-            operand3 = $random();
-            #1;
-        end
-        
-        // Display coverage summary
-        #10;
-        $display("\n=== Coverage Summary ===");
-        $display("Advanced ALU Coverage: %.2f%%", cg_alu_inst.get_coverage());
-        $display("Sign Combination Coverage: %.2f%%", cg_sign_inst.get_coverage());
-        $display("\n=== Individual Coverpoint Coverage ===");
-        $display("Opcode: %.2f%%", cg_alu_inst.cp_opcode.get_coverage());
-        $display("Operand1: %.2f%%", cg_alu_inst.cp_operand1.get_coverage());
-        $display("Operand2: %.2f%%", cg_alu_inst.cp_operand2.get_coverage());
-        $display("Operand3: %.2f%%", cg_alu_inst.cp_operand3.get_coverage());
-        $display("Result: %.2f%%", cg_alu_inst.cp_result.get_coverage());
-        
-        $display("\n=== Cross Coverage ===");
-        $display("Arithmetic Overflow: %.2f%%", cg_alu_inst.cross_arith_overflow.get_coverage());
-        $display("Division Corners: %.2f%%", cg_alu_inst.cross_div_corner.get_coverage());
-        $display("Bitwise Patterns: %.2f%%", cg_alu_inst.cross_bitwise_patterns.get_coverage());
-        $display("Triple Operand: %.2f%%", cg_alu_inst.cross_triple_operand.get_coverage());
-        $display("Operation-Result: %.2f%%", cg_alu_inst.cross_op_result.get_coverage());
-        $display("Invalid Operations: %.2f%%", cg_alu_inst.cross_invalid_ops.get_coverage());
+        // Stimulus goes here
         
         $finish;
     end
     // END_STIMULUS
-    // ===== END MARKERS =====
     
 endmodule

@@ -201,7 +201,7 @@ def load_config() -> Config:
         simulator_path=Path(compiler),
         simulator_type=simulator,
         run_id=run_id,
-        max_iterations=int(os.getenv("MAX_ITERATIONS", "10")),
+        max_iterations=int(os.getenv("MAX_ITERATIONS", "20")),
         max_retries=int(os.getenv("MAX_RETRIES", "3")),
         max_no_progress=int(os.getenv("MAX_NO_PROGRESS", "5")),
         sim_runs=int(os.getenv("SIM_RUNS", "5")),

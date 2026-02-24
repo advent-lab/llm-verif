@@ -221,19 +221,69 @@ def _extract_stimulus_section(testbench_content: str) -> str:
         testbench_content: Full testbench with markers
     
     Returns:
-        Just the stimulus code (without markers)
+        Just the stimulus code (without markers, initial begin, or $finish)
     """
     pattern = r'// BEGIN_STIMULUS\s*\n(.*?)\n\s*// END_STIMULUS'
     match = re.search(pattern, testbench_content, re.DOTALL)
     
     if match:
         stimulus = match.group(1).strip()
-        logging.debug(f"Extracted stimulus: {len(stimulus)} characters")
+        logging.debug(f"Extracted stimulus (raw): {len(stimulus)} characters")
+        
+        # Clean up the stimulus code
+        stimulus = _clean_stimulus_code(stimulus)
+        
+        logging.debug(f"Extracted stimulus (cleaned): {len(stimulus)} characters")
         return stimulus
     else:
-        # No markers found - return entire content as stimulus
+        # No markers found - return entire content as stimulus (cleaned)
         logging.warning("No BEGIN_STIMULUS/END_STIMULUS markers found in content, using entire content")
-        return testbench_content.strip()
+        return _clean_stimulus_code(testbench_content.strip())
+
+
+def _clean_stimulus_code(stimulus: str) -> str:
+    """
+    Clean stimulus code by removing wrappers that are already in the template.
+    
+    Removes:
+    - 'initial begin' at the start
+    - '$finish;' at the end  
+    - 'end' at the very end
+    - Extra whitespace
+    
+    Args:
+        stimulus: Raw stimulus code from agent
+    
+    Returns:
+        Cleaned stimulus code (pure assignments/logic only)
+    """
+    lines = stimulus.split('\n')
+    cleaned_lines = []
+    
+    for line in lines:
+        stripped = line.strip()
+        
+        # Skip lines that are template wrappers
+        if stripped in ['initial begin', 'end', '$finish;', '$finish']:
+            continue
+        
+        # Skip pure comment lines that are just markers
+        if stripped.startswith('//') and any(marker in stripped for marker in [
+            'BEGIN_STIMULUS', 'END_STIMULUS', 'TODO:', 'AGENT:', 
+            '============', 'Format:', 'Example'
+        ]):
+            continue
+            
+        cleaned_lines.append(line)
+    
+    # Join back and clean up excessive whitespace
+    cleaned = '\n'.join(cleaned_lines).strip()
+    
+    # Remove multiple blank lines
+    while '\n\n\n' in cleaned:
+        cleaned = cleaned.replace('\n\n\n', '\n\n')
+    
+    return cleaned
 
 
 def _replace_stimulus_section(template: str, new_stimulus: str) -> str:
@@ -244,11 +294,12 @@ def _replace_stimulus_section(template: str, new_stimulus: str) -> str:
     - All covergroups and coverpoints
     - DUT instantiation
     - Signal declarations
-    - Clock generation
+    - initial begin...end wrapper
+    - $finish; statement
     - Everything outside the markers
     
     Replaces:
-    - Only the code between // BEGIN_STIMULUS and // END_STIMULUS
+    - Only the stimulus code INSIDE the initial begin...end block
     
     Args:
         template: User's testbench with // BEGIN_STIMULUS and // END_STIMULUS markers
@@ -260,23 +311,51 @@ def _replace_stimulus_section(template: str, new_stimulus: str) -> str:
     Raises:
         ValueError: If markers not found in template
     """
-    # Verify markers exist (should have been checked earlier, but double-check)
+    # Verify markers exist
     if '// BEGIN_STIMULUS' not in template or '// END_STIMULUS' not in template:
         raise ValueError(
             "Testbench template missing // BEGIN_STIMULUS and // END_STIMULUS markers"
         )
     
-    # Replace everything between the markers, preserving markers themselves
-    pattern = r'(// BEGIN_STIMULUS\s*\n).*?(\n\s*// END_STIMULUS)'
-    replacement = f'\\1{new_stimulus}\\2'
+    # Pattern to match the content between markers, capturing the initial begin...end structure
+    # Group 1: Everything before initial begin content (including "initial begin" line)
+    # Group 2: The old stimulus content (what we'll replace)
+    # Group 3: Everything after stimulus content (including "$finish; end" and markers)
+    pattern = r'(// BEGIN_STIMULUS\s*\n\s*initial begin\s*\n(?:.*?\n)*?)(.*?)(\s*\$finish;\s*\n\s*end\s*\n\s*// END_STIMULUS)'
     
-    modified = re.sub(pattern, replacement, template, flags=re.DOTALL)
+    # Check if pattern matches (template has initial begin...end structure)
+    match = re.search(pattern, template, re.DOTALL)
+    
+    if match:
+        # Template has initial begin...end structure - inject inside it
+        before_stimulus = match.group(1)
+        after_stimulus = match.group(3)
+        
+        # Add proper indentation to new stimulus (4 spaces)
+        indented_stimulus = '\n'.join('        ' + line if line.strip() else '' 
+                                       for line in new_stimulus.split('\n'))
+        
+        replacement = f'{before_stimulus}{indented_stimulus}{after_stimulus}'
+        
+        # Replace the matched section
+        modified = template[:match.start()] + replacement + template[match.end():]
+        
+        logging.info("Successfully replaced stimulus inside initial begin...end block")
+    else:
+        # Fallback: Template doesn't have expected structure, replace everything between markers
+        logging.warning("Template doesn't have expected initial begin...end structure, using simple replacement")
+        pattern_simple = r'(// BEGIN_STIMULUS\s*\n).*?(\n\s*// END_STIMULUS)'
+        
+        # Wrap stimulus in initial begin...end if not present
+        wrapped_stimulus = f'    initial begin\n        {new_stimulus}\n        $finish;\n    end'
+        replacement_simple = f'\\1{wrapped_stimulus}\\2'
+        
+        modified = re.sub(pattern_simple, replacement_simple, template, flags=re.DOTALL)
+        logging.info("Added initial begin...end wrapper around stimulus")
     
     # Verify replacement worked
     if modified == template:
-        logging.warning("Stimulus replacement did not modify template - pattern may not have matched")
-    else:
-        logging.info("Successfully replaced stimulus section")
+        logging.error("Stimulus replacement did not modify template - check pattern matching")
     
     return modified
 
