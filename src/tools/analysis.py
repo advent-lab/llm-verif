@@ -133,20 +133,20 @@ def parse_coverage(coverage_db_path: str) -> Dict[str, Any]:
         logging.error(traceback.format_exc())
         return {"success": False, "error": str(e)}
 
-def _create_annotated_source(uncovered_lines: Dict[str, list[int]], max_holes: int = 3) -> str:
+def _create_annotated_source(uncovered_lines: Dict[str, list[int]], max_holes: int = 0) -> str:
     """Create annotated source highlighting high-priority uncovered lines,
     grouped by module with total uncovered counts.
 
     Args:
         uncovered_lines: Mapping of file paths to lists of uncovered line numbers.
-        max_holes: Number of priority holes to include. 0 disables output.
+        max_holes: Maximum number of priority holes to include.
+            0 or negative means unbounded (show all holes).
 
     Returns:
         Grouped annotated snippets with summary header, or empty string
-        if max_holes is 0.
+        if there are no uncovered lines.
     """
-    if max_holes == 0:
-        return ""
+    unbounded = max_holes <= 0
 
     if not uncovered_lines:
         return "All lines covered!"
@@ -180,7 +180,7 @@ def _create_annotated_source(uncovered_lines: Dict[str, list[int]], max_holes: i
     context_radius = getattr(_config, 'coverage_hole_radius', 5) if _config else 5
     selected = []
     for candidate in prioritized:
-        if len(selected) >= max_holes:
+        if not unbounded and len(selected) >= max_holes:
             break
         c_file, c_line, _ = candidate
         # Skip if this candidate overlaps with an already-selected hole

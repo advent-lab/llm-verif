@@ -41,7 +41,7 @@ Create a `.env` file or use configs from `configs/`:
 | `MAX_ITERATIONS` | `10` | Max API calls |
 | `MAX_NO_PROGRESS` | `5` | Stop after N iterations without coverage improvement |
 | `SIM_RUNS` | `5` | Simulation runs per testbench (different seeds) |
-| `NUM_FEEDBACK_HOLES` | `3` | Priority coverage holes in feedback (0 = none) |
+| `NUM_FEEDBACK_HOLES` | `0` | Priority coverage holes in feedback (0 = unbounded/all) |
 | `CONTEXT_WINDOW` | `128000` | Max tokens before terminating run |
 | `LOG_LEVEL` | `INFO` | Logging verbosity |
 

@@ -53,9 +53,11 @@ def parse_log_file(log_path):
         raise FileNotFoundError(f"Log file not found: {log_path}")
     
     first_timestamp = None
-    last_timestamp = None
+    last_metrics_timestamp = None
     last_metrics_line = None
     warnings = []
+    coverage_milestones = {80: None, 85: None, 90: None, 95: None, 100: None}
+    current_timestamp = None
     
     with open(log_path, 'r', encoding='utf-8') as f:
         for line in f:
@@ -64,7 +66,7 @@ def parse_log_file(log_path):
             if ts:
                 if first_timestamp is None:
                     first_timestamp = ts
-                last_timestamp = ts
+                current_timestamp = ts
             
             # Extract warnings
             if 'WARNING:root:' in line:
@@ -77,28 +79,46 @@ def parse_log_file(log_path):
             if 'AGENT RESPONSE' in line or 'API REQUEST' in line:
                 if 'Cumulative:' in line and 'Tokens:' in line:
                     last_metrics_line = line
+                    last_metrics_timestamp = current_timestamp
+                    
+                    # Track coverage milestones
+                    cumulative, _ = parse_metrics_line(line)
+                    if cumulative is not None and current_timestamp is not None:
+                        for threshold in coverage_milestones.keys():
+                            if coverage_milestones[threshold] is None and cumulative >= threshold:
+                                coverage_milestones[threshold] = current_timestamp
     
-    if first_timestamp is None or last_timestamp is None:
+    if first_timestamp is None or last_metrics_timestamp is None:
         raise ValueError("Could not find timestamps in log file")
     
     if last_metrics_line is None:
         raise ValueError("Could not find any AGENT RESPONSE or API REQUEST lines with metrics")
     
-    # Calculate time taken
-    time_delta = last_timestamp - first_timestamp
+    # Calculate time taken up to last metrics line (end of agent work)
+    time_delta = last_metrics_timestamp - first_timestamp
     total_seconds = time_delta.total_seconds()
     
     # Extract metrics from last line
     cumulative, tokens = parse_metrics_line(last_metrics_line)
     
+    # Calculate time to reach each milestone
+    milestone_durations = {}
+    for threshold, timestamp in coverage_milestones.items():
+        if timestamp is not None:
+            duration = (timestamp - first_timestamp).total_seconds()
+            milestone_durations[threshold] = duration
+        else:
+            milestone_durations[threshold] = None
+    
     return {
         'start_time': first_timestamp,
-        'end_time': last_timestamp,
+        'end_time': last_metrics_timestamp,
         'total_seconds': total_seconds,
         'cumulative_coverage': cumulative,
         'final_tokens': tokens,
         'last_metrics_line': last_metrics_line.strip(),
-        'warnings': warnings
+        'warnings': warnings,
+        'milestone_durations': milestone_durations
     }
 
 
@@ -159,7 +179,8 @@ Metrics extracted:
                 'total_seconds': metrics['total_seconds'],
                 'cumulative_coverage': metrics['cumulative_coverage'],
                 'final_tokens': metrics['final_tokens'],
-                'warnings': metrics['warnings']
+                'warnings': metrics['warnings'],
+                'milestone_durations': metrics['milestone_durations']
             }
             print(json.dumps(output, indent=2))
         else:
@@ -170,11 +191,23 @@ Metrics extracted:
             print()
             print(f"Start time:          {metrics['start_time'].strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}")
             print(f"End time:            {metrics['end_time'].strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}")
-            print(f"Total duration:      {format_duration(metrics['total_seconds'])}")
+            print(f"Total duration:      {format_duration(metrics['total_seconds'])} ({metrics['total_seconds']:.2f} seconds)")
             print()
             print(f"Final coverage:      {metrics['cumulative_coverage']:.1f}%")
             print(f"Final token count:   {metrics['final_tokens']:,}")
             print()
+            
+            # Display coverage milestones
+            print("Coverage Milestones:")
+            print("-" * 70)
+            for threshold in [80, 85, 90, 95, 100]:
+                duration = metrics['milestone_durations'][threshold]
+                if duration is not None:
+                    print(f"  {threshold:3d}% reached in:   {format_duration(duration)} ({duration:.2f} seconds)")
+                else:
+                    print(f"  {threshold:3d}% reached in:   Not reached")
+            print()
+            
             print("Last metrics line:")
             print(f"  {metrics['last_metrics_line']}")
             print()

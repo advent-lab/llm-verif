@@ -49,7 +49,7 @@ You must configure *either* Dashboard mode (recommended) or Direct mode.
 | `SIM_RUNS` | No | Number of simulation runs (seeds) per generated testbench; higher values can improve coverage at the cost of runtime. |
 | `SIM_TIMEOUT` | No | Per-simulation timeout in seconds (used to kill/abort long or stuck simulations). |
 | `TESTPLAN` | No | Enables testplan generation when set to `1`; when `0`, the agent skips writing a testplan and goes directly to testbench generation. |
-| `NUM_FEEDBACK_HOLES` | No | Number of priority coverage holes included in feedback after `parse_coverage` (0 = none). Higher values give the agent more coverage context at the cost of token usage. |
+| `NUM_FEEDBACK_HOLES` | No | Priority coverage holes included in feedback after `parse_coverage`. `0` (default) = unbounded/all holes shown. Set to a positive integer to cap output and save tokens. |
 | `CONTEXT_WINDOW` | No | Maximum token count before the agent terminates the run. Should match or stay below the model's actual context window to prevent API errors. Default: `128000`. |
 
 ## Logging / Debug
