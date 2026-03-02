@@ -270,7 +270,7 @@ Environment File Format:
             graph = create_react_graph()
             result = graph.invoke(
                 {"messages": []},
-                config={"recursion_limit": 100}
+                config={"recursion_limit": 500}
             )
 
             # Print summary

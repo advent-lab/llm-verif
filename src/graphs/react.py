@@ -297,6 +297,24 @@ def update_state_node(state: AgentState) -> AgentState:
     # IMPORTANT: Only check the LATEST message to avoid re-processing old coverage results
     # which would cause false no_progress_count increments after every tool call
     latest_msg = state["messages"][-1] if state["messages"] else None
+
+    # ✅ VALIDATION: Ensure correct coverage tool was used for the mode
+    if latest_msg and hasattr(latest_msg, 'name'):
+        tool_name = latest_msg.name
+        
+        # Check if wrong tool was called
+        if config.functional_coverage_enabled and tool_name == 'parse_coverage':
+            logging.error(f"{Colors.RED}❌ WRONG TOOL: Agent called parse_coverage in FUNCTIONAL coverage mode!{Colors.RESET}")
+            logging.error(f"{Colors.RED}   Should have called: parse_functional_coverage{Colors.RESET}")
+            logging.error(f"{Colors.RED}   Skipping this result - agent needs to call correct tool{Colors.RESET}")
+            return {}  # Don't process this result, force agent to retry with correct tool
+        
+        if not config.functional_coverage_enabled and tool_name == 'parse_functional_coverage':
+            logging.error(f"{Colors.RED}❌ WRONG TOOL: Agent called parse_functional_coverage in CODE coverage mode!{Colors.RESET}")
+            logging.error(f"{Colors.RED}   Should have called: parse_coverage{Colors.RESET}")
+            logging.error(f"{Colors.RED}   Skipping this result - agent needs to call correct tool{Colors.RESET}")
+            return {}  # Don't process this result, force agent to retry with correct tool
+
     # ✅ FIX: Check for BOTH parse_coverage AND parse_functional_coverage
     if latest_msg and hasattr(latest_msg, 'name') and latest_msg.name in ['parse_coverage', 'parse_functional_coverage']:
         result = parse_tool_result(latest_msg.content)
@@ -372,8 +390,43 @@ def create_react_graph() -> StateGraph:
         if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
             for tool_call in last_message.tool_calls:
                 if tool_call['name'] == 'signal_done':
-                    logging.info(f"Agent signaled done: {tool_call['args'].get('reason')}")
-                    return END
+                    reason = tool_call['args'].get('reason', 'unknown')
+                    logging.info(f"Agent called signal_done with reason: {reason}")
+                    
+                    # ✅ ACCEPT if coverage is 100%
+                    if reason == "coverage_complete":
+                        cumulative_cov = state.get("cumulative_coverage", 0.0)
+                        if cumulative_cov >= 100.0:
+                            logging.info("✓ Accepting signal_done: 100% coverage achieved!")
+                            return END
+                        else:
+                            logging.warning(f"⚠️  Agent claimed coverage_complete but coverage is {cumulative_cov:.1f}%")
+                    
+                    # Validate other termination conditions
+                    if state["consecutive_failures"] >= config.max_retries:
+                        logging.info("✓ Accepting signal_done: max retries reached")
+                        return END
+                    elif state["no_progress_count"] >= config.max_no_progress:
+                        logging.info("✓ Accepting signal_done: max no-progress reached")
+                        return END
+                    elif state["api_calls"] >= config.max_iterations:
+                        logging.info("✓ Accepting signal_done: max API calls reached")
+                        return END
+                    elif state["iteration"] > config.max_iterations:
+                        logging.info("✓ Accepting signal_done: max iterations reached")
+                        return END
+                    else:
+                        # ✅ signal_done rejected - let it process through tools to get proper rejection message
+                        # This prevents OpenAI API error about missing tool responses
+                        logging.warning(f"⚠️  REJECTING signal_done: termination conditions not met")
+                        logging.warning(f"   consecutive_failures: {state['consecutive_failures']}/{config.max_retries}")
+                        logging.warning(f"   no_progress_count: {state['no_progress_count']}/{config.max_no_progress}")
+                        logging.warning(f"   api_calls: {state['api_calls']}/{config.max_iterations}")
+                        logging.warning(f"   iteration: {state['iteration']}/{config.max_iterations}")
+                        logging.warning(f"   cumulative_coverage: {state.get('cumulative_coverage', 0.0):.1f}%")
+                        logging.warning(f"   Agent will receive rejection message and must continue working")
+                        # Don't return here - let it fall through to normal tool processing
+                        break
 
         # Check termination conditions
         if state["api_calls"] >= config.max_iterations:
@@ -385,7 +438,7 @@ def create_react_graph() -> StateGraph:
             return END
 
         if state["consecutive_failures"] >= config.max_retries:
-            logging.info("Max retries reached")
+            logging.info(f"Max retries reached: {state['consecutive_failures']}/{config.max_retries}")
             return END
 
         if state["no_progress_count"] >= config.max_no_progress:
