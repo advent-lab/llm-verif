@@ -19,7 +19,7 @@
 
 ## Overview
 
-CovAgent is an agentic framework that automates hardware verification using a ReAct (Reasoning + Acting) pattern implemented with LangGraph. The system orchestrates an LLM-powered agent that iteratively generates SystemVerilog testbenches, compiles and simulates them with QuestaSim, analyzes coverage, and refines its approach until achieving complete statement coverage.
+CovAgent is an agentic framework that automates hardware verification using a ReAct (Reasoning + Acting) pattern implemented with LangGraph. The system orchestrates an LLM-powered agent that iteratively generates SystemVerilog testbenches, compiles and simulates them with QuestaSim or Verilator, analyzes coverage, and refines its approach until achieving complete statement coverage. When a termination condition is reached (coverage complete or no progress), a finalize node gives the agent one last turn to write a run report before ending.
 
 ### Key Characteristics
 
@@ -110,23 +110,31 @@ graph TD
         Agent -->|tool calls| Tools[Tools]
         Tools --> Update[Update State]
         Update -->|continue| Agent
+        Update -->|coverage complete / no progress| Finalize[Finalize]
+        Finalize -->|inject report prompt| Agent
         Agent -->|done| Stop[END]
-        Update -->|limit reached| Stop
+        Update -->|hard limit| Stop
     end
 
     subgraph ToolSystem["Tool System — tools/"]
         FS[Filesystem Tools]
         Sim[Simulation Tools]
         Ana[Analysis Tools]
-        FS --> Ext[External Systems: Filesystem · QuestaSim · Verilator]
-        Sim --> Ext
-        Ana --> Ext
+    end
+
+    subgraph Adapters["Simulator Adapters — simulators/"]
+        QS[QuestasimAdapter]
+        VL[VerilatorAdapter]
     end
 
     E3 --> Init
     Tools --> FS
     Tools --> Sim
     Tools --> Ana
+    Sim --> QS
+    Sim --> VL
+    Ana --> QS
+    Ana --> VL
 ```
 
 ### Component Diagram
@@ -185,6 +193,7 @@ class AgentState(TypedDict):
     # Termination
     is_done: bool
     done_reason: Optional[str]
+    is_finalizing: bool  # True when framework has triggered termination and agent gets one last turn for report
 ```
 
 **Design Decisions**:
@@ -230,8 +239,12 @@ class Config:
     sim_runs: int
     sim_timeout: int
     testplan_enabled: bool
-    num_feedback_holes: int
+    num_feedback_holes: int  # Priority coverage holes in feedback (0 = unbounded)
+    coverage_hole_radius: int  # Context lines above/below each coverage hole (1-20)
     context_window: int  # Max tokens before terminating run
+
+    # LangGraph
+    recursion_limit: int  # LangGraph graph recursion limit
 
     # Debug
     log_level: str
@@ -240,6 +253,8 @@ class Config:
     # Runtime (mutable)
     current_iteration: int = 1
     current_attempt: int = 1
+    compile_attempts_this_iter: int = 0
+    sim_attempts_this_iter: int = 0
 ```
 
 **Validation Strategy**:
@@ -254,11 +269,21 @@ config = load_config()  # Load once
 set_tool_config(config)  # Share with tools via global reference
 ```
 
-### 3. Design Loader (`utils/design_loader.py`)
+### 3. Design Loader (`utils/design_loader.py`) and Dashboard Loader (`utils/dashboard_loader.py`)
 
-**Purpose**: Extract design metadata from filesystem.
+**Purpose**: Load design configurations and extract design metadata.
 
-**Functions**:
+**Dashboard Loader** (`utils/dashboard_loader.py`):
+
+Provides two modes for loading design configurations:
+
+1. **Dashboard mode** (recommended): Uses `DESIGN_NAME` + `DASHBOARD_PATH` to look up design files from a centralized `dashboard.json` registry. Supports `$(BASE_DIR)` variable substitution in paths.
+
+2. **Direct mode** (fallback): Uses `DESIGN` path with auto-discovery. Scans the directory for `docs/*.md` (spec) and `rtl/*.sv`/`rtl/*.v` (design files).
+
+Returns a `DesignConfig` object containing `design_name`, `spec_path`, `design_files`, and `design_context_files`.
+
+**Design Loader** (`utils/design_loader.py`):
 
 1. **`extract_module_header(rtl_file: Path) -> str`**
    - Parses Verilog/SystemVerilog to extract module interface
@@ -266,7 +291,12 @@ set_tool_config(config)  # Share with tools via global reference
    - Uses regex-based line-by-line parsing
    - Handles extended port declarations after module header
 
-2. **`scan_design_directory(design_dir: Path) -> Tuple[Path, Path, List[str]]`**
+2. **`extract_all_module_headers(design_files: List[Path]) -> str`**
+   - Extracts headers from ALL design files and combines them
+   - First file labeled as `TOP MODULE`, subsequent files labeled as `MODULE N`
+   - Used to provide module interface context in the system prompt
+
+3. **`scan_design_directory(design_dir: Path) -> Tuple[Path, Path, List[str]]`**
    - Finds specification file in `docs/` subdirectory
    - Finds RTL files in `rtl/` subdirectory
    - Returns: `(spec_path, rtl_dir, rtl_files)`
@@ -275,49 +305,57 @@ set_tool_config(config)  # Share with tools via global reference
 - Pure functions (no side effects)
 - Fail with descriptive errors if structure invalid
 - Support both `.v` and `.sv` extensions
+- Dashboard mode enables centralized design management for batch experiments
 
-### 4. QuestaSim Utilities (`utils/questasim.py`)
+### 4. Simulator Adapters (`simulators/`)
 
-**Purpose**: Build simulator commands and parse outputs.
+**Purpose**: Provide a unified interface for different HDL simulators through the adapter pattern.
 
-**Command Builders**:
+**Architecture**:
 
-1. **`build_vlog_command(simulator_path, testbench, design_files) -> List[str]`**
-   ```
-   vlog -sv +cover=s <testbench> <design_files...>
-   ```
+```python
+# simulators/base.py
+class SimulatorAdapter(ABC):
+    def compile(self, testbench_path, design_files, work_dir, timeout) -> Dict
+    def simulate(self, testbench_name, num_runs, work_dir, iteration, timeout) -> Dict
+    def parse_coverage(self, coverage_db_path) -> CoverageResult
+    def merge_cumulative_coverage(self, iteration_db, cumulative_db) -> None
+    def filter_compile_output(self, output) -> str  # Strip noise for LLM
+    def filter_sim_output(self, output) -> str       # Strip noise for LLM
+    def cleanup(work_dir) -> None
 
-2. **`build_vsim_command(simulator_path, ucdb_path) -> List[str]`**
-   ```
-   vsim work.tb_llm -coverage -sv_seed random -c -do "coverage exclude -du tb_llm;coverage save -onexit <ucdb>;run -all;exit;"
-   ```
+@dataclass
+class CoverageResult:
+    total_coverage: float        # 0-100
+    breakdown: Dict[str, float]  # Module/file -> coverage %
+    uncovered_lines: Dict[str, List[int]]  # File -> line numbers
+```
 
-3. **`build_vcover_merge_command(simulator_path, output, input_ucdbs) -> List[str]`**
-   ```
-   vcover merge -recursive -out <output> <inputs...>
-   ```
+**Available Adapters**:
 
-4. **`build_coverage_report_command(simulator_path, ucdb, xml_output) -> List[str]`**
-   ```
-   vsim -viewcov <ucdb> -c -do "coverage report -output <xml> -du=* -detail -annotate -code s -xml;exit;"
-   ```
-
-**Output Parsers**:
-
-1. **`check_questasim_success(output: str) -> bool`**
-   - Parses last line: `"# Errors: 0, Warnings: X"`
-   - Returns `True` if error count is 0
-
-2. **`parse_coverage_xml(xml_path: Path) -> Tuple[float, Dict, Dict]`**
-   - Parses QuestaSim XML coverage report
-   - Extracts: total coverage, per-module breakdown, uncovered lines
+1. **`QuestasimAdapter`** (`simulators/questasim_adapter.py`)
+   - Uses `vlog` for compilation with `+cover=s` (statement coverage)
+   - Uses `vsim` for simulation with `-coverage -sv_seed random`
+   - Uses `vcover merge` for combining coverage across runs
+   - Parses XML coverage reports for detailed metrics
    - Excludes testbench (`tb_llm`) from coverage calculations
+   - Filters compile/sim output to remove QuestaSim banner noise
+
+2. **`VerilatorAdapter`** (`simulators/verilator_adapter.py`)
+   - Uses `verilator` for compilation with `--coverage` flag
+   - Compiles to C++ and builds with `make`
+   - Uses `verilator_coverage` for coverage reporting
+   - Parses `.dat` coverage files for line coverage metrics
+
+**Legacy Utilities**: `utils/questasim.py` contains lower-level command builders and parsers used by the QuestaSim adapter.
 
 **Design Rationale**:
+- Adapter pattern allows simulator-agnostic tool layer
+- Factory selection in `tools/simulation.py` based on `config.simulator_type`
 - Command builders return lists (safe for subprocess)
 - All paths converted to strings for subprocess compatibility
 - Parsers are defensive (handle missing/malformed data)
-- Logging at debug level for troubleshooting
+- Output filtering reduces token waste in LLM context
 
 ### 5. Tools (`tools/`)
 
@@ -354,6 +392,7 @@ def set_config(config):
    - Writes to work directory only
    - Security: Prevents directory traversal attacks
    - Creates parent directories automatically
+   - Scans for forbidden testbench constructs (`force`, `release`, `$signal_force`, `$signal_release`, `deposit`, `$error`, `$fatal`, `$stop`) and logs warnings
    - Returns: `{success, full_path, error}`
 
 3. **`list_directory(path: str) -> dict`**
@@ -369,48 +408,80 @@ def set_config(config):
 #### Simulation Tools (`tools/simulation.py`)
 
 1. **`compile_design(testbench_path: str) -> dict`**
-   - Compiles testbench with all RTL files
-   - Runs in work directory (for QuestaSim work library)
-   - Saves log to `logs/compile_iter_N.log`
-   - Returns: `{success, return_code, stdout, stderr, log_path}`
+   - Delegates to the simulator adapter (`QuestasimAdapter` or `VerilatorAdapter`)
+   - Includes all design files and context files from config
+   - Tracks per-iteration retry count: `compile_iter_N.log` or `compile_iter_N_retry_M.log`
+   - On success: summarizes output for LLM (full log saved to file)
+   - On failure: filters output through adapter's `filter_compile_output` to reduce noise
+   - Returns: `{success, return_code, stdout, stderr, log_path, iteration, retry}`
 
 2. **`run_simulation(testbench_name: str, num_runs: int) -> dict`**
-   - Runs multiple simulations with different seeds
+   - Delegates to the simulator adapter
+   - Runs multiple simulations with different random seeds
    - Merges coverage databases if multiple runs
    - Handles timeouts gracefully (logs warning, continues)
-   - Returns: `{success, stdout, stderr, coverage_db_path, log_path, num_runs_completed}`
+   - Tracks per-iteration retry count: `sim_iter_N.log` or `sim_iter_N_retry_M.log`
+   - On success: summarizes output for LLM
+   - On failure: filters output through adapter's `filter_sim_output`
+   - Returns: `{success, stdout, stderr, coverage_db_path, log_path, num_runs_completed, iteration, retry}`
 
 **Design Decisions**:
-- Multi-run strategy: Each run creates separate UCDB, then merged
+- Multi-run strategy: Each run creates separate coverage DB, then merged by adapter
 - Timeout handling: Individual run timeout doesn't fail entire tool call
-- Logging: Detailed logs saved to files, summaries in stdout
+- Logging: Detailed logs saved to files, summaries returned to LLM
+- Retry naming: Uses per-iteration counters that reset when iteration increments, avoiding log file overwrites
 
 #### Analysis Tools (`tools/analysis.py`)
 
 1. **`parse_coverage(coverage_db_path: str) -> dict`**
-   - Generates XML report from UCDB
-   - Parses XML to extract metrics
-   - Creates annotated source for top priority uncovered line
-   - Returns: `{success, total_coverage, module_breakdown, uncovered_lines, annotated_source}`
+   - Parses iteration coverage (this testbench alone) via the simulator adapter
+   - Automatically merges with cumulative coverage across all iterations
+   - Creates annotated source for priority uncovered lines from cumulative coverage
+   - Returns: `{success, iteration_coverage, cumulative_coverage, total_coverage, breakdown, annotated_source, cumulative_coverage_db}`
+
+**Cumulative Coverage Merging**:
+The tool maintains a cumulative coverage database (`cumulative.ucdb` or `cumulative.dat`) in the coverage directory. Each call to `parse_coverage` merges the new iteration's coverage into this cumulative database, ensuring the agent sees what lines remain uncovered across ALL testbenches, not just the latest one.
 
 **Annotated Source Strategy**:
 ```python
-def _create_annotated_source(uncovered_lines):
+def _create_annotated_source(uncovered_lines, max_holes=0):
     # 1. Prioritize control flow (if, case, while, for)
-    # 2. Show top priority uncovered line with context
-    # 3. Mark with "##### UNCOVERED - TARGET THIS LINE #####"
+    # 2. Deduplicate by proximity (coverage_hole_radius * 2)
+    # 3. Select top N holes (0 = unbounded, show all)
+    # 4. Group by file with total uncovered counts
+    # 5. Show context window (coverage_hole_radius lines above/below)
+    # 6. Mark with "##### UNCOVERED - TARGET THIS LINE #####"
 ```
 
-**Rationale**: Agent needs clear guidance on what to target next.
+The number of holes shown is controlled by `NUM_FEEDBACK_HOLES` (0 = unbounded). Context radius is controlled by `COVERAGE_HOLE_RADIUS` (default: 5, range: 1-20).
+
+**Rationale**: Agent needs clear guidance on what to target next, but showing too many holes wastes tokens.
 
 #### Control Tools (`tools/workflow.py`)
+
+> **Note**: `signal_done` is defined in `tools/workflow.py` but is NOT registered in `get_all_tools()`. Termination is handled entirely by the framework's routing logic (hard limits, finalize node). The tool exists as a potential extension point.
 
 1. **`signal_done(reason: str) -> dict`**
    - Validates reason is one of: `"coverage_complete"`, `"no_progress"`, `"max_iterations"`
    - Returns: `{success, message}`
-   - Triggers graph termination in router
 
-### 6. Prompts (`prompts/`)
+### 6. Token Tracking (`utils/tokens.py`)
+
+**Purpose**: Track context window usage to prevent API errors and enable context-aware termination.
+
+**Functions**:
+
+1. **`count_message_tokens(messages, model) -> int`**
+   - Counts tokens in the full message list using `tiktoken`
+   - Includes content, role, tool calls, and message metadata
+   - Caches encoder instances per model
+
+2. **`format_token_count(token_count, context_limit) -> str`**
+   - Formats as `"1,234 (1.0%)"` showing count and percentage of context window
+
+**Usage**: Called in `agent_node` logging and in routing functions to check the `CONTEXT_WINDOW` limit. When token count exceeds the configured context window, the run terminates.
+
+### 7. Prompts (`prompts/`)
 
 **Architecture**: Template-based prompt generation with runtime interpolation.
 
@@ -443,7 +514,7 @@ template = full_content[start:end]
 - **Testplan**: Different instructions based on `TESTPLAN` flag
 - **Design Context**: Different instructions based on `DESIGN_CONTEXT` flag
 
-### 7. Graph (`graphs/react.py`)
+### 8. Graph (`graphs/react.py`)
 
 **Purpose**: Orchestrate the ReAct agent loop.
 
@@ -483,12 +554,44 @@ def agent_node(state: AgentState) -> AgentState:
 - Creates fresh LLM instance each invocation (stateless)
 - Uses `bind_tools()` for automatic tool schema injection
 - Returns only message update (LangGraph merges with state)
+- Logs all API requests and responses with token counts, coverage state, and iteration info
 
-**3. Router (Conditional Edges)**
+**3. Update State Node**
+
+```python
+def update_state_node(state: AgentState) -> AgentState:
+    # Priority 1: Check compile_design failures → increment consecutive_failures
+    # Priority 2: Check run_simulation failures → increment consecutive_failures
+    # Priority 3: Check parse_coverage results → update coverage, iteration, no_progress_count
+```
+
+**Key Behaviors**:
+- Only checks the latest relevant tool message to avoid re-processing
+- Increments `iteration` after every successful `parse_coverage` (regardless of improvement)
+- Resets `consecutive_failures` on successful cycle
+- Tracks `no_progress_count` for cumulative coverage stalls
+- Syncs `config.current_iteration` for correct log file naming
+
+**4. Finalize Node**
+
+```python
+def finalize_node(state: AgentState) -> AgentState:
+    # 1. Determine termination reason (coverage_complete or no_progress)
+    # 2. Inject HumanMessage instructing agent to write report.md
+    # 3. Set is_finalizing=True and done_reason
+```
+
+**Key Behaviors**:
+- Called when `route_after_update` detects coverage complete or no-progress limit
+- Injects a `HumanMessage` telling the agent to write `report.md` using `write_file`
+- Sets `is_finalizing=True` so the router knows this is the last turn
+- Routes back to `agent` for one final LLM call, then END
+
+**5. Router (Conditional Edges)**
 
 ```python
 def route_after_agent(state: AgentState) -> Literal["tools", "agent", END]:
-    # 1. Check for signal_done tool call → END
+    # 1. In finalize mode: let tool calls execute (write_file for report), then END
     # 2. Check api_calls >= max_iterations → END
     # 3. Check iteration > max_iterations → END
     # 4. Check consecutive_failures >= max_retries → END
@@ -499,11 +602,11 @@ def route_after_agent(state: AgentState) -> Literal["tools", "agent", END]:
 ```
 
 **Termination Logic**:
-- **Priority 1**: Explicit `signal_done` from agent
+- **Priority 1**: Finalize mode (allows final tool calls, then END)
 - **Priority 2**: Hard limits (max API calls, max iterations, max retries, no progress, context window)
 - **Priority 3**: Tool execution or continued reasoning
 
-A second routing function `route_after_update` re-checks termination conditions after state is updated by `update_state_node`, catching cases where tool results push the state past limits.
+A second routing function `route_after_update` re-checks termination conditions after state is updated by `update_state_node`. Instead of immediately ending on coverage complete or no-progress, it routes to the `finalize` node which gives the agent one last turn to write a run report.
 
 #### Graph Construction
 
@@ -516,6 +619,7 @@ def create_react_graph() -> StateGraph:
     graph.add_node("agent", agent_node)
     graph.add_node("tools", ToolNode(get_all_tools()))
     graph.add_node("update_state", update_state_node)
+    graph.add_node("finalize", finalize_node)
 
     # Add edges
     graph.set_entry_point("initialize")
@@ -531,10 +635,13 @@ def create_react_graph() -> StateGraph:
     # After tools, update state then check termination
     graph.add_edge("tools", "update_state")
 
+    # Finalize routes back to agent for one last turn
+    graph.add_edge("finalize", "agent")
+
     graph.add_conditional_edges(
         "update_state",
         route_after_update,
-        {"agent": "agent", END: END}
+        {"agent": "agent", "finalize": "finalize", END: END}
     )
 
     return graph.compile()
@@ -547,10 +654,12 @@ graph TD
     START --> initialize
     initialize --> agent
     agent -->|tool calls| tools
+    agent -->|done / finalize complete| END
     tools --> update_state
     update_state -->|continue| agent
-    agent -->|done| END
-    update_state -->|limit reached| END
+    update_state -->|coverage complete / no progress| finalize
+    update_state -->|hard limit reached| END
+    finalize -->|inject report prompt| agent
 ```
 
 **Design Decisions**:
@@ -707,8 +816,10 @@ Router function receives current state and returns next node name:
 
 ```python
 def route_after_agent(state):
-    if has_signal_done():
-        return END
+    if is_finalizing:
+        if has_tool_calls():  # Let write_file run for report
+            return "tools"
+        return END  # Report written, done
     if at_limits():  # api_calls, iterations, retries, no_progress, context_window
         return END
     if has_tool_calls():
@@ -716,8 +827,14 @@ def route_after_agent(state):
     return "agent"
 
 def route_after_update(state):
-    if at_limits():  # Re-check with updated state
+    if is_finalizing:
+        return END  # Agent had its last turn
+    if coverage_complete():
+        return "finalize"  # Give agent one last turn for report
+    if hard_limits_exceeded():  # api_calls, iterations, retries, context_window
         return END
+    if no_progress_limit():
+        return "finalize"  # Give agent one last turn for report
     return "agent"
 ```
 
@@ -726,8 +843,8 @@ LangGraph follows returned edge to next node.
 ### Termination
 
 Graph terminates when:
-1. Agent calls `signal_done` tool
-2. Router function returns `END` (limits exceeded: max API calls, max iterations, max retries, no progress, or context window)
+1. Hard limits exceeded (max API calls, max iterations, max retries, or context window) -- immediate END
+2. Coverage complete or no progress limit reached -- routes to `finalize` node, which gives the agent one last turn to write `report.md`, then END
 3. Exception raised (error termination)
 
 ---
@@ -979,20 +1096,26 @@ work_dir = work_base / run_id
 ```
 work/
 └── {RUN_ID}/
+    ├── run.log                          # Full agent log (ANSI stripped)
+    ├── final_state.json                 # Serialized final state (no messages, key redacted)
+    ├── report.md                        # Agent-written run report (from finalize node)
+    ├── testplan.md                      # Generated test plan (optional)
     ├── testbenches/
     │   ├── tb_iter_1.sv
     │   ├── tb_iter_2.sv
     │   └── ...
     ├── logs/
     │   ├── compile_iter_1.log
+    │   ├── compile_iter_1_retry_2.log   # Retry logs when compilation fails
     │   ├── sim_iter_1.log
+    │   ├── sim_iter_1_retry_2.log       # Retry logs when simulation fails
     │   └── ...
-    ├── coverage/
-    │   ├── iter_1_run_0.ucdb
-    │   ├── iter_1.ucdb
-    │   ├── iter_1_report.xml
-    │   └── ...
-    └── testplan.md (optional)
+    └── coverage/
+        ├── iter_1_run_0.ucdb            # Individual run coverage
+        ├── iter_1.ucdb                  # Merged per-iteration coverage
+        ├── cumulative.ucdb              # Merged across ALL iterations
+        ├── iter_1_report.xml            # Coverage report
+        └── ...
 ```
 
 ---
@@ -1151,24 +1274,24 @@ def get_all_tools():
 
 ### 2. Adding New Simulators
 
-**Current**: QuestaSim (full UCDB coverage) and Verilator (line coverage) are supported.
+**Current**: QuestaSim and Verilator are supported via the adapter pattern in `simulators/`.
 
 **Extension Pattern** (e.g., adding VCS):
-1. Create `utils/verilator.py` (or `vcs.py`)
-2. Implement command builders
-3. Implement output parsers
-4. Add config field: `SIMULATOR_TYPE=questasim|verilator|vcs`
-5. Update tools to dispatch based on type
+1. Create `simulators/vcs_adapter.py` implementing `SimulatorAdapter`
+2. Implement `compile()`, `simulate()`, `parse_coverage()`, `merge_cumulative_coverage()`, `cleanup()`
+3. Add `'vcs'` to valid simulators in `config.py`
+4. Add factory case in `tools/simulation.py` and `tools/analysis.py` `set_config()`
 
 **Example**:
 ```python
-# tools/simulation.py
-def compile_design(testbench_path: str):
-    if _config.simulator_type == "questasim":
-        command = build_vlog_command(...)
-    elif _config.simulator_type == "verilator":
-        command = build_verilator_command(...)
-    # ...
+# simulators/vcs_adapter.py
+class VcsAdapter(SimulatorAdapter):
+    def compile(self, testbench_path, design_files, work_dir, timeout):
+        # VCS-specific compilation
+    def simulate(self, testbench_name, num_runs, work_dir, iteration, timeout):
+        # VCS-specific simulation
+    def parse_coverage(self, coverage_db_path):
+        # VCS-specific coverage parsing
 ```
 
 ### 3. Adding Coverage Metrics
@@ -1201,24 +1324,9 @@ def compile_design(testbench_path: str):
 3. Insert node after agent generates testplan, before first testbench
 4. Check testplan has required sections
 
-### 6. Adding Summary JSON
+### 6. Final State JSON
 
-**Extension**:
-```python
-# At end of main.py
-summary = {
-    "design": final_state["design_name"],
-    "iterations": final_state["iteration"],
-    "final_coverage": final_state["current_coverage"],
-    "max_coverage": final_state["max_coverage"],
-    "done_reason": final_state["done_reason"],
-    "testbenches": list_testbenches(),
-    "logs": list_logs()
-}
-
-with open(work_dir / "summary.json", "w") as f:
-    json.dump(summary, f, indent=2)
-```
+The runner (`run_agent.py`) already saves a `final_state.json` to the work directory after each run. This contains all state fields except `messages` and with `config` serialized (API key redacted). This can be used for post-run analysis, dashboards, or CI integration.
 
 ---
 
