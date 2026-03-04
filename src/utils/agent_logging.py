@@ -116,6 +116,7 @@ def log_agent_response(response, state: dict, usage: dict = None):
     api_calls = state.get("api_calls", "?")
     current_coverage = state.get("current_coverage", 0.0)
     cumulative_coverage = state.get("cumulative_coverage", 0.0)
+    config = state.get("config")
 
     # Build token breakdown from API-reported usage
     in_tok = cached_tok = out_tok = reason_tok = tot_tok = 0
