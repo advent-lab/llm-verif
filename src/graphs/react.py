@@ -116,14 +116,16 @@ def agent_node(state: AgentState) -> AgentState:
     tools = get_all_tools()
     llm_with_tools = llm.bind_tools(tools)
 
+    # Increment API call counter before logging so REQUEST and RESPONSE show the same number
+    new_api_calls = state.get("api_calls", 0) + 1
+    request_state = dict(state)
+    request_state["api_calls"] = new_api_calls
+
     # Log what we're sending to the LLM (before API call)
-    log_agent_request(state)
+    log_agent_request(request_state)
 
     # Invoke LLM (this is an API call)
     response = llm_with_tools.invoke(state["messages"])
-
-    # Increment API call counter
-    new_api_calls = state.get("api_calls", 0) + 1
 
     # Extract token usage from response (including reasoning + cached tokens)
     usage = extract_usage_from_response(response)
@@ -147,10 +149,8 @@ def agent_node(state: AgentState) -> AgentState:
         cumulative_coverage=state.get("cumulative_coverage", 0.0),
     )
 
-    # Log agent response (with updated api_calls)
-    temp_state = dict(state)
-    temp_state["api_calls"] = new_api_calls
-    log_agent_response(response, temp_state, usage)
+    # Log agent response (same api_calls number as the request)
+    log_agent_response(response, request_state, usage)
 
     return {
         "messages": [response],
