@@ -92,31 +92,16 @@ Follow this iterative workflow to achieve coverage closure:
 
 {testplan_instruction}
 
-### Step 3: Generate Initial Testbench
+### Step 3: Generate Testbench and Run Verification Cycle
 - Create a SystemVerilog testbench that exercises the design through its top-level ports
 - Start with constrained random stimulus for broad coverage
 - Include basic functional sequences based on the specification (reset, initialization, normal operation)
-- Save using `write_file` to `testbenches/tb_iter_1.sv`
+- Use `run_verification_cycle` with your testbench path and content — this writes the file, compiles, simulates, and parses coverage in one step
+- If the cycle fails at compile or simulate stage, read the error context from the result, fix the testbench, and retry
+- If successful, review the `coverage_result` to identify uncovered lines
 
-### Step 4: Compile
-- Use `compile_design` with your testbench path
-- Read the output carefully: return_code 0 = SUCCESS, non-zero = FAILURE
-- Common errors: undeclared signals/modules, port mismatches, syntax errors, missing `timescale
-
-### Step 5: Simulate
-- If compilation succeeded, use `run_simulation`
-- The tool runs {sim_runs} simulations with different random seeds
-- Coverage is accumulated across all runs
-- Check for simulation errors, timeouts, and coverage database path
-
-### Step 6: Analyze Coverage
-- Use `parse_coverage` to analyze the coverage database
-- Review: total_coverage, module_breakdown, uncovered_lines, annotated_source
-- Identify which code paths were not exercised
-- For each uncovered line, reason about what top-level input sequence could reach it
-
-### Step 7: Iterate
-- If coverage < 100%, analyze uncovered lines, trace them back to top-level inputs, generate a new testbench, and return to Step 4
+### Step 4: Iterate
+- If coverage < 100%, analyze uncovered lines from `coverage_result.annotated_source`, trace them back to top-level inputs, generate a new testbench, and use `run_verification_cycle` again
 - Note unreachable lines (dead code, defensive logic) as exclusion candidates in your reasoning, but keep targeting reachable holes
 - Try different strategies each iteration: re-read the spec, vary stimulus approaches, combine patterns
 - The framework controls termination — keep iterating until it stops you
@@ -173,6 +158,17 @@ Parse coverage database and extract detailed metrics.
 Returns: `success` (bool), `total_coverage` (float), `module_breakdown` (dict), `uncovered_lines` (dict), `annotated_source` (str), `error` (str)
 
 Annotated source format: Holes are grouped by module with a summary header (e.g., `Showing 4 of 10 uncovered holes:`). Each module section lists its holes with surrounding code context. Lines marked with `// ##### UNCOVERED - TARGET THIS LINE #####` are uncovered and should be targeted.
+
+### Verification Cycle (Recommended)
+
+**run_verification_cycle(testbench_path: str, testbench_content: str, testbench_name: str = "tb_llm", num_runs: int = {sim_runs}) -> dict**
+Write testbench, compile, simulate, and parse coverage in one step. Use this as the default for every new testbench iteration — it saves time by running the full pipeline without intermediate returns.
+
+Returns: `success` (bool), `stopped_at` (str: "write"/"compile"/"simulate"/"coverage"), `write_result` (dict), `compile_result` (dict), `sim_result` (dict), `coverage_result` (dict), `error_stage` (str, if failed), `error_summary` (str, if failed)
+
+**When to use which:**
+- `run_verification_cycle` — Default for new testbenches. One call does write + compile + simulate + coverage.
+- Individual tools (`compile_design`, `run_simulation`, `parse_coverage`) — Use for targeted retries after fixing a specific error (e.g., re-compiling after editing the testbench).
 
 ## Testbench Requirements
 

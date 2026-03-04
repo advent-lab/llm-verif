@@ -118,12 +118,17 @@ def classify_api_call(token_record: dict, state: dict) -> str:
         return "error_recovery"
 
     # Classify based on tool calls
+    has_verification_cycle = "run_verification_cycle" in tool_calls
     has_write_file = "write_file" in tool_calls
     has_read_file = "read_file" in tool_calls
     has_compile = "compile_design" in tool_calls
     has_sim = "run_simulation" in tool_calls
     has_coverage = "parse_coverage" in tool_calls
     has_list_dir = "list_directory" in tool_calls
+
+    # Composite verification cycle = new TB generation (contains testbench content)
+    if has_verification_cycle:
+        return "new_tb_generation"
 
     # Check if write_file targets testbenches/ (new TB generation)
     if has_write_file:

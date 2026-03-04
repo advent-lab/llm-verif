@@ -164,6 +164,7 @@ def update_state_node(state: AgentState) -> AgentState:
     Update state node: Track iterations, attempts, and coverage after tool executions.
 
     Priority order:
+    0. Check run_verification_cycle results (composite tool)
     1. Check compile failures (highest priority - stop immediately)
     2. Check simulation failures
     3. Check coverage improvement/no improvement
@@ -184,6 +185,71 @@ def update_state_node(state: AgentState) -> AgentState:
             except:
                 return {}
         return content if isinstance(content, dict) else {}
+
+    # Priority 0: Check for run_verification_cycle results (composite tool)
+    latest_msg = state["messages"][-1] if state["messages"] else None
+    if latest_msg and hasattr(latest_msg, 'name') and latest_msg.name == 'run_verification_cycle':
+        result = parse_tool_result(latest_msg.content)
+        stopped_at = result.get("stopped_at")
+
+        if not result.get("success", False):
+            # Failed at some stage
+            if stopped_at in ("compile", "simulate"):
+                sub_result = result.get(f"{stopped_at}_result", {})
+                iter_num = sub_result.get("iteration", "?")
+                retry_num = sub_result.get("retry", "?")
+                logging.warning(
+                    f"Verification cycle failed at {stopped_at} "
+                    f"(iter {iter_num}, retry {retry_num})"
+                )
+                return {
+                    "consecutive_failures": state["consecutive_failures"] + 1
+                }
+            # Write or coverage failure — no state change, agent sees the error
+            logging.warning(f"Verification cycle failed at {stopped_at} stage")
+            return {}
+        else:
+            # Full success — mirror parse_coverage success logic
+            coverage_result = result.get("coverage_result", {})
+            iteration_coverage = coverage_result.get(
+                "iteration_coverage", coverage_result.get("total_coverage", 0.0)
+            )
+            cumulative_coverage = coverage_result.get(
+                "cumulative_coverage", coverage_result.get("total_coverage", 0.0)
+            )
+            cumulative_db = coverage_result.get("cumulative_coverage_db")
+            next_iteration = state["iteration"] + 1
+
+            config.current_iteration = next_iteration
+            prev_cumulative = state.get("cumulative_coverage", 0.0)
+
+            if cumulative_coverage > prev_cumulative:
+                logging.info(
+                    f"Cumulative coverage improved: {prev_cumulative:.1f}% → "
+                    f"{cumulative_coverage:.1f}% (this iteration: {iteration_coverage:.1f}%)"
+                )
+                return {
+                    "current_coverage": iteration_coverage,
+                    "max_coverage": max(state["max_coverage"], iteration_coverage),
+                    "cumulative_coverage": cumulative_coverage,
+                    "cumulative_coverage_db": cumulative_db,
+                    "iteration": next_iteration,
+                    "consecutive_failures": 0,
+                    "no_progress_count": 0,
+                }
+            else:
+                logging.warning(
+                    f"No cumulative coverage improvement: {cumulative_coverage:.1f}% "
+                    f"(this iteration: {iteration_coverage:.1f}%)"
+                )
+                return {
+                    "current_coverage": iteration_coverage,
+                    "cumulative_coverage": cumulative_coverage,
+                    "cumulative_coverage_db": cumulative_db,
+                    "iteration": next_iteration,
+                    "consecutive_failures": 0,
+                    "no_progress_count": state["no_progress_count"] + 1,
+                }
 
     # Priority 1: Check for compile_design failures
     for msg in reversed(state["messages"][-5:]):
