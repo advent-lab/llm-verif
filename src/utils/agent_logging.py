@@ -53,9 +53,9 @@ def log_agent_request(state: dict):
     model = config.model if config else "gpt-4"
     token_count = count_message_tokens(messages, model)
 
-    logging.info(f"{Colors.CYAN}{Colors.BOLD}{'='*80}{Colors.RESET}")
-    logging.info(f"{Colors.CYAN}{Colors.BOLD}API REQUEST [API Call #{api_calls} | Iter {iteration} | Cumulative: {cumulative_coverage:.1f}% | Last: {current_coverage:.1f}% | Failures: {consecutive_failures} | No Progress: {no_progress} | Est. Input: ~{token_count:,}]{Colors.RESET}")
-    logging.info(f"{Colors.CYAN}{'='*80}{Colors.RESET}")
+    logging.info(f"{Colors.CYAN}{Colors.BOLD}{'='*120}{Colors.RESET}")
+    logging.info(f"{Colors.CYAN}{Colors.BOLD}API REQUEST [Turn: {api_calls} | Iter: {iteration} | Cumulative: {cumulative_coverage:.1f}% | Last: {current_coverage:.1f}% | Failures: {consecutive_failures} | No Progress: {no_progress} | In: ~{token_count:,}]{Colors.RESET}")
+    logging.info(f"{Colors.CYAN}{'='*120}{Colors.RESET}")
 
     # Collect all trailing ToolMessages (results from the latest tool execution batch)
     # plus any non-ToolMessage that triggered them, logging each one
@@ -93,7 +93,7 @@ def log_agent_request(state: dict):
                     color = Colors.YELLOW if msg_type == "ToolMessage" else Colors.CYAN
                     logging.info(f"{color}[CONTENT]\n{content}\n{Colors.RESET}")
 
-    logging.info(f"{Colors.CYAN}{'='*80}{Colors.RESET}\n")
+    logging.info(f"{Colors.CYAN}{'='*120}{Colors.RESET}\n")
 
 
 def log_agent_response(response, state: dict, usage: dict = None):
@@ -127,39 +127,39 @@ def log_agent_response(response, state: dict, usage: dict = None):
         reason_tok = usage.get("reasoning_tokens", 0)
         cached_tok = usage.get("cached_input_tokens", 0)
 
-    logging.info(f"{Colors.GREEN}{Colors.BOLD}{'='*80}{Colors.RESET}")
+    logging.info(f"{Colors.GREEN}{Colors.BOLD}{'='*120}{Colors.RESET}")
     logging.info(
-        f"{Colors.GREEN}{Colors.BOLD} AGENT RESPONSE [API Call #{api_calls} | Iter {iteration} | "
+        f"{Colors.GREEN}{Colors.BOLD}AGENT RESPONSE [Turn: {api_calls} | Iter {iteration} | "
         f"Cumulative: {cumulative_coverage:.1f}% | Last: {current_coverage:.1f}% | "
-        f"In: {in_tok:,} (cached: {cached_tok:,}) | Out: {out_tok:,} (reasoning: {reason_tok:,}) | "
+        f"In: {in_tok:,} (Cached: {cached_tok:,}) | Out: {out_tok:,} (Reasoning: {reason_tok:,}) | "
         f"Total: {tot_tok:,}]{Colors.RESET}"
     )
-    logging.info(f"{Colors.GREEN}{'='*80}{Colors.RESET}")
+    logging.info(f"{Colors.GREEN}{'='*120}{Colors.RESET}")
 
     # Log reasoning text (if present)
     if hasattr(response, 'content'):
         if response.content:
-            logging.info(f"{Colors.GREEN}\n [REASONING]\n{response.content}\n{Colors.RESET}")
+            logging.info(f"{Colors.GREEN}[REASONING]\n{response.content}\n{Colors.RESET}")
         else:
             logging.info(f"{Colors.GREEN}[REASONING] (empty response){Colors.RESET}")
 
     # Log tool calls (if present)
     if hasattr(response, 'tool_calls') and response.tool_calls:
-        logging.info(f"{Colors.YELLOW}{Colors.BOLD} [TOOL CALLS] {len(response.tool_calls)} tool(s) requested:{Colors.RESET}")
+        logging.info(f"{Colors.YELLOW}[TOOL CALLS] {len(response.tool_calls)} tool(s) requested:{Colors.RESET}")
         for i, tool_call in enumerate(response.tool_calls, 1):
             tool_name = tool_call.get('name', 'unknown')
             tool_args = tool_call.get('args', {})
 
-            logging.info(f"{Colors.YELLOW}\n  {i}. {tool_name}{Colors.RESET}")
+            logging.info(f"{Colors.YELLOW}{i}. {tool_name}{Colors.RESET}")
 
             # Pretty-print arguments (handle long values)
             for arg_name, arg_value in tool_args.items():
                 if config and config.log_truncate and isinstance(arg_value, str) and len(arg_value) > 200:
                     preview = arg_value[:200] + f"... ({len(arg_value)} chars total)"
-                    logging.info(f"{Colors.YELLOW}     {arg_name}: {preview}{Colors.RESET}")
+                    logging.info(f"{Colors.YELLOW}{arg_name}: {preview}{Colors.RESET}")
                 else:
-                    logging.info(f"{Colors.YELLOW}     {arg_name}: {arg_value}{Colors.RESET}")
+                    logging.info(f"{Colors.YELLOW}{arg_name}: {arg_value}{Colors.RESET}")
     else:
         logging.info(f"{Colors.GREEN}[NO TOOL CALLS] Agent did not request any tools{Colors.RESET}")
 
-    logging.info(f"{Colors.GREEN}{'='*80}{Colors.RESET}\n")
+    logging.info(f"{Colors.GREEN}{'='*120}{Colors.RESET}\n")

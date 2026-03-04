@@ -120,6 +120,7 @@ graph TD
         FS[Filesystem Tools]
         Sim[Simulation Tools]
         Ana[Analysis Tools]
+        WF[Workflow Tools]
     end
 
     subgraph Adapters["Simulator Adapters — simulators/"]
@@ -131,6 +132,10 @@ graph TD
     Tools --> FS
     Tools --> Sim
     Tools --> Ana
+    Tools --> WF
+    WF -.->|delegates| FS
+    WF -.->|delegates| Sim
+    WF -.->|delegates| Ana
     Sim --> QS
     Sim --> VL
     Ana --> QS
@@ -457,19 +462,49 @@ The number of holes shown is controlled by `NUM_FEEDBACK_HOLES` (0 = unbounded).
 
 **Rationale**: Agent needs clear guidance on what to target next, but showing too many holes wastes tokens.
 
-#### Control Tools (`tools/workflow.py`)
+#### Composite Workflow Tool (`tools/workflow.py`)
 
-> **Note**: `signal_done` is defined in `tools/workflow.py` but is NOT registered in `get_all_tools()`. Termination is handled entirely by the framework's routing logic (hard limits, finalize node). The tool exists as a potential extension point.
+**Purpose**: Reduce LLM round-trips by combining write, compile, simulate, and coverage-parse into a single tool call. This is the recommended default for new testbench iterations.
 
-1. **`signal_done(reason: str) -> dict`**
-   - Validates reason is one of: `"coverage_complete"`, `"no_progress"`, `"max_iterations"`
-   - Returns: `{success, message}`
+**Global Config Pattern**: Same `set_config()` / `_config` pattern as other tool modules. Wired in `set_tool_config()`.
 
-### 6. Token Tracking (`utils/tokens.py`)
+1. **`run_verification_cycle(testbench_path: str, testbench_content: str, testbench_name: str = "tb_llm", num_runs: int = None) -> dict`**
+   - Writes the testbench file, compiles the design, runs simulation, and parses coverage in a single invocation
+   - Stops early if any stage fails, returning the error context for that stage
+   - Internally delegates to `write_file`, `compile_design`, `run_simulation`, and `parse_coverage` via lazy imports (avoids circular dependencies)
+   - Uses `_ensure_dict()` helper to normalize tool `.invoke()` results (handles JSON string returns)
+   - `num_runs` defaults to the value from config when `None`
+   - Returns a composite result dict:
+     ```python
+     {
+         "stopped_at": str,       # Last stage reached: "write" | "compile" | "simulate" | "coverage"
+         "success": bool,         # True only if ALL four stages succeeded
+         "write_result": dict,    # Result from write_file
+         "compile_result": dict,  # Result from compile_design (if write succeeded)
+         "sim_result": dict,      # Result from run_simulation (if compile succeeded)
+         "coverage_result": dict, # Result from parse_coverage (if sim succeeded)
+         "error_stage": str,      # Stage that failed (only on failure)
+         "error_summary": str,    # Human-readable error description (only on failure)
+     }
+     ```
 
-**Purpose**: Track context window usage to prevent API errors and enable context-aware termination.
+**Pipeline Stages**:
+1. **Write** -- calls `write_file` with the provided path and content
+2. **Compile** -- calls `compile_design` with the testbench path
+3. **Simulate** -- calls `run_simulation` with testbench name and optional `num_runs`
+4. **Coverage** -- extracts `coverage_db_path` from simulation result, calls `parse_coverage`
 
-**Functions**:
+**Early-Stop Behavior**: Each stage checks the `success` field of the sub-result. On failure, the tool populates `error_stage` and `error_summary` (including compiler/simulator stdout when available) and returns immediately. The agent can read the error context and decide whether to retry the full cycle or use individual tools for a targeted fix.
+
+**When to Use Which**:
+- `run_verification_cycle` -- Default for every new testbench iteration. One call does write + compile + simulate + coverage.
+- Individual tools (`compile_design`, `run_simulation`, `parse_coverage`) -- Use for targeted retries after fixing a specific error (e.g., re-compiling after editing only the testbench).
+
+### 6. Token Tracking (`utils/tokens.py` and `utils/token_tracking.py`)
+
+**Purpose**: Track context window usage to prevent API errors, enable context-aware termination, and classify per-API-call token usage for post-run analysis.
+
+#### Context Window Tracking (`utils/tokens.py`)
 
 1. **`count_message_tokens(messages, model) -> int`**
    - Counts tokens in the full message list using `tiktoken`
@@ -481,6 +516,20 @@ The number of holes shown is controlled by `NUM_FEEDBACK_HOLES` (0 = unbounded).
 
 **Usage**: Called in `agent_node` logging and in routing functions to check the `CONTEXT_WINDOW` limit. When token count exceeds the configured context window, the run terminates.
 
+#### Per-Call Token Records (`utils/token_tracking.py`)
+
+Each LLM API call produces a token record (built in `agent_node` via `build_token_record()`) that captures input/output/reasoning/cached token counts, tool call names and arguments, and the current failure and coverage state. Records start as `"unclassified"` and are classified in `update_state_node` via `classify_pending_records()`.
+
+**Classification Categories** (`classify_api_call()`):
+| Category | Trigger |
+|---|---|
+| `new_tb_generation` | Tool calls include `run_verification_cycle`, or `write_file` targeting `testbenches/` |
+| `spec_rtl_reading` | `read_file` calls with no compile/sim/coverage tools |
+| `error_recovery` | Any call made while `consecutive_failures > 0` |
+| `overhead` | Everything else (compile, simulate, parse_coverage, report writing, pure reasoning, list_directory) |
+
+> **Note**: `run_verification_cycle` is classified as `new_tb_generation` because it always contains testbench content. Finalizing (report writing) is always `overhead`.
+
 ### 7. Prompts (`prompts/`)
 
 **Architecture**: Template-based prompt generation with runtime interpolation.
@@ -491,6 +540,8 @@ The number of holes shown is controlled by `NUM_FEEDBACK_HOLES` (0 = unbounded).
    - Contains placeholder variables: `{design_name}`, `{module_header}`, etc.
    - Includes conditional sections (testplan, design context)
    - Structured as complete system prompt
+   - Documents all available tools including `run_verification_cycle` as the recommended default
+   - Workflow steps consolidated: Step 3 ("Generate Testbench and Run Verification Cycle") uses `run_verification_cycle` as the primary action, with individual tools reserved for targeted retries
 
 2. **`prompts/loader.py`**: Template loader
    ```python
@@ -560,17 +611,21 @@ def agent_node(state: AgentState) -> AgentState:
 
 ```python
 def update_state_node(state: AgentState) -> AgentState:
+    # Priority 0: Check run_verification_cycle results (composite tool)
     # Priority 1: Check compile_design failures → increment consecutive_failures
     # Priority 2: Check run_simulation failures → increment consecutive_failures
     # Priority 3: Check parse_coverage results → update coverage, iteration, no_progress_count
 ```
 
 **Key Behaviors**:
+- **Priority 0** (`run_verification_cycle`): Checks if the latest message is from the composite tool. On failure at compile/simulate stage, increments `consecutive_failures`. On full success, mirrors the `parse_coverage` success logic -- updates `current_coverage`, `cumulative_coverage`, `iteration`, and resets/increments `no_progress_count` based on whether cumulative coverage improved. Write or coverage-only failures return an empty update (agent sees the error in the tool result).
+- **Priority 1-3** (individual tools): Same as before -- checks recent messages for `compile_design`, `run_simulation`, and `parse_coverage` results in priority order.
 - Only checks the latest relevant tool message to avoid re-processing
-- Increments `iteration` after every successful `parse_coverage` (regardless of improvement)
+- Increments `iteration` after every successful coverage parse (regardless of improvement)
 - Resets `consecutive_failures` on successful cycle
 - Tracks `no_progress_count` for cumulative coverage stalls
 - Syncs `config.current_iteration` for correct log file naming
+- Also classifies any unclassified token usage records via `classify_pending_records()`
 
 **4. Finalize Node**
 
@@ -687,7 +742,7 @@ graph TD
     E --> F[START]
 ```
 
-### Iteration Flow (Typical Success Case)
+### Iteration Flow (Typical Success Case — Composite Tool)
 
 ```mermaid
 sequenceDiagram
@@ -700,6 +755,32 @@ sequenceDiagram
     R->>T: Has tool calls → tools
     T->>U: Execute read_file → ToolMessage
     U->>A: Continue
+
+    A->>R: run_verification_cycle(path, content)
+    R->>T: Has tool calls → tools
+    Note over T: write → compile → simulate → parse_coverage (all in one)
+    T->>U: Composite result → update coverage state
+    U->>A: Continue (or finalize if coverage complete)
+
+    Note over A: Coverage is 65%, target uncovered lines...
+    A->>R: run_verification_cycle(path, content)
+    R->>T: Has tool calls → tools
+    T->>U: Composite result → update coverage state
+    U->>A: Continue
+
+    Note over A,U: Loop continues until coverage complete or termination
+```
+
+> **Note**: The agent may also use individual tools (`compile_design`, `run_simulation`, `parse_coverage`) for targeted retries after fixing a specific error. The sequence diagram above shows the recommended default flow using the composite tool.
+
+### Iteration Flow (Legacy — Individual Tools)
+
+```mermaid
+sequenceDiagram
+    participant A as Agent
+    participant R as Router
+    participant T as Tools
+    participant U as Update State
 
     A->>R: write_file("tb_iter_1.sv", ...)
     R->>T: Has tool calls → tools
@@ -720,11 +801,6 @@ sequenceDiagram
     R->>T: Has tool calls → tools
     T->>U: Execute parse_coverage → update coverage state
     U->>A: Continue
-
-    Note over A: Coverage is 65%, target uncovered lines...
-    A->>R: write_file("tb_iter_2.sv", ...)
-
-    Note over A,U: Loop continues until coverage complete or termination
 ```
 
 ### State Evolution
@@ -917,6 +993,8 @@ def read_file(path: str):
 config = load_config()
 set_tool_config(config)  # Sets globals in all tool modules
 ```
+
+`set_tool_config` calls `set_config()` on four modules: `filesystem`, `simulation`, `analysis`, and `workflow`.
 
 **Rationale**:
 - Simple and explicit
@@ -1243,6 +1321,20 @@ The graph includes a dedicated `update_state` node between `tools` and `agent`. 
 
 This keeps state transitions explicit and auditable rather than scattered across routing logic.
 
+### 8. Why a Composite Verification Cycle Tool?
+
+**Problem**: Each verification iteration (write testbench, compile, simulate, parse coverage) previously required 4 separate tool calls, each requiring an LLM round-trip. The LLM added little value between these steps -- it simply chained the output of one into the next.
+
+**Solution**: `run_verification_cycle` combines all four steps into a single tool call. The LLM provides the testbench content once, and the tool handles the entire pipeline locally.
+
+**Benefits**:
+- Reduces LLM round-trips from ~4-5 per iteration to 1
+- Lower token cost (no intermediate reasoning between pipeline steps)
+- Faster wall-clock time per iteration
+- Early-stop on error still provides full context for the agent to diagnose and fix
+
+**Trade-off**: Less LLM visibility into intermediate steps. Mitigated by returning all sub-results in the composite response and by keeping individual tools available for targeted retries.
+
 ---
 
 ## Extension Points
@@ -1253,7 +1345,23 @@ This keeps state transitions explicit and auditable rather than scattered across
 1. Create tool function in appropriate file
 2. Decorate with `@tool`
 3. Add to `get_all_tools()` in `tools/__init__.py`
-4. Update system prompt to document tool
+4. If the tool needs config, add a `set_config()` function and wire it in `set_tool_config()`
+5. Update system prompt to document tool
+6. If the tool produces state-relevant results, add handling in `update_state_node`
+
+**Current Tool Registry** (`tools/__init__.py`):
+```python
+def get_all_tools():
+    return [
+        read_file,
+        write_file,
+        list_directory,
+        compile_design,
+        run_simulation,
+        parse_coverage,
+        run_verification_cycle,  # Composite: write + compile + sim + coverage
+    ]
+```
 
 **Example**:
 ```python
@@ -1334,12 +1442,16 @@ The runner (`run_agent.py`) already saves a `final_state.json` to the work direc
 
 ### 1. LLM Calls
 
-**Cost per iteration**:
-- Agent reasoning: 1 call
-- Tool selection: 1 call (if agent decides to use tools)
-- Total: ~2 calls per iteration
+**Cost per iteration (with `run_verification_cycle`)**:
+- Agent reasoning + tool call: 1 LLM call
+- Composite tool executes write + compile + simulate + coverage: 0 LLM calls (all local)
+- Total: **1 LLM call per full verification iteration**
+
+Previously, each iteration required separate LLM calls for `write_file`, `compile_design`, `run_simulation`, and `parse_coverage`, totaling 4-5 LLM round-trips. The composite tool reduces this to a single round-trip per iteration.
 
 **Optimization**:
+- Use `run_verification_cycle` as the default (recommended in system prompt)
+- Use individual tools only for targeted error recovery
 - Use lower temperature (0.2-0.4) for faster, more deterministic responses
 - Use gpt-4o (faster than gpt-4-turbo)
 - Enable streaming for user feedback (future enhancement)
