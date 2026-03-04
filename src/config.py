@@ -5,6 +5,7 @@ import os
 import logging
 from dotenv import load_dotenv
 
+
 @dataclass
 class Config:
     # LLM
@@ -22,40 +23,49 @@ class Config:
     design_context_enabled: bool
 
     # Paths
-    work_dir: Path  # Includes RUN_ID
-    simulator_path: Path  # COMPILER environment variable (path to binaries)
-    simulator_type: str  # SIMULATOR environment variable ('questasim' or 'verilator')
+    work_dir: Path          # Includes RUN_ID (and phase subdir in combined mode)
+    simulator_path: Path    # COMPILER environment variable (path to binaries)
+    simulator_type: str     # SIMULATOR environment variable ('questasim' or 'verilator')
 
     # Workflow
     run_id: str
     max_iterations: int
     max_retries: int
-    max_no_progress: int  # Maximum consecutive cycles with no coverage improvement
+    max_no_progress: int    # Maximum consecutive cycles with no coverage improvement
     sim_runs: int
     sim_timeout: int
     testplan_enabled: bool
-    num_feedback_holes: int  # Number of priority coverage holes in feedback (0 = none)
-    context_window: int  # Max tokens before terminating run
+    num_feedback_holes: int # Number of priority coverage holes in feedback (0 = none)
+    context_window: int     # Max tokens before terminating run
 
-    # Functional Coverage (NEW)
-    functional_coverage_enabled: bool  # Enable functional coverage mode
-    functional_coverage_target: float  # Target functional coverage percentage
+    # Functional Coverage
+    functional_coverage_enabled: bool          # Enable functional coverage mode
+    functional_coverage_target: float          # Target functional coverage percentage
     functional_coverage_testbench_path: Optional[Path]  # Path to user-provided testbench
+
+    # ── Combined Coverage Mode ──────────────────────────────────────────────
+    # When True, the framework runs code coverage first (Phase 1) then
+    # automatically transitions to functional coverage (Phase 2) using the
+    # same RUN_ID but separate work subdirectories:
+    #   work/<RUN_ID>/code_cov/
+    #   work/<RUN_ID>/func_cov/
+    combined_coverage_enabled: bool
+    # ────────────────────────────────────────────────────────────────────────
 
     # Debug
     log_level: str
-    log_truncate: bool  # Whether to truncate long content in logs
+    log_truncate: bool      # Whether to truncate long content in logs
 
     # Runtime tracking (mutable)
     current_iteration: int = 1
-    current_attempt: int = 1  # Tracks all compilation/simulation attempts (always increments)
+    current_attempt: int = 1  # Tracks all compilation/simulation attempts
 
     # Iteration-based retry tracking (for log naming)
-    # These reset when current_iteration changes
     compile_attempts_this_iter: int = 0
     sim_attempts_this_iter: int = 0
-    _last_iter_for_compile: int = 0  # Track when to reset compile counter
-    _last_iter_for_sim: int = 0  # Track when to reset sim counter
+    _last_iter_for_compile: int = 0
+    _last_iter_for_sim: int = 0
+
 
 def load_config() -> Config:
     """Load configuration from .env file with validation.
@@ -78,9 +88,9 @@ def load_config() -> Config:
 
     if test_mode:
         logging.basicConfig(level=logging.INFO)
-        logging.info("="*60)
+        logging.info("=" * 60)
         logging.info("TEST_MODE ENABLED - Using mock simulator tools")
-        logging.info("="*60)
+        logging.info("=" * 60)
 
     # Required fields (except in test mode)
     api_key = os.getenv("OPENAI_API_KEY")
@@ -129,18 +139,14 @@ def load_config() -> Config:
             "  2. DESIGN (for ad-hoc designs)"
         )
 
-    # Simulator configuration (matches legacy framework naming)
-    # COMPILER = path to simulator binaries (e.g., /scratch/vpatel69/verilator/bin)
-    # SIMULATOR = simulator type ('questasim' or 'verilator')
+    # Simulator configuration
     compiler = os.getenv("COMPILER", "/mock/simulator/path")
     simulator = os.getenv("SIMULATOR", "questasim").lower()
 
-    # Validate simulator type
     valid_simulators = ["questasim", "verilator"]
     if simulator not in valid_simulators:
         raise ValueError(f"Invalid SIMULATOR: {simulator}. Must be one of: {valid_simulators}")
 
-    # Compiler path validation - skip in test mode
     if not test_mode:
         if not compiler or not Path(compiler).exists():
             raise ValueError(f"COMPILER path invalid: {compiler}")
@@ -148,43 +154,77 @@ def load_config() -> Config:
     else:
         logging.info(f"Test mode: Using {simulator} simulator (mocked) at: {compiler}")
 
-    # Build work directory with RUN_ID
+    # ── Work directory ──────────────────────────────────────────────────────
+    # Combined mode: work/<RUN_ID>/code_cov/   (Phase 1 starts here;
+    #                                           phase_transition_node switches
+    #                                           to work/<RUN_ID>/func_cov/)
+    # Single mode:   work/<RUN_ID>/            (unchanged from before)
     run_id = os.getenv("RUN_ID", "default_run")
     work_base = Path(os.getenv("WORK_DIR", "./work"))
-    work_dir = (work_base / run_id).resolve()
 
-    # Determine design_dir from spec_path (spec is always in docs/ under design root)
-    # spec_path.parent = docs/, spec_path.parent.parent = design root
+    combined_coverage_enabled = os.getenv("COMBINED_COVERAGE_ENABLED", "0") == "1"
+
+    if combined_coverage_enabled:
+        work_dir = (work_base / run_id / "code_cov").resolve()
+    else:
+        work_dir = (work_base / run_id).resolve()
+    # ────────────────────────────────────────────────────────────────────────
+
+    # Determine design_dir from spec_path
     design_dir = design_config.spec_path.parent.parent
 
-    # Functional Coverage Configuration (NEW)
-    funcov_enabled = os.getenv("FUNCTIONAL_COVERAGE_ENABLED", "0") == "1"
+    # ── Functional Coverage Configuration ──────────────────────────────────
+    # In combined mode, functional_coverage_enabled starts as False (Phase 1
+    # is code coverage). The phase_transition_node flips it to True for Phase 2.
+    # In single functional-coverage mode it is set from the env var as before.
+    if combined_coverage_enabled:
+        funcov_enabled = False   # Phase 1 starts in code coverage mode
+    else:
+        funcov_enabled = os.getenv("FUNCTIONAL_COVERAGE_ENABLED", "0") == "1"
+
     funcov_target = float(os.getenv("FUNCTIONAL_COVERAGE_TARGET", "100.0"))
-    
-    # Get functional coverage testbench path
+
     funcov_testbench_path = None
     if funcov_enabled:
-        # Try environment variable first
+        # Only required when running functional coverage as a standalone mode
         funcov_tb_env = os.getenv("FUNCTIONAL_COVERAGE_TESTBENCH")
         if funcov_tb_env:
             funcov_testbench_path = Path(funcov_tb_env)
-        # Try dashboard config
         elif hasattr(design_config, 'functional_coverage_testbench_path'):
             funcov_testbench_path = design_config.functional_coverage_testbench_path
-        
-        # Validate existence
+
         if funcov_testbench_path and not funcov_testbench_path.exists():
             raise FileNotFoundError(
                 f"Functional coverage testbench not found: {funcov_testbench_path}"
             )
-        
+
         if not funcov_testbench_path:
             raise ValueError(
                 "FUNCTIONAL_COVERAGE_ENABLED=1 but no testbench provided. "
                 "Set FUNCTIONAL_COVERAGE_TESTBENCH or add to dashboard.json"
             )
-        
+
         logging.info(f"Functional coverage mode enabled with testbench: {funcov_testbench_path}")
+
+    if combined_coverage_enabled:
+        # Validate that FUNCTIONAL_COVERAGE_TESTBENCH is set for Phase 2,
+        # even though we don't activate it yet. Fail early rather than
+        # discovering the missing value only after Phase 1 completes.
+        funcov_tb_env = os.getenv("FUNCTIONAL_COVERAGE_TESTBENCH")
+        if funcov_tb_env:
+            combined_funcov_tb = Path(funcov_tb_env)
+            if not combined_funcov_tb.exists():
+                raise FileNotFoundError(
+                    f"FUNCTIONAL_COVERAGE_TESTBENCH not found (needed for Phase 2): {combined_funcov_tb}"
+                )
+        elif not (hasattr(design_config, 'functional_coverage_testbench_path') and
+                  design_config.functional_coverage_testbench_path):
+            raise ValueError(
+                "COMBINED_COVERAGE_ENABLED=1 requires FUNCTIONAL_COVERAGE_TESTBENCH "
+                "to be set (used for Phase 2 functional coverage)."
+            )
+        logging.info("Combined coverage mode enabled: code coverage → functional coverage")
+    # ────────────────────────────────────────────────────────────────────────
 
     return Config(
         openai_api_key=api_key,
@@ -212,6 +252,7 @@ def load_config() -> Config:
         functional_coverage_enabled=funcov_enabled,
         functional_coverage_target=funcov_target,
         functional_coverage_testbench_path=funcov_testbench_path,
+        combined_coverage_enabled=combined_coverage_enabled,
         log_level=os.getenv("LOG_LEVEL", "INFO"),
-        log_truncate=os.getenv("LOG_TRUNCATE", "1") == "1"
+        log_truncate=os.getenv("LOG_TRUNCATE", "1") == "1",
     )
