@@ -301,11 +301,18 @@ Environment File Format:
 
             # Save final state to JSON for visualization
             work_path = Path(final_state.get('work_dir', config.work_dir))
-            serializable = {k: v for k, v in final_state.items() if k != 'messages'}
+            serializable = {k: v for k, v in final_state.items() if k not in ('messages',)}
             if 'config' in serializable and serializable['config'] is not None:
                 config_dict = dataclasses.asdict(serializable['config'])
                 config_dict.pop('openai_api_key', None)
                 serializable['config'] = config_dict
+            # Strip tool_call_args from token_usage records (verbose, not needed in JSON)
+            if 'token_usage' in serializable and serializable['token_usage']:
+                cleaned_records = []
+                for rec in serializable['token_usage']:
+                    rec_copy = {k: v for k, v in rec.items() if k != 'tool_call_args'}
+                    cleaned_records.append(rec_copy)
+                serializable['token_usage'] = cleaned_records
             state_path = work_path / "final_state.json"
             with open(state_path, 'w') as f:
                 json.dump(serializable, f, indent=2, default=str)
