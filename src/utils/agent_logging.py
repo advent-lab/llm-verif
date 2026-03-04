@@ -5,7 +5,7 @@ with detailed token usage breakdowns including reasoning and cached tokens.
 """
 
 import logging
-from .tokens import count_message_tokens, format_token_count
+from .tokens import count_message_tokens
 
 
 # ANSI color codes for terminal output
@@ -52,10 +52,9 @@ def log_agent_request(state: dict):
     config = state.get("config")
     model = config.model if config else "gpt-4"
     token_count = count_message_tokens(messages, model)
-    token_display = format_token_count(token_count, config.context_window) if config else format_token_count(token_count)
 
     logging.info(f"{Colors.CYAN}{Colors.BOLD}{'='*80}{Colors.RESET}")
-    logging.info(f"{Colors.CYAN}{Colors.BOLD}API REQUEST [API Call #{api_calls} | Iter {iteration} | Cumulative: {cumulative_coverage:.1f}% | Last: {current_coverage:.1f}% | Failures: {consecutive_failures} | No Progress: {no_progress} | Tokens: {token_display}]{Colors.RESET}")
+    logging.info(f"{Colors.CYAN}{Colors.BOLD}API REQUEST [API Call #{api_calls} | Iter {iteration} | Cumulative: {cumulative_coverage:.1f}% | Last: {current_coverage:.1f}% | Failures: {consecutive_failures} | No Progress: {no_progress} | Est. Input: ~{token_count:,}]{Colors.RESET}")
     logging.info(f"{Colors.CYAN}{'='*80}{Colors.RESET}")
 
     # Collect all trailing ToolMessages (results from the latest tool execution batch)
@@ -117,32 +116,24 @@ def log_agent_response(response, state: dict, usage: dict = None):
     api_calls = state.get("api_calls", "?")
     current_coverage = state.get("current_coverage", 0.0)
     cumulative_coverage = state.get("cumulative_coverage", 0.0)
-    consecutive_failures = state.get("consecutive_failures", 0)
-    no_progress = state.get("no_progress_count", 0)
 
-    # Count tokens in the updated message list (includes the response)
-    messages = state.get("messages", [])
-    config = state.get("config")
-    model = config.model if config else "gpt-4"
-    token_count = count_message_tokens(messages, model)
-    token_display = format_token_count(token_count, config.context_window) if config else format_token_count(token_count)
-
-    logging.info(f"{Colors.GREEN}{Colors.BOLD}{'='*80}{Colors.RESET}")
-    logging.info(f"{Colors.GREEN}{Colors.BOLD} AGENT RESPONSE [API Call #{api_calls} | Iter {iteration} | Cumulative: {cumulative_coverage:.1f}% | Last: {current_coverage:.1f}% | Failures: {consecutive_failures} | No Progress: {no_progress} | Tokens: {token_display}]{Colors.RESET}")
-    logging.info(f"{Colors.GREEN}{'='*80}{Colors.RESET}")
-
-    # Log API-reported token usage with detailed breakdown
+    # Build token breakdown from API-reported usage
+    in_tok = cached_tok = out_tok = reason_tok = tot_tok = 0
     if usage:
         in_tok = usage.get("input_tokens", 0)
         out_tok = usage.get("output_tokens", 0)
         tot_tok = usage.get("total_tokens", 0)
         reason_tok = usage.get("reasoning_tokens", 0)
         cached_tok = usage.get("cached_input_tokens", 0)
-        logging.info(
-            f"{Colors.GREEN}[TOKEN USAGE] Input: {in_tok:,} (cached: {cached_tok:,}) "
-            f"| Output: {out_tok:,} | Reasoning: {reason_tok:,} "
-            f"| Total: {tot_tok:,}{Colors.RESET}"
-        )
+
+    logging.info(f"{Colors.GREEN}{Colors.BOLD}{'='*80}{Colors.RESET}")
+    logging.info(
+        f"{Colors.GREEN}{Colors.BOLD} AGENT RESPONSE [API Call #{api_calls} | Iter {iteration} | "
+        f"Cumulative: {cumulative_coverage:.1f}% | Last: {current_coverage:.1f}% | "
+        f"In: {in_tok:,} (cached: {cached_tok:,}) | Out: {out_tok:,} (reasoning: {reason_tok:,}) | "
+        f"Total: {tot_tok:,}]{Colors.RESET}"
+    )
+    logging.info(f"{Colors.GREEN}{'='*80}{Colors.RESET}")
 
     # Log reasoning text (if present)
     if hasattr(response, 'content'):

@@ -44,17 +44,13 @@ class APICallRecord:
     failures: int = 0
     no_progress: int = 0
 
-    # Token estimates from log headers (tiktoken-based, cumulative prompt tokens)
-    request_tokens: int = 0   # Tokens at REQUEST time (before API call)
-    response_tokens: int = 0  # Tokens at RESPONSE time (after API call)
+    # Tiktoken estimate from API REQUEST header (pre-call, ~approximate)
+    request_tokens: int = 0
 
-    # Marginal token cost: delta added by this call
+    # Marginal token cost: delta added by this call (request_tokens[N+1] - request_tokens[N])
     marginal_tokens: int = 0
 
-    # Estimated output tokens (response_tokens - request_tokens for same call)
-    est_output_tokens: int = 0
-
-    # API-reported token usage (from [TOKEN USAGE] line in AGENT RESPONSE)
+    # API-reported token usage (from AGENT RESPONSE header)
     api_input_tokens: int = 0
     api_output_tokens: int = 0
     api_total_tokens: int = 0
@@ -98,16 +94,28 @@ class DesignAnalysis:
 # Log parsing
 # ---------------------------------------------------------------------------
 
-# Regex for the header line in API REQUEST / AGENT RESPONSE blocks
-_HEADER_RE = re.compile(
-    r'(?:API REQUEST|AGENT RESPONSE)\s*\['
+# Regex for API REQUEST header (tiktoken estimate, pre-call)
+_REQUEST_HEADER_RE = re.compile(
+    r'API REQUEST\s*\['
     r'API Call #(\d+)\s*\|\s*'
     r'Iter\s+(\d+)\s*\|\s*'
     r'Cumulative:\s*([\d.]+)%\s*\|\s*'
     r'Last:\s*([\d.]+)%\s*\|\s*'
     r'Failures:\s*(\d+)\s*\|\s*'
     r'No Progress:\s*(\d+)\s*\|\s*'
-    r'Tokens:\s*([\d,]+)\s*\(([\d.]+)%\)\s*\]'
+    r'Est\.\s*Input:\s*~?([\d,]+)\s*\]'
+)
+
+# Regex for AGENT RESPONSE header (API-reported token breakdown)
+_RESPONSE_HEADER_RE = re.compile(
+    r'AGENT RESPONSE\s*\['
+    r'API Call #(\d+)\s*\|\s*'
+    r'Iter\s+(\d+)\s*\|\s*'
+    r'Cumulative:\s*([\d.]+)%\s*\|\s*'
+    r'Last:\s*([\d.]+)%\s*\|\s*'
+    r'In:\s*([\d,]+)\s*\(cached:\s*([\d,]+)\)\s*\|\s*'
+    r'Out:\s*([\d,]+)\s*\(reasoning:\s*([\d,]+)\)\s*\|\s*'
+    r'Total:\s*([\d,]+)\s*\]'
 )
 
 # Regex for tool call lines in AGENT RESPONSE (applied to content after prefix stripping)
@@ -125,18 +133,6 @@ _COMPILE_FAIL_RE = re.compile(r'Compilation failed \(iter \d+, retry (\d+)\)')
 
 # Regex for [TOOL NAME] lines in REQUEST blocks
 _TOOL_NAME_RE = re.compile(r'\[TOOL NAME\]\s+(\w+)')
-
-# Regex for [TOKEN USAGE] line in AGENT RESPONSE blocks
-# Matches both old format: Input: N | Output: N | Total: N
-# and new format: Input: N (cached: N) | Output: N | Reasoning: N | Total: N
-_TOKEN_USAGE_RE = re.compile(
-    r'\[TOKEN USAGE\]\s*'
-    r'Input:\s*([\d,]+)'
-    r'(?:\s*\(cached:\s*([\d,]+)\))?'
-    r'\s*\|\s*Output:\s*([\d,]+)'
-    r'(?:\s*\|\s*Reasoning:\s*([\d,]+))?'
-    r'\s*\|\s*Total:\s*([\d,]+)'
-)
 
 
 def parse_timestamp(line: str) -> Optional[str]:
@@ -202,7 +198,7 @@ def parse_run_log(log_path: Path) -> List[APICallRecord]:
             current_tool_name = None
             current_tool_args = {}
 
-            m = _HEADER_RE.search(stripped)
+            m = _REQUEST_HEADER_RE.search(stripped)
             if m:
                 api_call = int(m.group(1))
                 current_section = 'request'
@@ -227,7 +223,7 @@ def parse_run_log(log_path: Path) -> List[APICallRecord]:
         # so RESPONSE "API Call #N" corresponds to REQUEST "API Call #(N-1)".
         # We pair them by storing response data on the record at api_call = N-1.
         if 'AGENT RESPONSE' in stripped:
-            m = _HEADER_RE.search(stripped)
+            m = _RESPONSE_HEADER_RE.search(stripped)
             if m:
                 response_api_call = int(m.group(1))
                 # Map back to the matching request's api_call number
@@ -244,24 +240,14 @@ def parse_run_log(log_path: Path) -> List[APICallRecord]:
                     records[paired_api_call] = APICallRecord(api_call=paired_api_call)
 
                 rec = records[paired_api_call]
-                rec.response_tokens = int(m.group(7).replace(',', ''))
+                rec.api_input_tokens = int(m.group(5).replace(',', ''))
+                rec.api_cached_input_tokens = int(m.group(6).replace(',', ''))
+                rec.api_output_tokens = int(m.group(7).replace(',', ''))
+                rec.api_reasoning_tokens = int(m.group(8).replace(',', ''))
+                rec.api_total_tokens = int(m.group(9).replace(',', ''))
                 if ts:
                     rec.response_time = ts
             continue
-
-        # Inside AGENT RESPONSE: parse token usage and tool calls
-        if current_section == 'response':
-            # Parse [TOKEN USAGE] line for API-reported token breakdown
-            if '[TOKEN USAGE]' in stripped:
-                tm_usage = _TOKEN_USAGE_RE.search(stripped)
-                if tm_usage and current_api_call in records:
-                    rec = records[current_api_call]
-                    rec.api_input_tokens = int(tm_usage.group(1).replace(',', ''))
-                    rec.api_cached_input_tokens = int(tm_usage.group(2).replace(',', '')) if tm_usage.group(2) else 0
-                    rec.api_output_tokens = int(tm_usage.group(3).replace(',', ''))
-                    rec.api_reasoning_tokens = int(tm_usage.group(4).replace(',', '')) if tm_usage.group(4) else 0
-                    rec.api_total_tokens = int(tm_usage.group(5).replace(',', ''))
-                continue
 
             if '[TOOL CALLS]' in stripped:
                 collecting_tool_calls = True
@@ -320,12 +306,8 @@ def parse_run_log(log_path: Path) -> List[APICallRecord]:
             next_rec = sorted_records[i + 1]
             rec.marginal_tokens = max(0, next_rec.request_tokens - rec.request_tokens)
         else:
-            # Last call: estimate from response - request (LLM output only)
-            rec.marginal_tokens = max(0, rec.response_tokens - rec.request_tokens)
-
-        # Estimated output tokens = response tokens - request tokens (for same call)
-        # This approximates the LLM's output (tool call JSON, reasoning text)
-        rec.est_output_tokens = max(0, rec.response_tokens - rec.request_tokens)
+            # Last call: use API-reported output tokens as marginal estimate
+            rec.marginal_tokens = rec.api_output_tokens
 
     # Classify each record
     for rec in sorted_records:
@@ -454,12 +436,12 @@ def aggregate_analysis(
             pass
 
     analysis.total_api_calls = len(records)
-    analysis.total_prompt_tokens_est = records[-1].request_tokens if records else 0
+    analysis.total_prompt_tokens_est = records[-1].request_tokens if records else 0  # tiktoken estimate at last request
     analysis.total_marginal_tokens = sum(r.marginal_tokens for r in records)
 
     # Aggregate by category
     cats = defaultdict(lambda: {
-        "api_calls": 0, "marginal_tokens": 0, "est_output_tokens": 0,
+        "api_calls": 0, "marginal_tokens": 0,
         "api_input_tokens": 0, "api_output_tokens": 0, "api_reasoning_tokens": 0,
         "api_cached_input_tokens": 0, "api_total_tokens": 0,
     })
@@ -467,7 +449,6 @@ def aggregate_analysis(
         cat = rec.category
         cats[cat]["api_calls"] += 1
         cats[cat]["marginal_tokens"] += rec.marginal_tokens
-        cats[cat]["est_output_tokens"] += rec.est_output_tokens
         cats[cat]["api_input_tokens"] += rec.api_input_tokens
         cats[cat]["api_output_tokens"] += rec.api_output_tokens
         cats[cat]["api_reasoning_tokens"] += rec.api_reasoning_tokens
@@ -476,17 +457,15 @@ def aggregate_analysis(
 
     # Compute percentages
     total_marginal = analysis.total_marginal_tokens or 1
-    total_output = sum(c["est_output_tokens"] for c in cats.values()) or 1
     total_api_total = sum(c["api_total_tokens"] for c in cats.values()) or 1
     for cat_name, cat_data in cats.items():
         cat_data["pct_marginal"] = round(cat_data["marginal_tokens"] / total_marginal * 100, 1)
-        cat_data["pct_output"] = round(cat_data["est_output_tokens"] / total_output * 100, 1)
         cat_data["pct_api_total"] = round(cat_data["api_total_tokens"] / total_api_total * 100, 1)
 
     # Ensure all 4 categories are present
     default_cat_template = {
-        "api_calls": 0, "marginal_tokens": 0, "est_output_tokens": 0,
-        "pct_marginal": 0.0, "pct_output": 0.0, "pct_api_total": 0.0,
+        "api_calls": 0, "marginal_tokens": 0,
+        "pct_marginal": 0.0, "pct_api_total": 0.0,
         "api_input_tokens": 0, "api_output_tokens": 0, "api_reasoning_tokens": 0,
         "api_cached_input_tokens": 0, "api_total_tokens": 0,
     }
@@ -505,15 +484,13 @@ def aggregate_analysis(
             "category": rec.category,
             "failures": rec.failures,
             "cumulative_coverage": rec.cumulative_coverage,
-            "request_tokens": rec.request_tokens,
-            "response_tokens": rec.response_tokens,
+            "request_tokens_est": rec.request_tokens,
             "marginal_tokens": rec.marginal_tokens,
-            "est_output_tokens": rec.est_output_tokens,
             "api_input_tokens": rec.api_input_tokens,
-            "api_output_tokens": rec.api_output_tokens,
-            "api_total_tokens": rec.api_total_tokens,
-            "api_reasoning_tokens": rec.api_reasoning_tokens,
             "api_cached_input_tokens": rec.api_cached_input_tokens,
+            "api_output_tokens": rec.api_output_tokens,
+            "api_reasoning_tokens": rec.api_reasoning_tokens,
+            "api_total_tokens": rec.api_total_tokens,
             "tool_calls": rec.tool_calls,
             "request_time": rec.request_time,
             "response_time": rec.response_time,
@@ -611,27 +588,28 @@ def print_summary_table(analyses: List[DesignAnalysis]):
 
 def print_per_call_detail(analysis: DesignAnalysis):
     """Print detailed per-API-call breakdown for a single design."""
-    print(f"\n{'='*140}")
+    print(f"\n{'='*150}")
     print(f"Per-Call Detail: {analysis.design}")
-    print(f"{'='*140}")
+    print(f"{'='*150}")
     print(f"{'Call#':>5} {'Iter':>4} {'Cat':<20} {'Fail':>4} {'Cov%':>6} "
-          f"{'ReqTok':>8} {'RspTok':>8} {'Marginal':>8} {'EstOut':>8} "
-          f"{'APIIn':>8} {'APICch':>8} {'APIOut':>8} {'APIRsn':>8} {'Tools'}")
-    print("-" * 140)
+          f"{'EstIn':>8} {'Marginal':>8} "
+          f"{'APIIn':>9} {'APICch':>9} {'APIOut':>9} {'APIRsn':>9} {'APITot':>9} {'Tools'}")
+    print("-" * 150)
 
     for call in analysis.per_call:
         tools_str = ", ".join(call["tool_calls"]) if call["tool_calls"] else "(none)"
+        est_in = call.get("request_tokens_est", 0)
         api_in = call.get("api_input_tokens", 0)
         api_cch = call.get("api_cached_input_tokens", 0)
         api_out = call.get("api_output_tokens", 0)
         api_rsn = call.get("api_reasoning_tokens", 0)
+        api_tot = call.get("api_total_tokens", 0)
         print(f"{call['api_call']:>5} {call['iteration']:>4} {call['category']:<20} "
               f"{call['failures']:>4} {call['cumulative_coverage']:>5.1f}% "
-              f"{call['request_tokens']:>8,} {call['response_tokens']:>8,} "
-              f"{call['marginal_tokens']:>8,} {call['est_output_tokens']:>8,} "
-              f"{api_in:>8,} {api_cch:>8,} {api_out:>8,} {api_rsn:>8,} {tools_str}")
+              f"{est_in:>8,} {call['marginal_tokens']:>8,} "
+              f"{api_in:>9,} {api_cch:>9,} {api_out:>9,} {api_rsn:>9,} {api_tot:>9,} {tools_str}")
 
-    print(f"{'='*140}")
+    print(f"{'='*150}")
 
 
 # ---------------------------------------------------------------------------
@@ -693,7 +671,7 @@ Examples:
 
 Caveats:
   - Token counts are tiktoken estimates (prompt-side only for existing logs)
-  - Output tokens are estimated as (response_tokens - request_tokens)
+  - API-reported token counts (input/output/reasoning/cached) come from the AGENT RESPONSE header
   - API-reported token counts require framework instrumentation (see docs)
         """
     )
