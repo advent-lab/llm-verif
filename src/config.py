@@ -12,6 +12,7 @@ class Config:
     model: str
     temperature: float
     max_tokens: int
+    reasoning_effort: str  # 'disabled', 'none', 'low', 'medium', or 'high'
 
     # Design
     design_name: str
@@ -152,6 +153,12 @@ def load_config() -> Config:
     work_base = Path(os.getenv("WORK_DIR", "./work"))
     work_dir = (work_base / run_id).resolve()
 
+    # Validate reasoning effort
+    reasoning_effort = os.getenv("REASONING_EFFORT", "disabled").lower()
+    # valid_reasoning = ["disabled", "none", "minimal", "low", "medium", "high", "xhigh"]
+    # if reasoning_effort not in valid_reasoning:
+    #     raise ValueError(f"Invalid REASONING_EFFORT: {reasoning_effort}. Must be one of: {valid_reasoning}")
+
     # Determine design_dir from spec_path (spec is always in docs/ under design root)
     # spec_path.parent = docs/, spec_path.parent.parent = design root
     design_dir = design_config.spec_path.parent.parent
@@ -161,6 +168,7 @@ def load_config() -> Config:
         model=os.getenv("MODEL", "gpt-4o"),
         temperature=float(os.getenv("TEMPERATURE", "0.4")),
         max_tokens=int(os.getenv("MAX_TOKENS", "4096")),
+        reasoning_effort=reasoning_effort,
         design_name=design_config.design_name,
         design_dir=design_dir,
         spec_path=design_config.spec_path,

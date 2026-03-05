@@ -105,12 +105,15 @@ def agent_node(state: AgentState) -> AgentState:
     config = state["config"]
 
     # Create LLM
-    llm = ChatOpenAI(
+    llm_kwargs = dict(
         model=config.model,
         temperature=config.temperature,
         max_tokens=config.max_tokens,
-        api_key=config.openai_api_key
+        api_key=config.openai_api_key,
     )
+    if config.reasoning_effort != "disabled":
+        llm_kwargs["reasoning_effort"] = config.reasoning_effort
+    llm = ChatOpenAI(**llm_kwargs)
 
     # Bind tools
     tools = get_all_tools()
