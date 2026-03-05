@@ -330,23 +330,6 @@ def update_state_node(state: AgentState) -> AgentState:
     # Classify any pending unclassified token usage records
     classify_pending_records(state)
 
-    # --- JSONL: emit classified token records ---
-    token_usage = state.get("token_usage", [])
-    for record in token_usage:
-        if record.get("category") != "unclassified":
-            emit("token_classified", {
-                "api_call": record.get("api_call"),
-                "iteration": record.get("iteration"),
-                "category": record.get("category"),
-                "failures": record.get("failures"),
-                "cumulative_coverage": record.get("cumulative_coverage"),
-                "tool_calls": record.get("tool_calls"),
-                "input_tokens": record.get("input_tokens"),
-                "output_tokens": record.get("output_tokens"),
-                "reasoning_tokens": record.get("reasoning_tokens"),
-                "cached_input_tokens": record.get("cached_input_tokens"),
-            })
-
     # Helper function to parse tool result from message content
     def parse_tool_result(content):
         if isinstance(content, str):
