@@ -299,6 +299,7 @@ def _snapshot_state(state: AgentState, trigger: str, delta: dict) -> dict:
         "api_calls": state.get("api_calls", 0),
         "consecutive_failures": delta.get("consecutive_failures", state.get("consecutive_failures", 0)),
         "no_progress_count": delta.get("no_progress_count", state.get("no_progress_count", 0)),
+        "no_tool_call_count": state.get("no_tool_call_count", 0),
         "current_coverage": delta.get("current_coverage", state.get("current_coverage", 0.0)),
         "max_coverage": delta.get("max_coverage", state.get("max_coverage", 0.0)),
         "cumulative_coverage": delta.get("cumulative_coverage", state.get("cumulative_coverage", 0.0)),
