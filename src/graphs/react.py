@@ -108,6 +108,7 @@ def initialize_node(state: AgentState) -> AgentState:
         "api_calls": 0,
         "consecutive_failures": 0,
         "no_progress_count": 0,
+        "no_tool_call_count": 0,
         "current_coverage": 0.0,
         "max_coverage": 0.0,
         "cumulative_coverage": 0.0,
@@ -174,6 +175,7 @@ def agent_node(state: AgentState) -> AgentState:
         "iteration": state.get("iteration", 1),
         "consecutive_failures": state.get("consecutive_failures", 0),
         "no_progress_count": state.get("no_progress_count", 0),
+        "no_tool_call_count": state.get("no_tool_call_count", 0),
         "current_coverage": state.get("current_coverage", 0.0),
         "cumulative_coverage": state.get("cumulative_coverage", 0.0),
         "message_count": len(messages),
@@ -245,9 +247,16 @@ def agent_node(state: AgentState) -> AgentState:
     # Log agent response (same api_calls number as the request)
     log_agent_response(response, request_state, usage)
 
+    # Track consecutive no-tool-call responses
+    if hasattr(response, 'tool_calls') and response.tool_calls:
+        no_tool_call_count = 0
+    else:
+        no_tool_call_count = state.get("no_tool_call_count", 0) + 1
+
     return {
         "messages": [response],
         "api_calls": new_api_calls,
+        "no_tool_call_count": no_tool_call_count,
         "token_usage": [token_record]
     }
 
@@ -508,8 +517,10 @@ def finalize_node(state: AgentState) -> AgentState:
     Called when the framework detects a termination condition (coverage complete
     or no progress). Gives the agent one last turn to write report.md.
     """
+    config = state["config"]
     cumulative_coverage = state.get("cumulative_coverage", 0.0)
     no_progress = state.get("no_progress_count", 0)
+    no_tool_calls = state.get("no_tool_call_count", 0)
     iteration = state.get("iteration", 0)
 
     if cumulative_coverage >= 100.0:
@@ -518,6 +529,18 @@ def finalize_node(state: AgentState) -> AgentState:
             f"FRAMEWORK NOTICE: 100% coverage achieved. "
             f"Iterations completed: {iteration - 1}.\n\n"
             f"Write your final run report to `report.md` using `write_file`. "
+            f"Follow the report requirements from your instructions (Step 7)."
+        )
+    elif no_tool_calls >= config.max_no_tool_calls:
+        reason = "no_tool_calls"
+        finalize_message = (
+            f"FRAMEWORK NOTICE: Verification terminated — agent returned "
+            f"{no_tool_calls} consecutive responses with no tool calls. "
+            f"Final cumulative coverage: {cumulative_coverage:.1f}%. "
+            f"Iterations completed: {iteration - 1}.\n\n"
+            f"Write your final run report to `report.md` using `write_file`. "
+            f"The report MUST classify ALL remaining uncovered lines by category "
+            f"(unreachable, excludable, potential bugs, needs more effort). "
             f"Follow the report requirements from your instructions (Step 7)."
         )
     else:
@@ -535,7 +558,7 @@ def finalize_node(state: AgentState) -> AgentState:
 
     logging.info(f"{Colors.MAGENTA}{Colors.BOLD}{'='*80}{Colors.RESET}")
     logging.info(f"{Colors.MAGENTA}{Colors.BOLD}FINALIZE ({reason}): Giving agent one last turn to write report.md{Colors.RESET}")
-    logging.info(f"{Colors.MAGENTA}Cumulative coverage: {cumulative_coverage:.1f}% | No-progress count: {no_progress}{Colors.RESET}")
+    logging.info(f"{Colors.MAGENTA}Cumulative coverage: {cumulative_coverage:.1f}% | No-progress count: {no_progress} | No-tool-call count: {no_tool_calls}{Colors.RESET}")
     logging.info(f"{Colors.MAGENTA}{'='*80}{Colors.RESET}\n")
 
     # --- JSONL: finalize + human_message events ---
@@ -544,6 +567,7 @@ def finalize_node(state: AgentState) -> AgentState:
         "cumulative_coverage": cumulative_coverage,
         "iterations_completed": iteration - 1,
         "no_progress_count": no_progress,
+        "no_tool_call_count": no_tool_calls,
     })
 
     emit("human_message", {
@@ -576,7 +600,7 @@ def create_react_graph() -> StateGraph:
     graph.add_edge("initialize", "agent")
 
     # Conditional routing from agent
-    def route_after_agent(state: AgentState) -> Literal["tools", "agent", END]:
+    def route_after_agent(state: AgentState) -> Literal["tools", "agent", "finalize", END]:
         """Route after agent decision."""
         config = state["config"]
         last_message = state["messages"][-1]
@@ -625,7 +649,12 @@ def create_react_graph() -> StateGraph:
             tool_names = [tc.get('name', '?') for tc in last_message.tool_calls]
             return _route("tools", f"tool_calls: {tool_names}")
 
-        # No tool calls — loop back so agent tries again
+        # No tool calls — check if agent is stuck in reasoning-only loop
+        if state.get("no_tool_call_count", 0) >= config.max_no_tool_calls:
+            logging.info(f"Agent returned {state['no_tool_call_count']} consecutive responses with no tool calls — routing to finalize")
+            return _route("finalize", f"max_no_tool_calls ({state['no_tool_call_count']}/{config.max_no_tool_calls})")
+
+        # Otherwise loop back so agent tries again
         return _route("agent", "no_tool_calls, retrying")
 
     graph.add_conditional_edges(
@@ -634,6 +663,7 @@ def create_react_graph() -> StateGraph:
         {
             "tools": "tools",
             "agent": "agent",
+            "finalize": "finalize",
             END: END
         }
     )

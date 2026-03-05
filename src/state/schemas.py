@@ -39,6 +39,7 @@ class AgentState(TypedDict):
     api_calls: int  # Total agent_node invocations (LLM API calls) - for max_iterations limit
     consecutive_failures: int  # Compilation OR simulation failures in a row - for max_retries limit
     no_progress_count: int  # Consecutive cycles with no coverage improvement - for max_no_progress limit
+    no_tool_call_count: int  # Consecutive agent responses with no tool calls - for max_no_tool_calls limit
 
     # Coverage tracking
     current_coverage: float  # Latest coverage percentage (0-100) - single iteration
@@ -54,5 +55,5 @@ class AgentState(TypedDict):
 
     # Termination
     is_done: bool
-    done_reason: Optional[str]  # "coverage_complete", "no_progress", "max_iterations"
+    done_reason: Optional[str]  # "coverage_complete", "no_progress", "no_tool_calls", "max_iterations"
     is_finalizing: bool  # True when framework has triggered termination and agent gets one last turn for report

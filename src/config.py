@@ -32,6 +32,7 @@ class Config:
     max_iterations: int
     max_retries: int
     max_no_progress: int  # Maximum consecutive cycles with no coverage improvement
+    max_no_tool_calls: int  # Maximum consecutive agent responses with no tool calls
     sim_runs: int
     sim_timeout: int
     testplan_enabled: bool
@@ -182,6 +183,7 @@ def load_config() -> Config:
         max_iterations=int(os.getenv("MAX_ITERATIONS", "10")),
         max_retries=int(os.getenv("MAX_RETRIES", "3")),
         max_no_progress=int(os.getenv("MAX_NO_PROGRESS", "5")),
+        max_no_tool_calls=int(os.getenv("MAX_NO_TOOL_CALLS", "3")),
         sim_runs=int(os.getenv("SIM_RUNS", "5")),
         sim_timeout=int(os.getenv("SIM_TIMEOUT", "60")),
         testplan_enabled=os.getenv("TESTPLAN", "1") == "1",
