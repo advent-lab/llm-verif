@@ -12,6 +12,9 @@ from ..utils.design_loader import scan_design_directory, extract_module_header, 
 from ..utils.tokens import count_message_tokens, format_token_count
 from ..utils.token_tracking import extract_usage_from_response, build_token_record, classify_pending_records
 from ..utils.agent_logging import log_agent_request, log_agent_response, Colors
+from ..utils.event_log import (
+    init_event_log, emit, serialize_message, serialize_config, get_git_info,
+)
 from ..prompts.loader import load_system_prompt
 from ..tools import get_all_tools, set_tool_config
 
@@ -65,11 +68,31 @@ def initialize_node(state: AgentState) -> AgentState:
     config.current_attempt = 1  # Start at attempt 1
     set_tool_config(config)
 
+    # Initialize structured JSONL event log
+    init_event_log(config.work_dir / "events.jsonl")
+
+    emit("session_start", {
+        "config": serialize_config(config),
+        "git": get_git_info(),
+    })
+
+    emit("system_prompt", {
+        "content": system_prompt,
+        "content_length": len(system_prompt),
+        "module_header": module_header,
+    })
+
+    init_human_msg = "Begin verification. Start by reading the specification."
+    emit("human_message", {
+        "source": "init",
+        "content": init_human_msg,
+    })
+
     # Initialize state
     return {
         "messages": [
             SystemMessage(content=system_prompt),
-            HumanMessage(content="Begin verification. Start by reading the specification.")
+            HumanMessage(content=init_human_msg)
         ],
         "config": config,  # Store config in state to avoid repeated loading
         "design_name": config.design_name,
@@ -95,10 +118,22 @@ def initialize_node(state: AgentState) -> AgentState:
         "token_usage": []
     }
 
+# Cumulative token counters for token_count events (Codex-style running totals)
+_cumulative_tokens = {
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "reasoning_tokens": 0,
+    "cached_input_tokens": 0,
+    "total_tokens": 0,
+}
+
+
 def agent_node(state: AgentState) -> AgentState:
     """
     Agent node: LLM reasoning and tool selection.
     """
+    global _cumulative_tokens
+
     # Get config from state
     # NOTE: Do NOT reset config.current_attempt here - the tools manage this counter
     # with a "capture then increment" pattern. Resetting it causes log file overwrites.
@@ -127,11 +162,37 @@ def agent_node(state: AgentState) -> AgentState:
     # Log what we're sending to the LLM (before API call)
     log_agent_request(request_state)
 
+    # --- JSONL: api_request event ---
+    messages = state.get("messages", [])
+    # Serialize latest messages for the event log (last batch of tool results + preceding AI message)
+    latest_serialized = []
+    for msg in messages[-10:]:
+        latest_serialized.append(serialize_message(msg))
+
+    emit("api_request", {
+        "api_call": new_api_calls,
+        "iteration": state.get("iteration", 1),
+        "consecutive_failures": state.get("consecutive_failures", 0),
+        "no_progress_count": state.get("no_progress_count", 0),
+        "current_coverage": state.get("current_coverage", 0.0),
+        "cumulative_coverage": state.get("cumulative_coverage", 0.0),
+        "message_count": len(messages),
+        "estimated_input_tokens": count_message_tokens(messages, config.model),
+        "latest_messages": latest_serialized,
+    })
+
     # Invoke LLM (this is an API call)
     response = llm_with_tools.invoke(state["messages"])
 
     # Extract token usage from response (including reasoning + cached tokens)
     usage = extract_usage_from_response(response)
+
+    # --- JSONL: reasoning event ---
+    emit("reasoning", {
+        "api_call": new_api_calls,
+        "content": response.content if hasattr(response, "content") else None,
+        "content_length": len(response.content) if hasattr(response, "content") and response.content else 0,
+    })
 
     # Build per-call tool call list for classification
     tool_call_names = []
@@ -140,6 +201,35 @@ def agent_node(state: AgentState) -> AgentState:
         for tc in response.tool_calls:
             tool_call_names.append(tc.get('name', 'unknown'))
             tool_call_args.append(tc.get('args', {}))
+
+    # --- JSONL: tool_call events (one per tool) ---
+    if hasattr(response, 'tool_calls') and response.tool_calls:
+        for i, tc in enumerate(response.tool_calls):
+            emit("tool_call", {
+                "api_call": new_api_calls,
+                "call_index": i,
+                "tool_name": tc.get("name", "unknown"),
+                "arguments": tc.get("args", {}),
+                "call_id": tc.get("id", ""),
+            })
+
+    # --- JSONL: token_count event (per-call + cumulative) ---
+    last_usage = {
+        "input_tokens": usage.get("input_tokens", 0),
+        "output_tokens": usage.get("output_tokens", 0),
+        "reasoning_tokens": usage.get("reasoning_tokens", 0),
+        "cached_input_tokens": usage.get("cached_input_tokens", 0),
+        "total_tokens": usage.get("total_tokens", 0),
+    }
+    for key in _cumulative_tokens:
+        _cumulative_tokens[key] += last_usage.get(key, 0)
+
+    emit("token_count", {
+        "api_call": new_api_calls,
+        "last_usage": last_usage,
+        "cumulative_usage": dict(_cumulative_tokens),
+        "model_context_window": config.context_window,
+    })
 
     # Build token usage record (category assigned later in update_state_node)
     token_record = build_token_record(
@@ -162,6 +252,55 @@ def agent_node(state: AgentState) -> AgentState:
     }
 
 
+def _emit_tool_results(state: AgentState) -> None:
+    """Emit tool_result events for all recent ToolMessages in state."""
+    messages = state.get("messages", [])
+    # Gather consecutive ToolMessages from the end of the list
+    for msg in reversed(messages[-10:]):
+        msg_type = type(msg).__name__
+        if msg_type != "ToolMessage":
+            break
+        # Parse success from content
+        success = None
+        content = msg.content if hasattr(msg, "content") else ""
+        if isinstance(content, str):
+            try:
+                import json as _json
+                parsed = _json.loads(content)
+                if isinstance(parsed, dict):
+                    success = parsed.get("success")
+            except (ValueError, TypeError):
+                pass
+
+        emit("tool_result", {
+            "tool_name": getattr(msg, "name", None),
+            "call_id": getattr(msg, "tool_call_id", None),
+            "success": success,
+            "content": content,
+            "content_length": len(content) if isinstance(content, str) else 0,
+        })
+
+
+def _snapshot_state(state: AgentState, trigger: str, delta: dict) -> dict:
+    """Build a full state snapshot for a state_update event."""
+    # Merge current state with delta to show the resulting state
+    return {
+        "trigger": trigger,
+        "iteration": delta.get("iteration", state.get("iteration", 1)),
+        "api_calls": state.get("api_calls", 0),
+        "consecutive_failures": delta.get("consecutive_failures", state.get("consecutive_failures", 0)),
+        "no_progress_count": delta.get("no_progress_count", state.get("no_progress_count", 0)),
+        "current_coverage": delta.get("current_coverage", state.get("current_coverage", 0.0)),
+        "max_coverage": delta.get("max_coverage", state.get("max_coverage", 0.0)),
+        "cumulative_coverage": delta.get("cumulative_coverage", state.get("cumulative_coverage", 0.0)),
+        "cumulative_coverage_db": delta.get("cumulative_coverage_db", state.get("cumulative_coverage_db")),
+        "is_done": state.get("is_done", False),
+        "done_reason": state.get("done_reason"),
+        "is_finalizing": state.get("is_finalizing", False),
+        "delta": delta,
+    }
+
+
 def update_state_node(state: AgentState) -> AgentState:
     """
     Update state node: Track iterations, attempts, and coverage after tool executions.
@@ -176,8 +315,28 @@ def update_state_node(state: AgentState) -> AgentState:
     """
     config = state["config"]
 
+    # --- JSONL: emit tool_result events for all recent tool outputs ---
+    _emit_tool_results(state)
+
     # Classify any pending unclassified token usage records
     classify_pending_records(state)
+
+    # --- JSONL: emit classified token records ---
+    token_usage = state.get("token_usage", [])
+    for record in token_usage:
+        if record.get("category") != "unclassified":
+            emit("token_classified", {
+                "api_call": record.get("api_call"),
+                "iteration": record.get("iteration"),
+                "category": record.get("category"),
+                "failures": record.get("failures"),
+                "cumulative_coverage": record.get("cumulative_coverage"),
+                "tool_calls": record.get("tool_calls"),
+                "input_tokens": record.get("input_tokens"),
+                "output_tokens": record.get("output_tokens"),
+                "reasoning_tokens": record.get("reasoning_tokens"),
+                "cached_input_tokens": record.get("cached_input_tokens"),
+            })
 
     # Helper function to parse tool result from message content
     def parse_tool_result(content):
@@ -188,6 +347,11 @@ def update_state_node(state: AgentState) -> AgentState:
             except:
                 return {}
         return content if isinstance(content, dict) else {}
+
+    def _emit_and_return(trigger: str, delta: dict) -> dict:
+        """Emit state_update event and return the delta."""
+        emit("state_update", _snapshot_state(state, trigger, delta))
+        return delta
 
     # Priority 0: Check for run_verification_cycle results (composite tool)
     latest_msg = state["messages"][-1] if state["messages"] else None
@@ -205,12 +369,12 @@ def update_state_node(state: AgentState) -> AgentState:
                     f"Verification cycle failed at {stopped_at} "
                     f"(iter {iter_num}, retry {retry_num})"
                 )
-                return {
+                return _emit_and_return(f"verification_cycle_{stopped_at}_fail", {
                     "consecutive_failures": state["consecutive_failures"] + 1
-                }
+                })
             # Write or coverage failure — no state change, agent sees the error
             logging.warning(f"Verification cycle failed at {stopped_at} stage")
-            return {}
+            return _emit_and_return(f"verification_cycle_{stopped_at}_fail", {})
         else:
             # Full success — mirror parse_coverage success logic
             coverage_result = result.get("coverage_result", {})
@@ -231,7 +395,7 @@ def update_state_node(state: AgentState) -> AgentState:
                     f"Cumulative coverage improved: {prev_cumulative:.1f}% → "
                     f"{cumulative_coverage:.1f}% (this iteration: {iteration_coverage:.1f}%)"
                 )
-                return {
+                return _emit_and_return("verification_cycle_coverage_improved", {
                     "current_coverage": iteration_coverage,
                     "max_coverage": max(state["max_coverage"], iteration_coverage),
                     "cumulative_coverage": cumulative_coverage,
@@ -239,20 +403,20 @@ def update_state_node(state: AgentState) -> AgentState:
                     "iteration": next_iteration,
                     "consecutive_failures": 0,
                     "no_progress_count": 0,
-                }
+                })
             else:
                 logging.warning(
                     f"No cumulative coverage improvement: {cumulative_coverage:.1f}% "
                     f"(this iteration: {iteration_coverage:.1f}%)"
                 )
-                return {
+                return _emit_and_return("verification_cycle_no_improvement", {
                     "current_coverage": iteration_coverage,
                     "cumulative_coverage": cumulative_coverage,
                     "cumulative_coverage_db": cumulative_db,
                     "iteration": next_iteration,
                     "consecutive_failures": 0,
                     "no_progress_count": state["no_progress_count"] + 1,
-                }
+                })
 
     # Priority 1: Check for compile_design failures
     for msg in reversed(state["messages"][-5:]):
@@ -268,9 +432,9 @@ def update_state_node(state: AgentState) -> AgentState:
                 iter_num = result.get('iteration', '?')
                 retry_num = result.get('retry', '?')
                 logging.warning(f"Compilation failed (iter {iter_num}, retry {retry_num})")
-                return {
+                return _emit_and_return("compile_fail", {
                     "consecutive_failures": state["consecutive_failures"] + 1
-                }
+                })
             break  # Found compile result, move to next check
 
     # Priority 2: Check for run_simulation failures
@@ -283,9 +447,9 @@ def update_state_node(state: AgentState) -> AgentState:
                 iter_num = result.get('iteration', '?')
                 retry_num = result.get('retry', '?')
                 logging.warning(f"Simulation failed (iter {iter_num}, retry {retry_num})")
-                return {
+                return _emit_and_return("sim_fail", {
                     "consecutive_failures": state["consecutive_failures"] + 1
-                }
+                })
             break  # Found sim result, move to next check
 
     # Priority 3: Check for parse_coverage results (coverage improvement tracking)
@@ -314,7 +478,7 @@ def update_state_node(state: AgentState) -> AgentState:
             # Check if cumulative coverage improved
             if cumulative_coverage > prev_cumulative:
                 logging.info(f"Cumulative coverage improved: {prev_cumulative:.1f}% → {cumulative_coverage:.1f}% (this iteration: {iteration_coverage:.1f}%)")
-                return {
+                return _emit_and_return("coverage_improved", {
                     "current_coverage": iteration_coverage,
                     "max_coverage": max(state["max_coverage"], iteration_coverage),
                     "cumulative_coverage": cumulative_coverage,
@@ -322,20 +486,20 @@ def update_state_node(state: AgentState) -> AgentState:
                     "iteration": next_iteration,
                     "consecutive_failures": 0,  # Reset on improvement
                     "no_progress_count": 0  # Reset no_progress on improvement
-                }
+                })
             else:
                 logging.warning(f"No cumulative coverage improvement: {cumulative_coverage:.1f}% (this iteration: {iteration_coverage:.1f}%)")
-                return {
+                return _emit_and_return("no_improvement", {
                     "current_coverage": iteration_coverage,
                     "cumulative_coverage": cumulative_coverage,  # Update even if no improvement
                     "cumulative_coverage_db": cumulative_db,
                     "iteration": next_iteration,  # Still increment iteration
                     "consecutive_failures": 0,  # Reset - cycle was successful
                     "no_progress_count": state["no_progress_count"] + 1  # Track for early termination
-                }
+                })
 
     # No updates needed
-    return {}
+    return _emit_and_return("none", {})
 
 def finalize_node(state: AgentState) -> AgentState:
     """
@@ -374,6 +538,19 @@ def finalize_node(state: AgentState) -> AgentState:
     logging.info(f"{Colors.MAGENTA}Cumulative coverage: {cumulative_coverage:.1f}% | No-progress count: {no_progress}{Colors.RESET}")
     logging.info(f"{Colors.MAGENTA}{'='*80}{Colors.RESET}\n")
 
+    # --- JSONL: finalize + human_message events ---
+    emit("finalize", {
+        "reason": reason,
+        "cumulative_coverage": cumulative_coverage,
+        "iterations_completed": iteration - 1,
+        "no_progress_count": no_progress,
+    })
+
+    emit("human_message", {
+        "source": "finalize",
+        "content": finalize_message,
+    })
+
     return {
         "messages": [HumanMessage(content=finalize_message)],
         "is_finalizing": True,
@@ -404,41 +581,52 @@ def create_react_graph() -> StateGraph:
         config = state["config"]
         last_message = state["messages"][-1]
 
+        def _route(decision, reason):
+            emit("route_decision", {
+                "source": "after_agent",
+                "decision": decision,
+                "reason": reason,
+                "api_calls": state.get("api_calls", 0),
+                "iteration": state.get("iteration", 1),
+            })
+            return decision
+
         # In finalize mode: let tool calls execute (so write_file runs), then END
         if state.get("is_finalizing", False):
             if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-                return "tools"
-            return END
+                return _route("tools", "finalize: executing tool calls")
+            return _route(END, "finalize: no tool calls, ending")
 
         # Check termination conditions
         if state["api_calls"] >= config.max_iterations:
             logging.info(f"Max API calls reached: {state['api_calls']}/{config.max_iterations}")
-            return END
+            return _route(END, f"max_api_calls ({state['api_calls']}/{config.max_iterations})")
 
         if state["iteration"] > config.max_iterations:
             logging.info(f"Max coverage iterations reached: {state['iteration']}/{config.max_iterations}")
-            return END
+            return _route(END, f"max_iterations ({state['iteration']}/{config.max_iterations})")
 
         if state["consecutive_failures"] >= config.max_retries:
             logging.info("Max retries reached")
-            return END
+            return _route(END, f"max_retries ({state['consecutive_failures']}/{config.max_retries})")
 
         if state["no_progress_count"] >= config.max_no_progress:
             logging.info(f"No progress after {state['no_progress_count']} attempts (MAX_NO_PROGRESS={config.max_no_progress}) - cumulative coverage stuck at {state.get('cumulative_coverage', 0.0):.1f}%")
-            return END
+            return _route(END, f"max_no_progress ({state['no_progress_count']}/{config.max_no_progress})")
 
         # Check context window limit
         token_count = count_message_tokens(state["messages"], config.model)
         if token_count >= config.context_window:
             logging.info(f"Context window limit reached: {format_token_count(token_count, config.context_window)} (CONTEXT_WINDOW={config.context_window:,})")
-            return END
+            return _route(END, f"context_window_limit ({token_count:,}/{config.context_window:,})")
 
         # Route to tools if tool calls present
         if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-            return "tools"
+            tool_names = [tc.get('name', '?') for tc in last_message.tool_calls]
+            return _route("tools", f"tool_calls: {tool_names}")
 
         # No tool calls — loop back so agent tries again
-        return "agent"
+        return _route("agent", "no_tool_calls, retrying")
 
     graph.add_conditional_edges(
         "agent",
@@ -462,43 +650,54 @@ def create_react_graph() -> StateGraph:
         config = state["config"]
         is_finalizing = state.get("is_finalizing", False)
 
+        def _route(decision, reason):
+            emit("route_decision", {
+                "source": "after_update",
+                "decision": decision,
+                "reason": reason,
+                "api_calls": state.get("api_calls", 0),
+                "iteration": state.get("iteration", 1),
+                "cumulative_coverage": state.get("cumulative_coverage", 0.0),
+            })
+            return decision
+
         # If already finalizing, the agent had its last turn — end now
         if is_finalizing:
             logging.info("Finalize turn complete — ending run")
-            return END
+            return _route(END, "finalize_turn_complete")
 
         # Coverage complete: route to finalize so agent can write report
         cumulative = state.get("cumulative_coverage", 0.0)
         if cumulative >= 100.0:
             logging.info(f"Coverage complete ({cumulative:.1f}%) — routing to finalize")
-            return "finalize"
+            return _route("finalize", f"coverage_complete ({cumulative:.1f}%)")
 
         # Check termination conditions with UPDATED state
         if state["api_calls"] >= config.max_iterations:
             logging.info(f"Max API calls reached: {state['api_calls']}/{config.max_iterations}")
-            return END
+            return _route(END, f"max_api_calls ({state['api_calls']}/{config.max_iterations})")
 
         if state["iteration"] > config.max_iterations:
             logging.info(f"Max coverage iterations reached: {state['iteration']}/{config.max_iterations}")
-            return END
+            return _route(END, f"max_iterations ({state['iteration']}/{config.max_iterations})")
 
         if state["consecutive_failures"] >= config.max_retries:
             logging.info(f"Max retries reached: {state['consecutive_failures']}/{config.max_retries}")
-            return END
+            return _route(END, f"max_retries ({state['consecutive_failures']}/{config.max_retries})")
 
         # No-progress: route to finalize so agent can write report
         if state["no_progress_count"] >= config.max_no_progress:
             logging.info(f"No progress after {state['no_progress_count']} attempts (MAX_NO_PROGRESS={config.max_no_progress}) - cumulative coverage stuck at {state.get('cumulative_coverage', 0.0):.1f}% — routing to finalize")
-            return "finalize"
+            return _route("finalize", f"max_no_progress ({state['no_progress_count']}/{config.max_no_progress})")
 
         # Check context window limit
         token_count = count_message_tokens(state["messages"], config.model)
         if token_count >= config.context_window:
             logging.info(f"Context window limit reached: {format_token_count(token_count, config.context_window)} (CONTEXT_WINDOW={config.context_window:,})")
-            return END
+            return _route(END, f"context_window_limit ({token_count:,}/{config.context_window:,})")
 
         # Continue to agent
-        return "agent"
+        return _route("agent", "continue")
 
     graph.add_conditional_edges(
         "update_state",
