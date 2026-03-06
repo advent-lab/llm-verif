@@ -507,38 +507,37 @@ def finalize_node(state: AgentState) -> AgentState:
     no_tool_calls = state.get("no_tool_call_count", 0)
     iteration = state.get("iteration", 0)
 
+    # Determine termination reason from state
+    api_calls = state.get("api_calls", 0)
+    consecutive_failures = state.get("consecutive_failures", 0)
+    token_count = count_message_tokens(state["messages"], config.model)
+
     if cumulative_coverage >= 100.0:
         reason = "coverage_complete"
-        finalize_message = (
-            f"FRAMEWORK NOTICE: 100% coverage achieved. "
-            f"Iterations completed: {iteration - 1}.\n\n"
-            f"Write your final run report to `report.md` using `write_file`. "
-            f"Follow the report requirements from your instructions (Step 7)."
-        )
+    elif token_count >= config.context_window:
+        reason = "context_window_limit"
+    elif api_calls >= config.max_iterations:
+        reason = "max_api_calls"
+    elif iteration > config.max_iterations:
+        reason = "max_iterations"
+    elif consecutive_failures >= config.max_retries:
+        reason = "max_retries"
     elif no_tool_calls >= config.max_no_tool_calls:
         reason = "no_tool_calls"
-        finalize_message = (
-            f"FRAMEWORK NOTICE: Verification terminated — agent returned "
-            f"{no_tool_calls} consecutive responses with no tool calls. "
-            f"Final cumulative coverage: {cumulative_coverage:.1f}%. "
-            f"Iterations completed: {iteration - 1}.\n\n"
-            f"Write your final run report to `report.md` using `write_file`. "
-            f"The report MUST classify ALL remaining uncovered lines by category "
-            f"(unreachable, excludable, potential bugs, needs more effort). "
-            f"Follow the report requirements from your instructions (Step 7)."
-        )
-    else:
+    elif no_progress >= config.max_no_progress:
         reason = "no_progress"
-        finalize_message = (
-            f"FRAMEWORK NOTICE: Verification terminated — no cumulative coverage improvement "
-            f"after {no_progress} consecutive iterations. "
-            f"Final cumulative coverage: {cumulative_coverage:.1f}%. "
-            f"Iterations completed: {iteration - 1}.\n\n"
-            f"Write your final run report to `report.md` using `write_file`. "
-            f"The report MUST classify ALL remaining uncovered lines by category "
-            f"(unreachable, excludable, potential bugs, needs more effort). "
-            f"Follow the report requirements from your instructions (Step 7)."
-        )
+    else:
+        reason = "unknown"
+
+    finalize_message = (
+        f"FRAMEWORK NOTICE: Verification terminated (reason: {reason}). "
+        f"Final cumulative coverage: {cumulative_coverage:.1f}%. "
+        f"Iterations completed: {iteration - 1}.\n\n"
+        f"Write your final run report to `report.md` using `write_file`. "
+        f"The report MUST classify ALL remaining uncovered lines by category "
+        f"(unreachable, excludable, potential bugs, needs more effort). "
+        f"Follow the report requirements from your instructions (Step 7)."
+    )
 
     logging.info(f"{Colors.MAGENTA}{Colors.BOLD}{'='*80}{Colors.RESET}")
     logging.info(f"{Colors.MAGENTA}{Colors.BOLD}FINALIZE ({reason}): Giving agent one last turn to write report.md{Colors.RESET}")
@@ -605,28 +604,28 @@ def create_react_graph() -> StateGraph:
                 return _route("tools", "finalize: executing tool calls")
             return _route(END, "finalize: no tool calls, ending")
 
-        # Check termination conditions
+        # Check termination conditions — route to finalize so agent writes report.md
         if state["api_calls"] >= config.max_iterations:
-            logging.info(f"Max API calls reached: {state['api_calls']}/{config.max_iterations}")
-            return _route(END, f"max_api_calls ({state['api_calls']}/{config.max_iterations})")
+            logging.info(f"Max API calls reached: {state['api_calls']}/{config.max_iterations} — routing to finalize")
+            return _route("finalize", f"max_api_calls ({state['api_calls']}/{config.max_iterations})")
 
         if state["iteration"] > config.max_iterations:
-            logging.info(f"Max coverage iterations reached: {state['iteration']}/{config.max_iterations}")
-            return _route(END, f"max_iterations ({state['iteration']}/{config.max_iterations})")
+            logging.info(f"Max coverage iterations reached: {state['iteration']}/{config.max_iterations} — routing to finalize")
+            return _route("finalize", f"max_iterations ({state['iteration']}/{config.max_iterations})")
 
         if state["consecutive_failures"] >= config.max_retries:
-            logging.info("Max retries reached")
-            return _route(END, f"max_retries ({state['consecutive_failures']}/{config.max_retries})")
+            logging.info(f"Max retries reached — routing to finalize")
+            return _route("finalize", f"max_retries ({state['consecutive_failures']}/{config.max_retries})")
 
         if state["no_progress_count"] >= config.max_no_progress:
-            logging.info(f"No progress after {state['no_progress_count']} attempts (MAX_NO_PROGRESS={config.max_no_progress}) - cumulative coverage stuck at {state.get('cumulative_coverage', 0.0):.1f}%")
-            return _route(END, f"max_no_progress ({state['no_progress_count']}/{config.max_no_progress})")
+            logging.info(f"No progress after {state['no_progress_count']} attempts (MAX_NO_PROGRESS={config.max_no_progress}) - cumulative coverage stuck at {state.get('cumulative_coverage', 0.0):.1f}% — routing to finalize")
+            return _route("finalize", f"max_no_progress ({state['no_progress_count']}/{config.max_no_progress})")
 
         # Check context window limit
         token_count = count_message_tokens(state["messages"], config.model)
         if token_count >= config.context_window:
-            logging.info(f"Context window limit reached: {format_token_count(token_count, config.context_window)} (CONTEXT_WINDOW={config.context_window:,})")
-            return _route(END, f"context_window_limit ({token_count:,}/{config.context_window:,})")
+            logging.info(f"Context window limit reached: {format_token_count(token_count, config.context_window)} (CONTEXT_WINDOW={config.context_window:,}) — routing to finalize")
+            return _route("finalize", f"context_window_limit ({token_count:,}/{config.context_window:,})")
 
         # Route to tools if tool calls present
         if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
@@ -686,18 +685,18 @@ def create_react_graph() -> StateGraph:
             logging.info(f"Coverage complete ({cumulative:.1f}%) — routing to finalize")
             return _route("finalize", f"coverage_complete ({cumulative:.1f}%)")
 
-        # Check termination conditions with UPDATED state
+        # Check termination conditions with UPDATED state — route to finalize so agent writes report.md
         if state["api_calls"] >= config.max_iterations:
-            logging.info(f"Max API calls reached: {state['api_calls']}/{config.max_iterations}")
-            return _route(END, f"max_api_calls ({state['api_calls']}/{config.max_iterations})")
+            logging.info(f"Max API calls reached: {state['api_calls']}/{config.max_iterations} — routing to finalize")
+            return _route("finalize", f"max_api_calls ({state['api_calls']}/{config.max_iterations})")
 
         if state["iteration"] > config.max_iterations:
-            logging.info(f"Max coverage iterations reached: {state['iteration']}/{config.max_iterations}")
-            return _route(END, f"max_iterations ({state['iteration']}/{config.max_iterations})")
+            logging.info(f"Max coverage iterations reached: {state['iteration']}/{config.max_iterations} — routing to finalize")
+            return _route("finalize", f"max_iterations ({state['iteration']}/{config.max_iterations})")
 
         if state["consecutive_failures"] >= config.max_retries:
-            logging.info(f"Max retries reached: {state['consecutive_failures']}/{config.max_retries}")
-            return _route(END, f"max_retries ({state['consecutive_failures']}/{config.max_retries})")
+            logging.info(f"Max retries reached: {state['consecutive_failures']}/{config.max_retries} — routing to finalize")
+            return _route("finalize", f"max_retries ({state['consecutive_failures']}/{config.max_retries})")
 
         # No-progress: route to finalize so agent can write report
         if state["no_progress_count"] >= config.max_no_progress:
@@ -707,8 +706,8 @@ def create_react_graph() -> StateGraph:
         # Check context window limit
         token_count = count_message_tokens(state["messages"], config.model)
         if token_count >= config.context_window:
-            logging.info(f"Context window limit reached: {format_token_count(token_count, config.context_window)} (CONTEXT_WINDOW={config.context_window:,})")
-            return _route(END, f"context_window_limit ({token_count:,}/{config.context_window:,})")
+            logging.info(f"Context window limit reached: {format_token_count(token_count, config.context_window)} (CONTEXT_WINDOW={config.context_window:,}) — routing to finalize")
+            return _route("finalize", f"context_window_limit ({token_count:,}/{config.context_window:,})")
 
         # Continue to agent
         return _route("agent", "continue")
