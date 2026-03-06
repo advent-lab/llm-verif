@@ -17,6 +17,7 @@ from ..utils.event_log import (
 )
 from ..prompts.loader import load_system_prompt
 from ..tools import get_all_tools, set_tool_config
+from ..tools.analysis import get_cumulative_coverage_db, _create_annotated_source
 
 def initialize_node(state: AgentState) -> AgentState:
     """
@@ -529,14 +530,33 @@ def finalize_node(state: AgentState) -> AgentState:
     else:
         reason = "unknown"
 
+    # Parse latest cumulative coverage for the report
+    missed_coverage_info = ""
+    cumulative_db = get_cumulative_coverage_db()
+    if cumulative_db and Path(cumulative_db).exists():
+        try:
+            from ..tools.analysis import _adapter as coverage_adapter
+            if coverage_adapter is not None:
+                cumulative_result = coverage_adapter.parse_coverage(Path(cumulative_db))
+                annotated = _create_annotated_source(cumulative_result.uncovered_lines)
+                if annotated:
+                    missed_coverage_info = f"\n\n## Latest Missed Coverage\n\n{annotated}"
+        except Exception as e:
+            logging.warning(f"Failed to parse coverage in finalize: {e}")
+
     finalize_message = (
         f"FRAMEWORK NOTICE: Verification terminated (reason: {reason}). "
         f"Final cumulative coverage: {cumulative_coverage:.1f}%. "
         f"Iterations completed: {iteration - 1}.\n\n"
-        f"Write your final run report to `report.md` using `write_file`. "
+        f"You MUST now write your final run report to `report.md` using `write_file`. "
+        f"This is your LAST turn — only `write_file` tool calls will be executed. "
+        f"Do NOT call `parse_coverage`, `read_file`, or any other tool. "
+        f"If you need additional context you haven't already gathered, note it under "
+        f"'Next Steps' in your report.\n\n"
         f"The report MUST classify ALL remaining uncovered lines by category "
         f"(unreachable, excludable, potential bugs, needs more effort). "
         f"Follow the report requirements from your instructions (Step 7)."
+        f"{missed_coverage_info}"
     )
 
     logging.info(f"{Colors.MAGENTA}{Colors.BOLD}{'='*80}{Colors.RESET}")
@@ -598,11 +618,14 @@ def create_react_graph() -> StateGraph:
             })
             return decision
 
-        # In finalize mode: let tool calls execute (so write_file runs), then END
+        # In finalize mode: only allow write_file tool calls, then END
         if state.get("is_finalizing", False):
             if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-                return _route("tools", "finalize: executing tool calls")
-            return _route(END, "finalize: no tool calls, ending")
+                write_calls = [tc for tc in last_message.tool_calls if tc.get('name') == 'write_file']
+                if write_calls:
+                    last_message.tool_calls = write_calls
+                    return _route("tools", "finalize: executing write_file")
+            return _route(END, "finalize: no write_file call, ending")
 
         # Check termination conditions — route to finalize so agent writes report.md
         if state["api_calls"] >= config.max_iterations:
