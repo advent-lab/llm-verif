@@ -1,25 +1,4 @@
 #!/usr/bin/env python3
-"""CovAgent Compute Analysis: Split input/output token categorization.
-
-Parses CovAgent events.jsonl and independently categorizes input and output
-tokens of each agent turn into 6 activity categories:
-
-  S - System Prompt:        Turn 1 input (system message)
-  A - Design Comprehension: Reading spec/RTL/design files
-  B - Stimulus Generation:  Writing/revising testbenches
-  C - Coverage Feedback:    Structured coverage results entering context
-  D - Error Recovery:       Actions while consecutive_failures > 0
-  E - Agentic Overhead:     Orchestration, finalize, report writing
-
-Key difference from compute_study.py: input and output tokens of each turn
-are independently categorized (previous turn's tool results determine input
-category; this turn's tool calls determine output category).
-
-Usage:
-    python scripts/compute_covagent.py work/trng_top/events.jsonl
-    python scripts/compute_covagent.py work/trng_top/events.jsonl --validate
-"""
-
 import argparse
 import json
 import sys
@@ -39,50 +18,14 @@ from compute_study import DESIGN_PATH_PATTERNS, format_duration
 
 
 class Category(str, Enum):
-    SYSTEM_PROMPT = "S"
-    DESIGN_COMPREHENSION = "A"
-    STIMULUS_GENERATION = "B"
-    COVERAGE_FEEDBACK = "C"
-    ERROR_RECOVERY = "D"
-    AGENTIC_OVERHEAD = "E"
-
-    @property
-    def label(self) -> str:
-        return {
-            "S": "System Prompt",
-            "A": "Design Comprehension",
-            "B": "Stimulus Generation",
-            "C": "Coverage Feedback",
-            "D": "Error Recovery",
-            "E": "Agentic Overhead",
-        }[self.value]
+    SYSTEM_PROMPT = "System Prompt"
+    DESIGN_COMPREHENSION = "Design Comprehension"
+    STIMULUS_GENERATION = "Stimulus Generation"
+    COVERAGE_FEEDBACK = "Coverage Feedback"
+    ERROR_RECOVERY = "Error Recovery"
+    AGENTIC_OVERHEAD = "Agentic Overhead"
 
 
-# ---------------------------------------------------------------------------
-# Reference data for validation
-# ---------------------------------------------------------------------------
-
-# (turn, cached, new_in, in_cat, out, out_cat, reasoning, total)
-TRNG_TOP_REFERENCE = [
-    (1, 0, 4301, "S", 40, "A", 0, 4341),
-    (2, 4224, 2940, "A", 112, "A", 65, 7393),
-    (3, 6656, 4265, "A", 343, "A", 153, 11936),
-    (4, 10752, 13044, "A", 571, "A", 519, 25398),
-    (5, 24064, 3086, "A", 7070, "B", 4220, 35035),
-    (6, 27136, 11862, "C", 779, "A", 729, 43456),
-    (7, 42496, 5120, "A", 8274, "B", 6434, 56121),
-    (8, 47616, 2848, "C", 7813, "B", 5447, 60348),
-    (9, 51712, 2588, "C", 1977, "A", 1926, 59466),
-    (10, 56832, 4666, "A", 9781, "B", 7317, 71987),
-    (11, 61952, 2301, "C", 10910, "B", 8479, 77881),
-    (12, 66048, 1394, "C", 5792, "B", 4266, 76588),
-    (13, 70144, 1300, "C", 43, "A", 0, 73665),
-    (14, 73600, 6229, "A", 2000, "A", 1950, 81894),
-    (15, 79360, 7765, "A", 1529, "B", 0, 89238),
-    (16, 89088, 1306, "C", 6657, "B", 5043, 97201),
-    (17, 89600, 1300, "C", 137, "E", 82, 93595),
-    (18, 92672, 1115, "E", 1494, "E", 1439, 96122),
-]
 
 
 # ---------------------------------------------------------------------------
@@ -465,7 +408,7 @@ class CovAgentParser:
             cat_total = cat_input + cat_total_output
 
             breakdown[cat.value] = {
-                "name": cat.label,
+                "name": cat.value,
                 "input_tokens": cat_input,
                 "visible_output_tokens": cat_visible_output,
                 "reasoning_tokens": cat_reasoning,
@@ -516,61 +459,7 @@ class CovAgentParser:
             )
         return curve
 
-    def validate(self, design_name: str) -> bool:
-        """Validate against reference table if available."""
-        if design_name != "trng_top":
-            print(f"  No reference data for design '{design_name}'")
-            return True
 
-        ref = TRNG_TOP_REFERENCE
-        if len(self.turns) != len(ref):
-            print(
-                f"  MISMATCH: expected {len(ref)} turns, got {len(self.turns)}",
-                file=sys.stderr,
-            )
-            return False
-
-        ok = True
-        for i, (turn, (r_turn, r_cached, r_new_in, r_in_cat, r_out, r_out_cat, r_rsn, r_total)) in enumerate(
-            zip(self.turns, ref)
-        ):
-            mismatches = []
-            if turn.turn != r_turn:
-                mismatches.append(f"turn {turn.turn} != {r_turn}")
-            if turn.cached_input_tokens != r_cached:
-                mismatches.append(f"cached {turn.cached_input_tokens} != {r_cached}")
-            if turn.new_input_tokens != r_new_in:
-                mismatches.append(
-                    f"new_input {turn.new_input_tokens} != {r_new_in}"
-                )
-            if turn.input_category.value != r_in_cat:
-                mismatches.append(
-                    f"in_cat {turn.input_category.value} != {r_in_cat}"
-                )
-            if turn.output_tokens != r_out:
-                mismatches.append(f"output {turn.output_tokens} != {r_out}")
-            if turn.output_category.value != r_out_cat:
-                mismatches.append(
-                    f"out_cat {turn.output_category.value} != {r_out_cat}"
-                )
-            if turn.reasoning_tokens != r_rsn:
-                mismatches.append(f"reasoning {turn.reasoning_tokens} != {r_rsn}")
-            if turn.total_tokens != r_total:
-                mismatches.append(f"total {turn.total_tokens} != {r_total}")
-
-            if mismatches:
-                ok = False
-                print(
-                    f"  Turn {r_turn}: {', '.join(mismatches)}",
-                    file=sys.stderr,
-                )
-
-        if ok:
-            print("  Validation PASSED: all turns match reference table")
-        else:
-            print("  Validation FAILED: mismatches found", file=sys.stderr)
-
-        return ok
 
 
 # ---------------------------------------------------------------------------
@@ -578,23 +467,6 @@ class CovAgentParser:
 # ---------------------------------------------------------------------------
 
 
-def print_per_turn_table(turns: List[TurnRecord]) -> None:
-    """Print per-turn breakdown matching the reference table format."""
-    print(
-        f"\n{'Turn':>5} | {'Cached':>7} | {'In (new)':>14} | "
-        f"{'Out':>12} | {'Reasoning':>13} | {'Total (accum.)':>15}"
-    )
-    print(f"{'-' * 5}-+-{'-' * 7}-+-{'-' * 14}-+-{'-' * 12}-+-{'-' * 13}-+-{'-' * 15}")
-
-    for t in turns:
-        in_label = f"{t.new_input_tokens:,} ({t.input_category.value})"
-        out_label = f"{t.output_tokens:,} ({t.output_category.value})"
-        rsn_label = f"{t.reasoning_tokens:,} ({t.output_category.value})"
-        print(
-            f"{t.turn:>5} | {t.cached_input_tokens:>7,} | {in_label:>14} | "
-            f"{out_label:>12} | {rsn_label:>13} | {t.total_tokens:>15,}"
-        )
-    print()
 
 
 def print_category_summary(result: CovAgentResult) -> None:
@@ -605,31 +477,31 @@ def print_category_summary(result: CovAgentResult) -> None:
     print(f"Turns:     {result.total_turns}")
     print(f"Iter:      {result.total_iterations}")
     print(f"Duration:  {format_duration(result.duration_seconds)}")
-    print(f"Final Ctx: {result.final_context_tokens:,} tokens")
+    print(f"Final Ctx: {result.final_context_tokens} tokens")
 
     t = result.to_dict()["tokens"]
     print(f"\nToken Totals:")
-    print(f"  Input:     {t['input']:>10,}")
-    print(f"  Output:    {t['output']:>10,}")
-    print(f"  Reasoning: {t['reasoning']:>10,}")
-    print(f"  Cached:    {t['cached_input']:>10,}")
-    print(f"  Cache Hit: {t['cache_hit_rate'] * 100:>9.1f}%")
+    print(f"Input:     {t['input']:>10}")
+    print(f"Output:    {t['output']:>10}")
+    print(f"Reasoning: {t['reasoning']:>10}")
+    print(f"Cached:    {t['cached_input']:>10}")
+    print(f"Cache Hit: {t['cache_hit_rate'] * 100:>9.1f}%")
 
     print(
-        f"\n  {'Category':<25} {'In Tok':>8} {'Vis Out':>8} {'Reason':>8} "
+        f"\n  {'Category':<30} {'In Tok':>8} {'Vis Out':>8} {'Reason':>8} "
         f"{'Tot Out':>8} {'% Ctx':>7} {'#In':>4} {'#Out':>4}"
     )
-    print(f"  {'-' * 81}")
+    print(f"  {'-' * 90}")
 
     for cat in Category:
         c = result.by_category.get(cat.value, {})
-        label = f"{cat.value}  {cat.label}"
+        label = cat.value
         print(
-            f"  {label:<25} "
-            f"{c.get('input_tokens', 0):>8,} "
-            f"{c.get('visible_output_tokens', 0):>8,} "
-            f"{c.get('reasoning_tokens', 0):>8,} "
-            f"{c.get('total_output_tokens', 0):>8,} "
+            f"  {label:<30} "
+            f"{c.get('input_tokens', 0):>8} "
+            f"{c.get('visible_output_tokens', 0):>8} "
+            f"{c.get('reasoning_tokens', 0):>8} "
+            f"{c.get('total_output_tokens', 0):>8} "
             f"{c.get('pct_of_final_context', 0) * 100:>6.1f}% "
             f"{c.get('num_turns_input', 0):>4} "
             f"{c.get('num_turns_output', 0):>4}"
@@ -647,13 +519,13 @@ def print_category_summary(result: CovAgentResult) -> None:
     total_pct = sum(
         c.get("pct_of_final_context", 0) for c in result.by_category.values()
     )
-    print(f"  {'-' * 81}")
+    print(f"  {'-' * 90}")
     print(
-        f"  {'TOTAL':<25} "
-        f"{total_in:>8,} "
-        f"{total_vis:>8,} "
-        f"{total_rsn:>8,} "
-        f"{total_out:>8,} "
+        f"  {'TOTAL':<30} "
+        f"{total_in:>8} "
+        f"{total_vis:>8} "
+        f"{total_rsn:>8} "
+        f"{total_out:>8} "
         f"{total_pct * 100:>6.1f}% "
         f"{result.total_turns:>4} "
         f"{result.total_turns:>4}"
@@ -672,20 +544,11 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""\
 Examples:
-  %(prog)s work/trng_top/events.jsonl
-  %(prog)s work/trng_top/events.jsonl --validate
-  %(prog)s work/chacha_top/events.jsonl -o results/
+  %(prog)s work/trng_top
+  %(prog)s work/chacha_top
         """,
     )
-    parser.add_argument("events_path", help="Path to events.jsonl")
-    parser.add_argument(
-        "-o", "--output-dir", default=".", help="Directory for output JSON"
-    )
-    parser.add_argument(
-        "--validate",
-        action="store_true",
-        help="Print per-turn table and validate against reference (if available)",
-    )
+    parser.add_argument("work_dir", help="Path to work directory containing events.jsonl")
     parser.add_argument(
         "--no-json",
         action="store_true",
@@ -694,21 +557,23 @@ Examples:
 
     args = parser.parse_args()
 
-    p = CovAgentParser(args.events_path)
-    result = p.build_result()
+    work_dir = Path(args.work_dir)
+    events_path = work_dir / "events.jsonl"
+    
+    if not events_path.exists():
+        print(f"Error: events.jsonl not found in {work_dir}", file=sys.stderr)
+        return 1
 
-    # Always print per-turn table if --validate
-    if args.validate:
-        print_per_turn_table(p.turns)
-        p.validate(result.design)
+    p = CovAgentParser(str(events_path))
+    result = p.build_result()
 
     # Print category summary
     print_category_summary(result)
 
     # JSON output
     if not args.no_json:
-        out_name = f"{result.design}_covagent_compute.json"
-        out_path = Path(args.output_dir) / out_name
+        out_name = f"tokens.json"
+        out_path = work_dir / out_name
         out_path.parent.mkdir(parents=True, exist_ok=True)
         with open(out_path, "w") as f:
             json.dump(result.to_dict(), f, indent=2)
