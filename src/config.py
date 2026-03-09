@@ -20,6 +20,7 @@ class Config:
     spec_path: Path
     design_files: List[Path]
     design_context_files: List[Path]
+    compile_deps_files: List[Path]
     design_context_enabled: bool
 
     # Paths
@@ -175,6 +176,7 @@ def load_config() -> Config:
         spec_path=design_config.spec_path,
         design_files=design_config.design_files,
         design_context_files=design_config.design_context_files,
+        compile_deps_files=design_config.compile_deps_files,
         design_context_enabled=os.getenv("DESIGN_CONTEXT", "1") == "1",
         work_dir=work_dir,
         simulator_path=Path(compiler),

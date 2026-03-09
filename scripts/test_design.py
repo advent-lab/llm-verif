@@ -67,11 +67,12 @@ def load_design_for_test(dashboard_path: Path, design_name: str, base_dir: Path)
 
     design_files = resolve_list("design")
     context_files = resolve_list("design_context")
+    compile_deps_files = resolve_list("compile_deps")
 
     if not design_files:
         raise ValueError(f"Design '{design_name}' has no valid 'design' files")
 
-    return design_files, context_files
+    return design_files, context_files, compile_deps_files
 
 # ---------------------------------------------------------------------------
 # Scaffold testbench  instantiates the top module with all ports tied off
@@ -191,18 +192,19 @@ def main():
     # --- Load design from dashboard ---
     logging.info(f"Loading design: {args.design_name}")
     try:
-        design_files, context_files = load_design_for_test(dashboard_path, args.design_name, base_dir)
+        design_files, context_files, compile_deps_files = load_design_for_test(dashboard_path, args.design_name, base_dir)
     except (FileNotFoundError, ValueError) as e:
         logging.error(str(e))
         sys.exit(1)
 
-    # Context files (packages/deps) must compile BEFORE design files (package ordering matters)
-    all_design_files = context_files + design_files
+    # compile_deps first (no coverage), then context, then design (ordering matters)
+    all_design_files = compile_deps_files + context_files + design_files
     top_module = top_module_name(design_files)
-    logging.info(f"Top module   : {top_module}")
-    logging.info(f"Design files : {len(design_files)}")
-    logging.info(f"Context files: {len(context_files)}")
-    logging.info(f"Total files  : {len(all_design_files)}")
+    logging.info(f"Top module     : {top_module}")
+    logging.info(f"Design files   : {len(design_files)}")
+    logging.info(f"Context files  : {len(context_files)}")
+    logging.info(f"Compile deps   : {len(compile_deps_files)}")
+    logging.info(f"Total files    : {len(all_design_files)}")
 
     # --- Create temp work directory ---
     work_dir = Path(tempfile.mkdtemp(prefix=f"test_{args.design_name}_"))

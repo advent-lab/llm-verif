@@ -13,6 +13,7 @@
 | {spec_path} | Path to specification file(s) |
 | {design_files} | Newline-separated list of design file paths |
 | {design_context_files} | Newline-separated list of design context file paths |
+| {compile_deps_files} | Newline-separated list of compile-only dependency file paths |
 | {module_header} | Extracted top-level module interface |
 | {work_dir} | Path to the Codex work directory for this run |
 
@@ -52,10 +53,13 @@ You are ONLY allowed to read file contents from these specific files:
 2) Design files:
 {design_files}
 
-3) Design context files:
+3) Design context files (included in coverage):
 {design_context_files}
 
-4) Any files inside your work directory:
+4) Compile-only dependency files (compiled but EXCLUDED from coverage):
+{compile_deps_files}
+
+5) Any files inside your work directory:
    - {work_dir}
 
 You must NOT read any other file contents outside of those locations.
@@ -82,23 +86,47 @@ Before running any QuestaSim commands, you must set the license environment vari
 export LM_LICENSE_FILE=27006@en4228283l.scai.dhcp.asu.edu
 ```
 
-To compile your design and testbench:
-1) Change to your work directory: cd {work_dir}
-2) Compile all design files and your testbench with coverage enabled:
-   ```bash
-   vlog +cover <design_files> <testbench_file>
-   ```
-3) Run the simulation with coverage collection:
-   ```bash
-   vsim -c -coverage tb_llm -do "run -all; coverage save -onexit coverage.ucdb; quit -f"
-   ```
+### Compilation (Two-Pass Process)
+
+Change to your work directory: `cd {work_dir}`
+
+**Step 1: Compile compile_deps WITHOUT coverage instrumentation**
+
+Compile all compile-only dependency files without +cover flag. Include +incdir+ flags for include file resolution:
+```bash
+vlog +incdir+<dep_dirs> <compile_deps_files>
+```
+
+**Step 2: Compile design, design_context, and testbench WITH coverage instrumentation**
+
+```bash
+vlog -sv +cover=s +incdir+<design_dirs> +incdir+<dep_dirs> <design_files> <design_context_files> <testbench_file>
+```
+
+Both commands compile into the same `work` library so all modules remain visible during elaboration.
+
+### Simulation with Coverage Collection
+
+Run the simulation with coverage enabled:
+```bash
+vsim -c -coverage work.tb_llm \
+     -suppress vsim-3009 \
+     -suppress vsim-3999 \
+     -do "coverage exclude -du tb_llm; coverage save -onexit coverage.ucdb; run -all; exit;"
+```
+
+The `-suppress` flags suppress known harmless warnings:
+- `vsim-3009`: Timescale mismatch (compile_deps compiled without context)
+- `vsim-3999`: Enum-to-logic port type mismatch
+
+### Coverage Report Generation
 
 To generate a coverage report from the UCDB file:
 ```bash
-vcover report -html -output <report_dir> coverage.ucdb
+vsim -viewcov coverage.ucdb -c -do "coverage report -output coverage_report.xml -du=* -detail -annotate -code s -xml; exit;"
 ```
 
-The coverage report will be saved and can be analyzed to identify uncovered statements and branches. Use this feedback to refine your testbenches.
+Parse the XML to identify uncovered statements. Note: Modules in compile_deps will NOT appear in the coverage report (they were compiled without +cover=s).
 
 ## Testbench Requirements
 

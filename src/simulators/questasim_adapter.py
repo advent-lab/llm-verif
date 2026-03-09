@@ -16,6 +16,7 @@ from .base import SimulatorAdapter, CoverageResult
 from ..utils.questasim import (
     build_vlog_command,
     build_vlog_commands,
+    build_vlog_commands_no_cover,
     build_vsim_command,
     build_vcover_merge_command,
     check_questasim_success
@@ -103,7 +104,8 @@ class QuestasimAdapter(SimulatorAdapter):
         return self._filter_by_patterns(output, self._BOILERPLATE_PATTERNS)
 
     def compile(self, testbench_path: Path, design_files: List[Path],
-                work_dir: Path, timeout: int) -> Dict[str, Any]:
+                work_dir: Path, timeout: int,
+                compile_deps_files: List[Path] = None) -> Dict[str, Any]:
         """Compile testbench using QuestaSim's vlog compiler.
 
         Args:
@@ -111,19 +113,53 @@ class QuestasimAdapter(SimulatorAdapter):
             design_files: List of design RTL files
             work_dir: Working directory (must contain 'work' library)
             timeout: Compilation timeout in seconds
+            compile_deps_files: Optional dependency files compiled without
+                coverage instrumentation
 
         Returns:
             Compilation result dictionary with success status and outputs
         """
         try:
-            # Build separate vlog commands for .v (Verilog) and .sv (SystemVerilog)
-            # files.  Legacy .v files may use identifiers like ``return`` that
-            # clash with SystemVerilog reserved keywords.
-            commands = build_vlog_commands(self.simulator_path, testbench_path, design_files)
-
             all_stdout = []
             all_stderr = []
             last_returncode = 0
+
+            # Pass 1: Compile dependency files WITHOUT coverage instrumentation
+            compile_deps_files = compile_deps_files or []
+            if compile_deps_files:
+                deps_commands = build_vlog_commands_no_cover(
+                    self.simulator_path, compile_deps_files
+                )
+                for command in deps_commands:
+                    logging.info(f"QuestaSim compile deps (no coverage): {' '.join(str(c) for c in command)}")
+
+                    result = subprocess.run(
+                        command,
+                        capture_output=True,
+                        text=True,
+                        timeout=timeout,
+                        cwd=str(work_dir)
+                    )
+
+                    all_stdout.append(result.stdout)
+                    all_stderr.append(result.stderr)
+                    last_returncode = result.returncode
+
+                    if not check_questasim_success(result.stdout):
+                        return {
+                            "success": False,
+                            "return_code": result.returncode,
+                            "stdout": "\n".join(all_stdout),
+                            "stderr": "\n".join(all_stderr),
+                            "log_path": ""
+                        }
+
+            # Pass 2: Compile design files + testbench WITH coverage
+            # Build separate vlog commands for .v (Verilog) and .sv (SystemVerilog)
+            # files.  Legacy .v files may use identifiers like ``return`` that
+            # clash with SystemVerilog reserved keywords.
+            commands = build_vlog_commands(self.simulator_path, testbench_path, design_files,
+                                          incdir_files=compile_deps_files)
 
             for command in commands:
                 logging.info(f"QuestaSim compile: {' '.join(str(c) for c in command)}")

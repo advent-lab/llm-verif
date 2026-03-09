@@ -6,6 +6,11 @@ docs/tasks/
 docs/prompts/
 .claude/
 
+opentitan/
+data/ot_*
+scratch/
+scripts/output.txt
+
 
 # Project specific ignores
 logs/

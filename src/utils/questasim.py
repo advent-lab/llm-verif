@@ -15,7 +15,16 @@ def build_vlog_command(simulator_path: Path, testbench: Path, design_files: List
     ] + [str(f) for f in design_files]
 
 
-def build_vlog_commands(simulator_path: Path, testbench: Path, design_files: List[Path]) -> List[List[str]]:
+def _collect_incdirs(files: List[Path]) -> List[str]:
+    """Collect unique parent directories as +incdir+ flags for include resolution."""
+    dirs = set()
+    for f in files:
+        dirs.add(str(Path(f).parent))
+    return [f"+incdir+{d}" for d in sorted(dirs)]
+
+
+def build_vlog_commands(simulator_path: Path, testbench: Path, design_files: List[Path],
+                        incdir_files: List[Path] = None) -> List[List[str]]:
     """Build vlog compilation commands, splitting Verilog and SystemVerilog files.
 
     Legacy .v files may use identifiers (e.g. ``return``) that are reserved
@@ -26,8 +35,14 @@ def build_vlog_commands(simulator_path: Path, testbench: Path, design_files: Lis
     2. ``.sv`` files compiled in SystemVerilog mode (with ``-sv``).
 
     Both write into the same ``work`` library so all modules remain visible.
+
+    Args:
+        incdir_files: Additional files whose parent directories will be added
+            as +incdir+ search paths for `include resolution.
     """
     all_files = [testbench] + list(design_files)
+    incdir_sources = list(all_files) + list(incdir_files or [])
+    incdirs = _collect_incdirs(incdir_sources)
 
     v_files = [f for f in all_files if str(f).endswith('.v')]
     sv_files = [f for f in all_files if not str(f).endswith('.v')]
@@ -36,11 +51,32 @@ def build_vlog_commands(simulator_path: Path, testbench: Path, design_files: Lis
     vlog = str(simulator_path / "vlog")
 
     if v_files:
-        commands.append([vlog, "+cover=s"] + [str(f) for f in v_files])
+        commands.append([vlog, "+cover=s"] + incdirs + [str(f) for f in v_files])
     if sv_files:
-        commands.append([vlog, "-sv", "+cover=s"] + [str(f) for f in sv_files])
+        commands.append([vlog, "-sv", "+cover=s"] + incdirs + [str(f) for f in sv_files])
 
     return commands
+
+def build_vlog_commands_no_cover(simulator_path: Path, files: List[Path]) -> List[List[str]]:
+    """Build vlog commands WITHOUT coverage for compile-only dependencies.
+
+    Same .v/.sv splitting logic as build_vlog_commands, but omits +cover=s.
+    Adds +incdir+ from all file parent directories for include resolution.
+    """
+    v_files = [f for f in files if str(f).endswith('.v')]
+    sv_files = [f for f in files if not str(f).endswith('.v')]
+    incdirs = _collect_incdirs(files)
+
+    commands: List[List[str]] = []
+    vlog = str(simulator_path / "vlog")
+
+    if v_files:
+        commands.append([vlog] + incdirs + [str(f) for f in v_files])
+    if sv_files:
+        commands.append([vlog, "-sv"] + incdirs + [str(f) for f in sv_files])
+
+    return commands
+
 
 def build_vsim_command(simulator_path: Path, ucdb_path: Path) -> List[str]:
     """Build vsim simulation command with coverage collection."""
@@ -51,6 +87,8 @@ def build_vsim_command(simulator_path: Path, ucdb_path: Path) -> List[str]:
         "-coverage",
         "-sv_seed", "random",
         "-c",  # Command-line mode
+        "-suppress", "vsim-3009",   # timescale mismatch (compile_deps compiled without timescale)
+        "-suppress", "vsim-3999",   # enum-to-logic port type mismatch
         "-do", do_script
     ]
 

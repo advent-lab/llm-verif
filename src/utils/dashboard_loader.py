@@ -21,19 +21,22 @@ class DesignConfig:
         design_name: str,
         spec_path: Path,
         design_files: List[Path],
-        design_context_files: List[Path]
+        design_context_files: List[Path],
+        compile_deps_files: List[Path] = None
     ):
         self.design_name = design_name
         self.spec_path = spec_path
         self.design_files = design_files
         self.design_context_files = design_context_files
+        self.compile_deps_files = compile_deps_files or []
 
     def __repr__(self):
         return (
             f"DesignConfig(name={self.design_name}, "
             f"spec={self.spec_path.name}, "
             f"design_files={len(self.design_files)}, "
-            f"context_files={len(self.design_context_files)})"
+            f"context_files={len(self.design_context_files)}, "
+            f"compile_deps={len(self.compile_deps_files)})"
         )
 
 
@@ -199,18 +202,45 @@ def get_design_from_dashboard(
         design_context_files.append(context_path)
         logger.info(f"  Context: {context_path.name}")
 
+    # Extract compile_deps files (optional, compiled but excluded from coverage)
+    compile_deps_raw = design_entry.get("compile_deps", [])
+
+    if isinstance(compile_deps_raw, str):
+        compile_deps_raw = [compile_deps_raw]
+    elif not isinstance(compile_deps_raw, list):
+        logger.warning(
+            f"Design '{design_name}' has invalid 'compile_deps' field type, ignoring"
+        )
+        compile_deps_raw = []
+
+    compile_deps_files = []
+    for dep_path_raw in compile_deps_raw:
+        dep_path_str = _resolve_variables(dep_path_raw, variables)
+        dep_path = Path(dep_path_str)
+
+        if not dep_path.exists():
+            logger.warning(f"Compile dep file not found (skipping): {dep_path}")
+            continue
+
+        compile_deps_files.append(dep_path)
+
+    if compile_deps_files:
+        logger.info(f"  Compile deps: {len(compile_deps_files)} file(s)")
+
     # Log summary
     logger.info(
         f"Loaded {design_name}: "
         f"{len(design_files)} design file(s), "
-        f"{len(design_context_files)} context file(s)"
+        f"{len(design_context_files)} context file(s), "
+        f"{len(compile_deps_files)} compile dep(s)"
     )
 
     return DesignConfig(
         design_name=design_name,
         spec_path=spec_path,
         design_files=design_files,
-        design_context_files=design_context_files
+        design_context_files=design_context_files,
+        compile_deps_files=compile_deps_files
     )
 
 

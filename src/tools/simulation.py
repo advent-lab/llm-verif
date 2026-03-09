@@ -66,13 +66,15 @@ def compile_design(testbench_path: str) -> Dict[str, Any]:
 
         # Get design files from config (includes both main design and context files)
         design_files = _config.design_files + _config.design_context_files
+        compile_deps_files = getattr(_config, 'compile_deps_files', [])
 
         # Delegate to adapter
         result = _adapter.compile(
             testbench_path=tb_path,
             design_files=design_files,
             work_dir=_config.work_dir,
-            timeout=_config.sim_timeout
+            timeout=_config.sim_timeout,
+            compile_deps_files=compile_deps_files
         )
 
         # Build log filename: compile_iter_N.log or compile_iter_N_retry_M.log
