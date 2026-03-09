@@ -204,7 +204,7 @@ def _create_annotated_source(uncovered_lines: Dict[str, list[int]], max_holes: i
     for file_path, holes in grouped.items():
         filename = Path(file_path).name
         hole_word = "hole" if len(holes) == 1 else "holes"
-        parts.append(f"--- {filename}: {len(holes)} uncovered {hole_word} ---")
+        parts.append(f"{filename}: {len(holes)} uncovered {hole_word}")
 
         for idx, (line_num, code) in enumerate(holes, 1):
             try:
@@ -212,9 +212,9 @@ def _create_annotated_source(uncovered_lines: Dict[str, list[int]], max_holes: i
                     file_lines = f.readlines()
 
                 # Mark the uncovered line
-                file_lines[line_num - 1] = file_lines[line_num - 1].rstrip('\n') + "\t// ##### UNCOVERED - TARGET THIS LINE #####\n"
+                file_lines[line_num - 1] = file_lines[line_num - 1].rstrip('\n') + "\t// # UNCOVERED\n"
 
-                # Extract context window (5 lines before and after)
+                # Extract context window (lines before and after)
                 start = max(0, line_num - context_radius - 1)
                 end = min(len(file_lines), line_num + context_radius)
                 context = ''.join(file_lines[start:end])

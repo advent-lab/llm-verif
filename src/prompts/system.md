@@ -157,7 +157,7 @@ Parse coverage database and extract detailed metrics.
 
 Returns: `success` (bool), `total_coverage` (float), `module_breakdown` (dict), `uncovered_lines` (dict), `annotated_source` (str), `error` (str)
 
-Annotated source format: Holes are grouped by module with a summary header (e.g., `Showing 4 of 10 uncovered holes:`). Each module section lists its holes with surrounding code context. Lines marked with `// ##### UNCOVERED - TARGET THIS LINE #####` are uncovered and should be targeted.
+Annotated source format: Holes are grouped by module with a summary header (e.g., `Showing 4 of 10 uncovered holes:`). Each module section lists its holes with surrounding code context. Lines marked with `// # UNCOVERED` are uncovered and should be targeted.
 
 ### Verification Cycle (Recommended)
 
