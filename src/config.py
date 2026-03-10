@@ -40,6 +40,7 @@ class Config:
     num_feedback_holes: int  # Priority coverage holes in feedback (0 = unbounded)
     coverage_hole_radius: int  # Context lines above/below each coverage hole (0-20)
     context_window: int  # Max tokens before terminating run
+    keep_latest_failures: int  # Number of latest failed verification cycle pairs to keep in context
 
     # LangGraph
     recursion_limit: int  # LangGraph graph recursion limit
@@ -192,6 +193,7 @@ def load_config() -> Config:
         num_feedback_holes=int(os.getenv("NUM_FEEDBACK_HOLES", "0")),
         coverage_hole_radius=max(0, min(20, int(os.getenv("COVERAGE_HOLE_RADIUS", "5")))),
         context_window=int(os.getenv("CONTEXT_WINDOW", "128000")),
+        keep_latest_failures=int(os.getenv("KEEP_LATEST_FAILURES", "1")),
         recursion_limit=int(os.getenv("RECURSION_LIMIT", "300")),
         log_level=os.getenv("LOG_LEVEL", "INFO"),
         log_truncate=os.getenv("LOG_TRUNCATE", "1") == "1"

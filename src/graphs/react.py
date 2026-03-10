@@ -2,8 +2,9 @@ from typing import Literal
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import SystemMessage, HumanMessage, RemoveMessage
 import logging
+import json as _json
 from pathlib import Path
 
 from ..state.schemas import AgentState
@@ -585,6 +586,89 @@ def finalize_node(state: AgentState) -> AgentState:
     }
 
 
+def _find_ai_message_for_tool(messages, tool_call_id):
+    """Find the AIMessage whose tool_calls contains the given tool_call_id."""
+    for msg in reversed(messages):
+        if hasattr(msg, 'tool_calls') and msg.tool_calls:
+            for tc in msg.tool_calls:
+                if tc.get('id') == tool_call_id:
+                    return msg
+    return None
+
+
+def _all_tool_calls_are(ai_msg, tool_name: str) -> bool:
+    """Return True only if ALL tool_calls in the AIMessage are for the given tool name."""
+    if not hasattr(ai_msg, 'tool_calls') or not ai_msg.tool_calls:
+        return False
+    return all(tc.get('name') == tool_name for tc in ai_msg.tool_calls)
+
+
+def _parse_tool_content(content) -> dict:
+    """Parse ToolMessage content into a dict."""
+    if isinstance(content, str):
+        try:
+            return _json.loads(content)
+        except (ValueError, TypeError):
+            return {}
+    return content if isinstance(content, dict) else {}
+
+
+def prune_verification_cycles(state: AgentState) -> dict:
+    """Remove old failed run_verification_cycle message pairs from context.
+
+    Policy:
+    - Success pairs (coverage feedback): KEEP all
+    - Failure pairs (compile/sim errors): keep only latest N (from config.keep_latest_failures)
+
+    Removes both the AIMessage (with large testbench_content in tool_calls args)
+    and its ToolMessage (with error feedback) to maintain valid conversation structure.
+    """
+    config = state["config"]
+    keep_n = config.keep_latest_failures
+    messages = state["messages"]
+
+    # Find all run_verification_cycle ToolMessages that are failures
+    failure_tool_msgs = []
+    for msg in messages:
+        if not (hasattr(msg, 'name') and msg.name == 'run_verification_cycle'):
+            continue
+        result = _parse_tool_content(msg.content)
+        if not result.get("success", False):
+            failure_tool_msgs.append(msg)
+
+    # Nothing to prune?
+    if len(failure_tool_msgs) <= keep_n:
+        return {}
+
+    # Identify old failure pairs to remove (keep the latest keep_n)
+    to_prune = failure_tool_msgs[:-keep_n]
+    remove_msgs = []
+
+    for tool_msg in to_prune:
+        # Remove the ToolMessage
+        remove_msgs.append(RemoveMessage(id=tool_msg.id))
+
+        # Find and remove the corresponding AIMessage (only if it exclusively
+        # called run_verification_cycle — avoid orphaning other tool results)
+        ai_msg = _find_ai_message_for_tool(messages, tool_msg.tool_call_id)
+        if ai_msg and _all_tool_calls_are(ai_msg, "run_verification_cycle"):
+            remove_msgs.append(RemoveMessage(id=ai_msg.id))
+
+    if remove_msgs:
+        logging.info(
+            f"Context pruning: removing {len(to_prune)} old failed verification cycle pair(s) "
+            f"({len(remove_msgs)} messages total, keeping latest {keep_n} failure(s))"
+        )
+        emit("context_prune", {
+            "pairs_removed": len(to_prune),
+            "messages_removed": len(remove_msgs),
+            "policy": "remove_old_failures",
+            "kept_latest_failures": keep_n,
+        })
+
+    return {"messages": remove_msgs} if remove_msgs else {}
+
+
 def create_react_graph() -> StateGraph:
     """
     Create the ReAct agent graph.
@@ -674,8 +758,10 @@ def create_react_graph() -> StateGraph:
         }
     )
 
-    # After tools, update state then check termination
+    # After tools, update state, prune old messages, then check termination
     graph.add_edge("tools", "update_state")
+    graph.add_node("prune_context", prune_verification_cycles)
+    graph.add_edge("update_state", "prune_context")
 
     # Finalize node: injects message for agent to write report, then routes to agent
     graph.add_node("finalize", finalize_node)
@@ -736,7 +822,7 @@ def create_react_graph() -> StateGraph:
         return _route("agent", "continue")
 
     graph.add_conditional_edges(
-        "update_state",
+        "prune_context",
         route_after_update,
         {
             "agent": "agent",

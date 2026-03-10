@@ -627,7 +627,23 @@ def update_state_node(state: AgentState) -> AgentState:
 - Syncs `config.current_iteration` for correct log file naming
 - Also classifies any unclassified token usage records via `classify_pending_records()`
 
-**4. Finalize Node**
+**4. Prune Context Node**
+
+```python
+def prune_verification_cycles(state: AgentState) -> dict:
+    # Remove old failed run_verification_cycle AIMessage+ToolMessage pairs
+    # Keep all successful (coverage) pairs, keep only latest N failures
+```
+
+**Key Behaviors**:
+- Runs after `update_state` and before routing, so state counters are already updated
+- Keeps all successful cycle pairs (coverage feedback is valuable across iterations)
+- Prunes old failed cycle pairs (compile/sim errors), controlled by `KEEP_LATEST_FAILURES` env var (default: 1)
+- Removes both the AIMessage (with large `testbench_content` in tool_calls args) and its ToolMessage to maintain valid conversation structure
+- Skips removal if the AIMessage has mixed tool calls (to avoid orphaning other tool results)
+- Emits `context_prune` JSONL event
+
+**5. Finalize Node**
 
 ```python
 def finalize_node(state: AgentState) -> AgentState:
@@ -642,7 +658,7 @@ def finalize_node(state: AgentState) -> AgentState:
 - Sets `is_finalizing=True` so the router knows this is the last turn
 - Routes back to `agent` for one final LLM call, then END
 
-**5. Router (Conditional Edges)**
+**6. Router (Conditional Edges)**
 
 ```python
 def route_after_agent(state: AgentState) -> Literal["tools", "agent", END]:
@@ -674,6 +690,7 @@ def create_react_graph() -> StateGraph:
     graph.add_node("agent", agent_node)
     graph.add_node("tools", ToolNode(get_all_tools()))
     graph.add_node("update_state", update_state_node)
+    graph.add_node("prune_context", prune_verification_cycles)
     graph.add_node("finalize", finalize_node)
 
     # Add edges
@@ -687,14 +704,15 @@ def create_react_graph() -> StateGraph:
         {"tools": "tools", "agent": "agent", END: END}
     )
 
-    # After tools, update state then check termination
+    # After tools, update state, prune old messages, then check termination
     graph.add_edge("tools", "update_state")
+    graph.add_edge("update_state", "prune_context")
 
     # Finalize routes back to agent for one last turn
     graph.add_edge("finalize", "agent")
 
     graph.add_conditional_edges(
-        "update_state",
+        "prune_context",
         route_after_update,
         {"agent": "agent", "finalize": "finalize", END: END}
     )
@@ -711,16 +729,18 @@ graph TD
     agent -->|tool calls| tools
     agent -->|done / finalize complete| END
     tools --> update_state
-    update_state -->|continue| agent
-    update_state -->|coverage complete / no progress| finalize
-    update_state -->|hard limit reached| END
+    update_state --> prune_context
+    prune_context -->|continue| agent
+    prune_context -->|coverage complete / no progress| finalize
+    prune_context -->|hard limit reached| END
     finalize -->|inject report prompt| agent
 ```
 
 **Design Decisions**:
 - **update_state node**: Dedicated node after tool execution tracks coverage progress, iteration counts, and failure states
+- **prune_context node**: Removes old failed verification cycle message pairs to keep context window clean (controlled by `KEEP_LATEST_FAILURES`)
 - **ToolNode**: LangGraph's built-in ToolNode handles tool execution and message formatting
-- **Dual routing**: `route_after_agent` checks termination before tool execution; `route_after_update` re-checks after state updates
+- **Dual routing**: `route_after_agent` checks termination before tool execution; `route_after_update` re-checks after state updates (wired from `prune_context`)
 
 ---
 
@@ -1099,6 +1119,7 @@ new_state = {
 **add_messages reducer**:
 - Appends new messages to list
 - Merges messages with same ID (for tool calls/results)
+- Handles `RemoveMessage` for deletion by ID
 - Preserves order
 
 **Message Types**:
@@ -1106,18 +1127,13 @@ new_state = {
 - `HumanMessage`: User input
 - `AIMessage`: Agent response (may include tool_calls)
 - `ToolMessage`: Tool execution result (linked by tool_call_id)
+- `RemoveMessage`: Deletes a message by ID (used by `prune_context` node)
 
-**Example History**:
-```python
-[
-    SystemMessage(content="You are an expert..."),
-    HumanMessage(content="Begin verification"),
-    AIMessage(content="I'll read the spec", tool_calls=[...]),
-    ToolMessage(tool_call_id="...", content='{"success": true, ...}'),
-    AIMessage(content="Based on the spec, I'll generate..."),
-    # ...
-]
-```
+**Context Pruning** (`prune_verification_cycles`):
+- After each tool execution, old failed `run_verification_cycle` AIMessage+ToolMessage pairs are removed via `RemoveMessage`
+- Successful cycle pairs (with coverage feedback) are always kept
+- Only the latest N failed pairs are retained (configured by `KEEP_LATEST_FAILURES`, default: 1)
+- This removes both the large `testbench_content` in tool call args and the error feedback from old failures
 
 ---
 
