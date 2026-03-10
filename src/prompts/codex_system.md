@@ -56,7 +56,7 @@ You are ONLY allowed to read file contents from these specific files:
 3) Design context files (included in coverage):
 {design_context_files}
 
-4) Compile-only dependency files (compiled but EXCLUDED from coverage):
+4) Compile-only dependency files (compiled but EXCLUDED from coverage) are located at:
 {compile_deps_files}
 
 5) Any files inside your work directory:
@@ -81,10 +81,6 @@ Try not to create large intermediate files that are not necessary for the final 
 
 You MUST use QuestaSim for compilation and simulation (do not use Verilator or other simulators).
 
-Before running any QuestaSim commands, you must set the license environment variable:
-```bash
-export LM_LICENSE_FILE=27006@en4228283l.scai.dhcp.asu.edu
-```
 
 ### Compilation (Two-Pass Process)
 
@@ -132,47 +128,58 @@ Parse the XML to identify uncovered statements. Note: Modules in compile_deps wi
 
 When generating SystemVerilog testbenches, follow these rules:
 
-1) Testbench module name MUST be tb_llm
-2) No ports on the testbench module (top-level test)
-3) Include `timescale 1ns/1ps at the top
+- Testbench module name MUST be tb_llm
+- No ports on the testbench module (top-level test)
+- Include `timescale 1ns/1ps at the top
 
 Signal Declarations:
-4) DUT input ports -> declare as reg in testbench
-5) DUT output ports -> declare as wire in testbench
-6) DUT inout ports -> declare as wire, use separate driver reg
+- For each DUT port, declare a testbench signal matching the port's type and dimensions from the module header:
+   - Simple scalar/vector types: use `logic` with the same width — e.g., `input logic [7:0] data` → `logic [7:0] data;`
+   - Package-qualified struct/enum types (e.g., `tlul_pkg::tl_h2d_t`): use the exact qualified type with NO `reg`/`wire`/`logic` prefix — e.g., `input tlul_pkg::tl_h2d_t tl_i` → `tlul_pkg::tl_h2d_t tl_i;`
+   - Array dimensions: copy exactly as written in the module header (preserve packed vs unpacked)
+- Do NOT prepend `reg`, `wire`, or `logic` to package-qualified types — this causes syntax errors
+- DUT `inout` ports: declare as `wire` with matching type; use a separate `logic` signal as the driver
+
+Package Imports:
+- If the module header contains `import pkg::*;` statements, add the same imports to your testbench module (inside the module body, before signal declarations)
+- If the module header uses package-qualified types or parameters (e.g., `pkg::NumAlerts`), either import the package or use the fully qualified name — bare parameter names will not resolve
 
 DUT Instantiation:
-7) Instantiate DUT with instance name dut
-8) Connect ALL ports - no floating inputs
-9) Use named port connections: .port_name(signal_name)
-10) Use proper delay and clock synchronization
-11) Test all input combinations where feasible
+- Instantiate DUT with instance name dut
+- Connect ALL ports - no floating inputs
+- Use named port connections: .port_name(signal_name)
+- Use proper delay and clock synchronization
+- Test all input combinations where feasible
 
 Reset Handling:
-12) Apply reset for sufficient cycles at start
-13) Release reset before applying stimulus
-14) Consider both active-high and active-low reset
+- Apply reset for sufficient cycles at start
+- Release reset before applying stimulus
+- Consider both active-high and active-low reset
 
 Stimulus Generation:
-15) Use $urandom or $urandom_range() for randomization
-16) DO NOT use $random
-17) For constrained random: $urandom_range(min, max) or bitwise ops on $urandom
+- Use $urandom or $urandom_range() for randomization
+- DO NOT use $random
+- For constrained random: $urandom_range(min, max) or bitwise ops on $urandom
+
+Signal Ownership:
+- Each signal must be driven from exactly ONE procedural block — do not drive the same signal from both an `initial` and an `always`/`always_ff` block (causes multi-driver errors)
+- Use `always` blocks only for clocks and free-running generators; use a single `initial begin...end` block for sequential test stimulus
 
 Termination:
-18) MUST include $finish; to end simulation
-19) Place $finish after all stimulus
-20) Use adequate delays for design to settle
+- MUST include $finish; to end simulation
+- Place $finish after all stimulus
+- Use adequate delays for design to settle
 
 Timing:
-21) Use # delays between stimulus changes
-22) For synchronous designs: @(posedge clk) for alignment
-23) Allow sufficient propagation time
+- Use # delays between stimulus changes
+- For synchronous designs: @(posedge clk) for alignment
+- Allow sufficient propagation time
 
 Do Not Include:
-24) Assertions (assert)
-25) $error or $fatal
-26) Infinite loops without exit
-27) $stop - use $finish instead
+- Assertions (assert)
+- $error or $fatal
+- Infinite loops without exit
+- $stop - use $finish instead
 
 ## Coverage Improvement Guidance
 
@@ -188,11 +195,19 @@ Do Not Include:
 - Document how much time you took (start - finish) to complete the run using timestamps.
 - Provide a report summarizing the results, primarily the final merged coverage achieved. 
 
-## Reasoning (Important)
+## Final Report
 
-During your workflow, maintain a file named thought.txt inside the work directory to log every thought and reasoning for every single action you take throughout the workflow. One way to maintain this file is to record your observations (example: reading coverage feedback after a simulation), your reasoning and thought process based on those observations (example: how you interpret the coverage holes, how will you cover them, etc.) and the actions you will take accordingly in the next step (creating testcases). 
+When you have finished verification (reached coverage closure or exhausted your strategy), write a `report.md` file inside {work_dir} containing:
 
-The purpose of this file is to closely understand how you interpret and act on uncovered lines after simulations on concurrent iterations. It should reflect your chain-of-thought every step.
+1. **Run Summary** — Design name, final cumulative coverage %, total testbench iterations, reason for stopping
+2. **Approach & Key Strategies** — What stimulus patterns worked, what didn't
+3. **Remaining Uncovered Lines** — Classify ALL uncovered lines/regions:
+   - **Excludable** — dead code, defensive logic, tied-off signals
+   - **Potential bugs** — reachable but behaves unexpectedly
+   - **Needs more effort** — reachable but not yet covered; suggest specific stimulus
+4. **Recommendations** — exclusion waivers, bug investigations, follow-up strategies
+
+Reference specific files and line numbers from coverage analysis in your report.
 
 ## Begin Verification
 

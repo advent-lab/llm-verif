@@ -47,9 +47,8 @@ def load_codex_prompt_from_design(
     if not design_context_files_str:
         design_context_files_str = "   (none)"
 
-    compile_deps_files_str = "\n".join([f"   - {f}" for f in design_config.compile_deps_files])
-    if not compile_deps_files_str:
-        compile_deps_files_str = "   (none)"
+    unique_dep_dirs = sorted({str(Path(f).parent) for f in design_config.compile_deps_files})
+    compile_deps_files_str = "\n".join([f"   - {d}" for d in unique_dep_dirs]) if unique_dep_dirs else "   (none)"
 
     template_path = Path(__file__).parent / "codex_system.md"
     with open(template_path, "r", encoding="utf-8") as handle:

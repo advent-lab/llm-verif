@@ -94,9 +94,6 @@ def run_verification_cycle(
             "error_summary",
             f"Compilation failed. Check {compile_result.get('log_path', 'compile log')} for details.",
         )
-        # Include stdout for the agent to diagnose the error
-        if compile_result.get("stdout"):
-            result["error_summary"] += f"\n\nCompiler output:\n{compile_result['stdout']}"
         logging.warning(f"[verification_cycle] Compile failed at iter {compile_result.get('iteration', '?')}")
         return result
 
@@ -114,8 +111,6 @@ def run_verification_cycle(
             "error_summary",
             f"Simulation failed. Check {sim_result.get('log_path', 'simulation log')} for details.",
         )
-        if sim_result.get("stdout"):
-            result["error_summary"] += f"\n\nSimulation output:\n{sim_result['stdout']}"
         logging.warning(f"[verification_cycle] Simulation failed at iter {sim_result.get('iteration', '?')}")
         return result
 

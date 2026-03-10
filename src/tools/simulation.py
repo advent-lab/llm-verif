@@ -90,13 +90,17 @@ def compile_design(testbench_path: str) -> Dict[str, Any]:
             f.write(f"Testbench: {testbench_path}\n")
             f.write(f"Success: {result.get('success', False)}\n")
             f.write(f"Return Code: {result.get('return_code', 'N/A')}\n\n")
-            f.write(f"STDOUT:\n{result.get('stdout', '(empty)')}\n\n")
-            f.write(f"STDERR:\n{result.get('stderr', '(empty)')}\n")
+            # Prefer full_stdout/full_stderr (includes dep output) for disk log
+            f.write(f"STDOUT:\n{result.get('full_stdout', result.get('stdout', '(empty)'))}\n\n")
+            f.write(f"STDERR:\n{result.get('full_stderr', result.get('stderr', '(empty)'))}\n")
         result["log_path"] = str(log_path)
+        # Drop full_* keys so they don't leak into LLM-facing result
+        result.pop("full_stdout", None)
+        result.pop("full_stderr", None)
 
         # Summarize output for the LLM (full output already saved to log file)
         if result.get("success", False):
-            result["stdout"] = f"Compilation successful. Full log: {log_name}"
+            result["stdout"] = f"Full log: {log_name}"
             result.pop("stderr", None)
         else:
             stderr = result.get("stderr", "")
@@ -179,7 +183,7 @@ def run_simulation(testbench_name: str = "tb_llm", num_runs: int = None) -> Dict
         # Summarize output for the LLM (full output already saved to log file)
         if result.get("success", False):
             summary = (
-                f"Simulation completed: {result.get('num_runs_completed', num_runs)}/{num_runs} "
+                f"{result.get('num_runs_completed', num_runs)}/{num_runs} "
                 f"runs successful."
             )
             if result.get("warning"):

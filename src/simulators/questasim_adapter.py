@@ -34,12 +34,18 @@ class QuestasimAdapter(SimulatorAdapter):
     # Lines matching these patterns are QuestaSim vlog (compile) boilerplate
     _COMPILE_BOILERPLATE_PATTERNS = [
         re.compile(r"^Questa Intel"),              # version banner
+        re.compile(r"^QuestaSim-64 vlog"),         # version banner (alternate form)
         re.compile(r"^Start time:"),               # timestamp
         re.compile(r"^vlog\s"),                    # echoed command with long paths
         re.compile(r"^-- Compiling module\s"),     # per-module compilation status
+        re.compile(r"^-- Compiling package\s"),    # per-package compilation status
+        re.compile(r"^-- Importing package\s"),    # package import status
         re.compile(r"^Top level modules:"),         # top-level header
         re.compile(r"^\t\w"),                       # indented module name under "Top level modules:"
         re.compile(r"^End time:"),                 # end timestamp
+        re.compile(r"^\*\* Note: \(vlog-"),        # informational notes (e.g. vlog-220)
+        re.compile(r"^\*\* Warning:.*\/deps\/"),   # warnings from dep files (not actionable)
+        re.compile(r"^Errors: 0,"),                # clean summary line (no errors)
     ]
 
     # Lines matching these patterns are QuestaSim vsim (simulate) boilerplate
@@ -84,15 +90,75 @@ class QuestasimAdapter(SimulatorAdapter):
 
         return "\n".join(result_lines)
 
+    @staticmethod
+    def _shorten_paths(output: str) -> str:
+        """Collapse long absolute paths to short relative forms."""
+        # /home/.../data/<design>/<subdir>/file.sv -> <design>/<subdir>/file.sv
+        output = re.sub(r'/\S+/data/([^/]+/)', r'\1', output)
+        # /home/.../work/.../testbenches/file.sv -> testbenches/file.sv
+        output = re.sub(r'/\S+/testbenches/', r'testbenches/', output)
+        return output
+
+    @staticmethod
+    def _extract_errors_with_context(lines: list, context: int = 2) -> str:
+        """Extract only error/warning lines with surrounding context.
+
+        Used when filtered output is still too large for the LLM.
+        """
+        error_indices = set()
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if stripped.startswith("** Error") or stripped.startswith("** Warning"):
+                for j in range(max(0, i - context), min(len(lines), i + context + 1)):
+                    error_indices.add(j)
+            # Always include the final summary line
+            if re.match(r"^Errors: \d+,", stripped):
+                error_indices.add(i)
+
+        if not error_indices:
+            return "\n".join(lines)
+
+        sorted_indices = sorted(error_indices)
+        result = []
+        prev_idx = -2
+        for idx in sorted_indices:
+            if idx > prev_idx + 1:
+                skipped = idx - prev_idx - 1
+                if prev_idx >= 0 and skipped > 0:
+                    result.append(f"... ({skipped} lines omitted) ...")
+            result.append(lines[idx])
+            prev_idx = idx
+
+        # Note trailing omitted lines
+        remaining = len(lines) - 1 - prev_idx
+        if remaining > 0:
+            result.append(f"... ({remaining} lines omitted) ...")
+
+        return "\n".join(result)
+
     def filter_compile_output(self, output: str) -> str:
         """Strip QuestaSim vlog boilerplate from compiler output.
 
         Removes the version banner, echoed command (with long absolute paths),
-        per-module ``-- Compiling module`` lines, and timestamps.  Keeps
-        ``** Error``, ``** Warning``, and the final ``Errors: N, Warnings: N``
-        summary.
+        per-module/package compilation status, import lines, timestamps,
+        informational notes, and warnings from dependency files.  Keeps
+        ``** Error``, ``** Warning`` (from design/testbench files), and the
+        final ``Errors: N, Warnings: N`` summary.
+
+        If the output is still large after pattern filtering (>50 lines),
+        switches to extracting only error/warning lines with context.
         """
-        return self._filter_by_patterns(output, self._COMPILE_BOILERPLATE_PATTERNS)
+        filtered = self._filter_by_patterns(output, self._COMPILE_BOILERPLATE_PATTERNS)
+
+        # If still large, extract only errors + context
+        lines = filtered.splitlines()
+        if len(lines) > 50:
+            filtered = self._extract_errors_with_context(lines)
+
+        # Shorten absolute paths to reduce token waste
+        filtered = self._shorten_paths(filtered)
+
+        return filtered
 
     def filter_sim_output(self, output: str) -> str:
         """Strip QuestaSim vsim boilerplate from simulator output.
@@ -101,7 +167,8 @@ class QuestasimAdapter(SimulatorAdapter):
         informational notes that waste LLM input tokens.  Keeps errors,
         warnings, $finish, timing, seed, and run headers.
         """
-        return self._filter_by_patterns(output, self._BOILERPLATE_PATTERNS)
+        filtered = self._filter_by_patterns(output, self._BOILERPLATE_PATTERNS)
+        return self._shorten_paths(filtered)
 
     def compile(self, testbench_path: Path, design_files: List[Path],
                 work_dir: Path, timeout: int,
@@ -131,7 +198,8 @@ class QuestasimAdapter(SimulatorAdapter):
                     self.simulator_path, compile_deps_files
                 )
                 for command in deps_commands:
-                    logging.info(f"QuestaSim compile deps (no coverage): {' '.join(str(c) for c in command)}")
+                    # logging.info(f"QuestaSim compile deps (no coverage): {' '.join(str(c) for c in command)}")
+                    logging.info(f"QuestaSim: compiling dependencies")
 
                     result = subprocess.run(
                         command,
@@ -158,11 +226,14 @@ class QuestasimAdapter(SimulatorAdapter):
             # Build separate vlog commands for .v (Verilog) and .sv (SystemVerilog)
             # files.  Legacy .v files may use identifiers like ``return`` that
             # clash with SystemVerilog reserved keywords.
+            pass2_stdout = []
+            pass2_stderr = []
             commands = build_vlog_commands(self.simulator_path, testbench_path, design_files,
                                           incdir_files=compile_deps_files)
 
             for command in commands:
-                logging.info(f"QuestaSim compile: {' '.join(str(c) for c in command)}")
+                # logging.info(f"QuestaSim compile: {' '.join(str(c) for c in command)}")
+                logging.info(f"QuestaSim: compiling design files")
 
                 result = subprocess.run(
                     command,
@@ -174,6 +245,8 @@ class QuestasimAdapter(SimulatorAdapter):
 
                 all_stdout.append(result.stdout)
                 all_stderr.append(result.stderr)
+                pass2_stdout.append(result.stdout)
+                pass2_stderr.append(result.stderr)
                 last_returncode = result.returncode
 
                 # Fail fast: if this pass has errors, stop immediately
@@ -181,8 +254,12 @@ class QuestasimAdapter(SimulatorAdapter):
                     return {
                         "success": False,
                         "return_code": result.returncode,
-                        "stdout": "\n".join(all_stdout),
-                        "stderr": "\n".join(all_stderr),
+                        # LLM sees only Pass 2 output (the actionable part)
+                        "stdout": "\n".join(pass2_stdout),
+                        "stderr": "\n".join(pass2_stderr),
+                        # Full output preserved for disk logging
+                        "full_stdout": "\n".join(all_stdout),
+                        "full_stderr": "\n".join(all_stderr),
                         "log_path": ""
                     }
 
