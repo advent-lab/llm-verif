@@ -52,7 +52,7 @@ You must configure *either* Dashboard mode (recommended) or Direct mode.
 | `SIM_TIMEOUT` | No | `60` | Per-simulation timeout in seconds (used to kill/abort long or stuck simulations). Also used as compilation timeout. |
 | `TESTPLAN` | No | `1` | Enables testplan generation when set to `1`; when `0`, the agent skips writing a testplan and goes directly to testbench generation. |
 | `NUM_FEEDBACK_HOLES` | No | `0` | Priority coverage holes included in feedback after `parse_coverage`. `0` = unbounded/all holes shown. Set to a positive integer to cap output and save tokens. |
-| `COVERAGE_HOLE_RADIUS` | No | `5` | Number of context lines shown above and below each uncovered line in coverage feedback. Range: 1-20 (clamped). |
+| `COVERAGE_HOLE_RADIUS` | No | `5` | Number of context lines shown above and below each uncovered line in coverage feedback. Range: 0-20 (clamped). Use 0 to show only the uncovered line itself. |
 | `CONTEXT_WINDOW` | No | `128000` | Maximum token count before the agent terminates the run. Should match or stay below the model's actual context window to prevent API errors. |
 | `RECURSION_LIMIT` | No | `300` | LangGraph graph recursion limit. Each node visit counts as one step. Increase for runs with many iterations. |
 
