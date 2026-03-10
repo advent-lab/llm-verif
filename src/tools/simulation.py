@@ -65,7 +65,7 @@ def compile_design(testbench_path: str) -> Dict[str, Any]:
             return {"success": False, "error": f"Testbench not found: {testbench_path}", "iteration": iteration, "retry": retry_num}
 
         # Get design files from config (includes both main design and context files)
-        design_files = _config.design_files + _config.design_context_files
+        design_files = _config.design_context_files + _config.design_files
         compile_deps_files = getattr(_config, 'compile_deps_files', [])
 
         # Delegate to adapter

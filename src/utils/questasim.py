@@ -40,7 +40,7 @@ def build_vlog_commands(simulator_path: Path, testbench: Path, design_files: Lis
         incdir_files: Additional files whose parent directories will be added
             as +incdir+ search paths for `include resolution.
     """
-    all_files = [testbench] + list(design_files)
+    all_files = list(design_files) + [testbench]
     incdir_sources = list(all_files) + list(incdir_files or [])
     incdirs = _collect_incdirs(incdir_sources)
 
