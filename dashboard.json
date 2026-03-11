@@ -2771,6 +2771,9 @@
             "$(BASE_DIR)/ot_lc_ctrl/deps/tlul_socket_1n.sv",
             "$(BASE_DIR)/ot_lc_ctrl/deps/tlul_socket_m1.sv",
             "$(BASE_DIR)/ot_lc_ctrl/deps/tlul_sram_byte.sv"
+        ],
+        "spec": [
+            "$(BASE_DIR)/ot_lc_ctrl/doc/specification.md"
         ]
     },
     "ot_mbx": {

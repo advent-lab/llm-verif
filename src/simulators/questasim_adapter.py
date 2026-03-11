@@ -502,12 +502,11 @@ class QuestasimAdapter(SimulatorAdapter):
                     total_hits += hits
                     module_breakdown[du_name] = percent
 
-                    # Extract uncovered line numbers
-                    uncovered = []
+                    # Extract uncovered line numbers. Use a set to deduplicate
+                    uncovered = set()
                     for stmt in du_data.findall('.//stmt'):
                         if stmt.get('hits') == '0':
-                            line_num = int(stmt.get('ln'))
-                            uncovered.append(line_num)
+                            uncovered.add(int(stmt.get('ln')))
 
                     if uncovered:
                         uncovered_lines[file_path] = sorted(uncovered)
