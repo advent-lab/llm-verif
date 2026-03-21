@@ -1,0 +1,56 @@
+`ifndef ALU_CORE_MONITOR_SV
+`define ALU_CORE_MONITOR_SV
+
+class alu_core_monitor extends uvm_monitor;
+
+  `uvm_component_utils(alu_core_monitor)
+  // Declare a virtual interface
+  virtual alu_core_if vif;
+
+  // Declare analysis port named ap
+  uvm_analysis_port #(alu_core_seq_item) ap;
+
+  // Declare events (none needed as there is no output flag or ready signal)
+
+  // Declare sequence item to store monitored data
+  alu_core_seq_item seq_item;
+
+  function new(string name, uvm_component parent);
+    super.new(name, parent);
+    ap = new("ap", this);
+  endfunction
+
+  virtual function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    // Get the virtual interface
+    if (!uvm_config_db#(virtual alu_core_if)::get(this, "", "vif", vif)) begin
+      `uvm_fatal("NOVIF", "Virtual interface must be set for alu_core_monitor")
+    end
+    // Create a new sequence item using type_id
+    seq_item = alu_core_seq_item::type_id::create("seq_item", this);
+
+    // Get global events (none needed)
+  endfunction
+
+  // Run phase to monitor the signals
+  virtual task run_phase(uvm_phase phase);
+    forever begin
+      @(posedge vif.clk);
+      // Non-blocking assignment to simulate hardware behavior
+      seq_item.clk      <= vif.clk;
+      seq_item.opcode   <= vif.opcode;
+      seq_item.operand1 <= vif.operand1;
+      seq_item.operand2 <= vif.operand2;
+      seq_item.operand3 <= vif.operand3;
+      seq_item.result   <= vif.result;
+
+      // Clone the sequence item to avoid overwriting
+      alu_core_seq_item tr;
+      tr = seq_item.clone();
+      ap.write(tr);
+    end
+  endtask
+
+endclass
+
+`endif
