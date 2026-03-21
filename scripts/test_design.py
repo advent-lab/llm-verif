@@ -16,6 +16,7 @@ Reads COMPILER, DASHBOARD_PATH, and BASE_DIR from .env if present.
 import argparse
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -121,7 +122,16 @@ def check_questa_errors(stdout: str) -> bool:
 
 
 def top_module_name(design_files) -> str:
-    """Return the stem of the first design file as the assumed top module name."""
+    """Return the first module name found in the design files, falling back to file stem."""
+    module_re = re.compile(r"^\s*module\s+(\w+)", re.MULTILINE)
+    for f in design_files:
+        try:
+            text = Path(f).read_text(errors="replace")
+            m = module_re.search(text)
+            if m:
+                return m.group(1)
+        except OSError:
+            pass
     return Path(design_files[0]).stem
 
 

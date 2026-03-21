@@ -187,6 +187,7 @@ When generating SystemVerilog testbenches, follow these rules:
    - Array dimensions: copy exactly as written in the module header (preserve packed vs unpacked)
 - Do NOT prepend `reg`, `wire`, or `logic` to package-qualified types — this causes syntax errors
 - DUT `inout` ports → declare as `wire` with matching type; use a separate `logic` signal as the driver
+- When accessing fields on a struct type (e.g., `sig.field_name`), verify the field exists in the actual package definition — read the relevant `*_pkg.sv` if unsure. Wrong field names cause compile errors.
 
 ### Package Imports
 - If the module header contains `import pkg::*;` statements, add the same imports to your testbench module (inside the module body, before signal declarations)
@@ -199,6 +200,9 @@ When generating SystemVerilog testbenches, follow these rules:
 - Do NOT instantiate any sub-modules separately
 - Do NOT use hierarchical references (e.g., `dut.internal.signal`)
 
+### Initialization
+- Initialize ALL input signals to known values (`0` or `'0`) at the very start of the `initial` block, before reset or any stimulus. Unknown inputs can trigger RTL assertions and cause spurious failures.
+
 ### Reset Handling
 - Apply reset for sufficient cycles at start
 - Release reset before applying stimulus
@@ -209,6 +213,9 @@ When generating SystemVerilog testbenches, follow these rules:
 - DO NOT use `$random` (lacks stability)
 - For constrained random: `$urandom_range(min, max)` or bitwise ops on `$urandom`
 - All stimulus must be applied to top-level input ports ONLY
+
+### Procedural Block Declarations
+- All variable declarations (`int`, `logic`, etc.) inside a procedural block (`initial`, `always`) must appear **before any statements**. Declaring a variable after an assignment or wait statement is a syntax error.
 
 ### Signal Ownership
 - Each signal must be driven from exactly ONE procedural block — do not drive the same signal from both an `initial` and an `always`/`always_ff` block (causes multi-driver errors)
@@ -226,6 +233,7 @@ When generating SystemVerilog testbenches, follow these rules:
 
 ### Simulation Constraints
 - Each simulation run has a **{sim_timeout}-second timeout**. If your testbench does not reach `$finish` within this limit, the run is killed.
+- Every poll or wait loop must be bounded by a maximum cycle count — never write an unbounded `wait(condition)`. Use a counter or `repeat(N) @(posedge clk)` with a fallback path.
 - Avoid extremely long loops (e.g., `repeat(200000)` over multi-cycle tasks). If you need many iterations, keep the loop body lightweight or reduce the iteration count.
 - Prefer targeted stimulus over brute-force iteration to reach coverage goals.
 

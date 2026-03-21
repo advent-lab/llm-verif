@@ -1,6 +1,6 @@
 """
 Create a pie chart for token breakdown per category.
-Usage: python visualize_tokens.py <path_to_folder_with_tokens.json>
+Usage: python visualize_tokens.py <path_to_tokens.json>
 """
 
 import json
@@ -8,6 +8,10 @@ import argparse
 import os
 from pathlib import Path
 import plotly.graph_objects as go
+
+
+PIE_PERCENT_FONT_SIZE = 34
+LEGEND_FONT_SIZE = 14
 
 
 def create_token_breakdown_chart(tokens_json_path, output_html_path):
@@ -36,6 +40,9 @@ def create_token_breakdown_chart(tokens_json_path, output_html_path):
         ('Stimulus Generation',    'input_tokens',           'Stimulus Generation Input',           '#7ab8d9'),
         ('Stimulus Generation',    'reasoning_tokens',       'Stimulus Generation Reasoning',       '#3d88c4'),
         ('Stimulus Generation',    'visible_output_tokens',  'Stimulus Generation Output',          '#1a5a9e'),
+        ('Error Recovery',         'input_tokens',           'Error Recovery Input',                '#caa1e6'),
+        ('Error Recovery',         'reasoning_tokens',       'Error Recovery Reasoning',            '#8f63c9'),
+        ('Error Recovery',         'visible_output_tokens',  'Error Recovery Output',               '#5e2f99'),
         ('Agentic Overhead',       'input_tokens',           'Agentic Overhead Input',              '#f5c96a'),
         ('Agentic Overhead',       'reasoning_tokens',       'Agentic Overhead Reasoning',          '#e08a1e'),
         ('Agentic Overhead',       'visible_output_tokens',  'Agentic Overhead Output',             '#a05a00'),
@@ -71,7 +78,9 @@ def create_token_breakdown_chart(tokens_json_path, output_html_path):
             ),
             hovertext=hover_texts,
             hoverinfo='text+value',
-            textfont=dict(size=10),
+            textinfo='percent',
+            textposition='inside',
+            textfont=dict(size=PIE_PERCENT_FONT_SIZE),
             sort=False
         )
     )
@@ -87,9 +96,17 @@ def create_token_breakdown_chart(tokens_json_path, output_html_path):
             font=dict(size=16)
         ),
         font=dict(size=11),
+        legend=dict(
+            orientation='h',
+            x=0.5,
+            xanchor='center',
+            y=-0.12,
+            yanchor='top',
+            font=dict(size=LEGEND_FONT_SIZE)
+        ),
         height=800,
         width=1000,
-        margin=dict(t=100, l=0, r=0, b=0)
+        margin=dict(t=100, l=0, r=0, b=120)
     )
     
     # Save the figure
@@ -115,31 +132,25 @@ if __name__ == '__main__':
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python visualize_tokens.py c:\\Users\\Vihaan\\PROJECTS\\ASU\\llm-verif\\work\\EVALS\\chacha_top
-  python visualize_tokens.py ./work/EVALS/ethmac_eth_with_cop
+  python visualize_tokens.py ./work/FINAL/chacha_top_1/tokens.json
+  python visualize_tokens.py ./work/EVALS/ethmac_eth_with_cop/tokens.json
         """
     )
     parser.add_argument(
-        'folder_path',
+        'json_path',
         type=str,
-        help='Path to the folder containing tokens.json'
+        help='Path to tokens.json file'
     )
     
     args = parser.parse_args()
-    folder_path = Path(args.folder_path)
+    json_path = Path(args.json_path)
     
-    # Validate that the folder exists
-    if not folder_path.exists() or not folder_path.is_dir():
-        print(f"❌ Error: Folder does not exist: {folder_path}")
+    # Validate that the file exists
+    if not json_path.exists() or not json_path.is_file():
+        print(f"❌ Error: File does not exist: {json_path}")
         exit(1)
     
-    # Construct paths
-    tokens_path = folder_path / 'tokens.json'
-    output_path = folder_path / 'token_breakdown_chart.html'
+    # Output to same directory as input
+    output_path = json_path.parent / 'token_alloc.html'
     
-    # Validate that tokens.json exists
-    if not tokens_path.exists():
-        print(f"❌ Error: tokens.json not found in {folder_path}")
-        exit(1)
-    
-    create_token_breakdown_chart(str(tokens_path), str(output_path))
+    create_token_breakdown_chart(str(json_path), str(output_path))

@@ -54,7 +54,7 @@ def log_agent_request(state: dict):
     token_count = count_message_tokens(messages, model)
 
     logging.info(f"{Colors.CYAN}{Colors.BOLD}{'='*120}{Colors.RESET}")
-    logging.info(f"{Colors.CYAN}{Colors.BOLD}API REQUEST [Turn: {api_calls} | Iter: {iteration} | Cumulative: {cumulative_coverage:.1f}% | Last: {current_coverage:.1f}% | Failures: {consecutive_failures} | No Progress: {no_progress} | In: ~{token_count:,}]{Colors.RESET}")
+    logging.info(f"{Colors.CYAN}{Colors.BOLD}API REQUEST [Turn: {api_calls} | Iter: {iteration} | Cumulative: {cumulative_coverage:.2f}% | Last: {current_coverage:.2f}% | Failures: {consecutive_failures} | No Progress: {no_progress} | In: ~{token_count:,}]{Colors.RESET}")
 
     # Collect all trailing ToolMessages (results from the latest tool execution batch)
     # plus any non-ToolMessage that triggered them, logging each one
@@ -129,7 +129,7 @@ def log_agent_response(response, state: dict, usage: dict = None):
     logging.info(f"{Colors.GREEN}{Colors.BOLD}{'='*120}{Colors.RESET}")
     logging.info(
         f"{Colors.GREEN}{Colors.BOLD}AGENT RESPONSE [Turn: {api_calls} | Iter {iteration} | "
-        f"Cumulative: {cumulative_coverage:.1f}% | Last: {current_coverage:.1f}% | "
+        f"Cumulative: {cumulative_coverage:.2f}% | Last: {current_coverage:.2f}% | "
         f"In: {in_tok:,} (Cached: {cached_tok:,}) | Out: {out_tok:,} (Reasoning: {reason_tok:,}) | "
         f"Total: {tot_tok:,}]{Colors.RESET}"
     )

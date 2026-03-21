@@ -6,10 +6,9 @@ docs/tasks/
 docs/prompts/
 .claude/
 
-opentitan/
-data/ot_*
 scratch/
-scripts/output.txt
+analysis/
+repos/
 
 
 # Project specific ignores
@@ -153,6 +152,7 @@ celerybeat.pid
 
 # Environments
 .env
+eval.env
 .venv
 env/
 venv/
