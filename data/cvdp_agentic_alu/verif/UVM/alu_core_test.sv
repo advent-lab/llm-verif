@@ -13,8 +13,8 @@ class alu_core_test extends uvm_test;
 
   alu_core_env env;
   alu_core_base_sequence base_seq;
-  alu_core_rand_sequence seq1;
-  alu_core_directed_sequence seq2;
+  alu_core_full_functional_sequence seq1;
+  alu_core_full_functional_sequence seq2;
 
   virtual alu_core_if vif;
 
@@ -34,8 +34,8 @@ class alu_core_test extends uvm_test;
  
 	env = alu_core_env::type_id::create("env", this);
     base_seq=alu_core_base_sequence::type_id::create("base_seq");
-    seq1=alu_core_rand_sequence::type_id::create("seq1");
-    seq2=alu_core_directed_sequence::type_id::create("seq2");
+    seq1=alu_core_full_functional_sequence::type_id::create("seq1");
+    seq2=alu_core_full_functional_sequence::type_id::create("seq2");
 
   endfunction
 

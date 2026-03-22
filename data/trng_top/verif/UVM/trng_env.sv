@@ -6,7 +6,7 @@ class trng_env extends uvm_env;
 
     // Component handles
     trng_agent agent;
-    trng_subscriber cov;
+    // ZI trng_subscriber cov;
 
     // Virtual interface handle
     virtual trng_if vif;
@@ -28,14 +28,14 @@ class trng_env extends uvm_env;
 
         // instantiate the agent and coverage subscriber
         agent = trng_agent::type_id::create("agent", this);
-        cov = trng_subscriber::type_id::create("cov", this);
+        // ZI cov = trng_subscriber::type_id::create("cov", this);
     endfunction
 
     // Connect phase to connect the analysis port to the coverage subscriber
     virtual function void connect_phase(uvm_phase phase);
         super.connect_phase(phase);
         // Connect the agent's analysis port to the coverage subscriber
-        agent.ap.connect(cov.analysis_export);
+        // ZI agent.ap.connect(cov.analysis_export);
     endfunction
 endclass : trng_env
 

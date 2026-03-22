@@ -15,6 +15,16 @@ module alu_core_Top();
         .result(ifc.result)
     );
 
+    // Coverage module
+    tb_llm #(32) dut_cov (
+        .opcode(ifc.opcode),
+        .operand1(ifc.operand1),
+        .operand2(ifc.operand2),
+        .operand3(ifc.operand3),
+        .result(ifc.result)
+    );
+
+
     // Clock and reset generation
     
     initial begin

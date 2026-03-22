@@ -4,13 +4,14 @@
 class alu_core_monitor extends uvm_monitor;
 
   `uvm_component_utils(alu_core_monitor)
+
   // Declare a virtual interface
   virtual alu_core_if vif;
 
   // Declare analysis port named ap
   uvm_analysis_port #(alu_core_seq_item) ap;
 
-  // Declare events (none needed as there is no output flag or ready signal)
+  // Declare events (none needed as no output flag or ready signal present)
 
   // Declare sequence item to store monitored data
   alu_core_seq_item seq_item;
@@ -24,11 +25,10 @@ class alu_core_monitor extends uvm_monitor;
     super.build_phase(phase);
     // Get the virtual interface
     if (!uvm_config_db#(virtual alu_core_if)::get(this, "", "vif", vif)) begin
-      `uvm_fatal("NOVIF", "Virtual interface must be set for alu_core_monitor")
+      `uvm_fatal("NOVIF", "Virtual interface must be set for alu_core_monitor via config_db")
     end
     // Create a new sequence item using type_id
     seq_item = alu_core_seq_item::type_id::create("seq_item", this);
-
     // Get global events (none needed)
   endfunction
 
@@ -43,11 +43,8 @@ class alu_core_monitor extends uvm_monitor;
       seq_item.operand2 <= vif.operand2;
       seq_item.operand3 <= vif.operand3;
       seq_item.result   <= vif.result;
-
-      // Clone the sequence item to avoid overwriting
-      alu_core_seq_item tr;
-      tr = seq_item.clone();
-      ap.write(tr);
+      // Write to analysis port
+      ap.write(seq_item);
     end
   endtask
 

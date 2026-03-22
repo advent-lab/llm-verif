@@ -17,6 +17,19 @@ module sha1_Top();
         .error      (ifc.error)
     );
 
+    // Cov instantiation
+    tb_llm cov_dut (
+        .clk        (ifc.clk),
+        .reset_n    (ifc.reset_n),
+        .cs         (ifc.cs),
+        .we         (ifc.we),
+        .address    (ifc.address),
+        .write_data (ifc.write_data),
+        .read_data  (ifc.read_data),
+        .error      (ifc.error)
+    );
+
+
     // ------------------------------------------------------------------
     // Internal signal probes — wire DUT hierarchy into interface so the
     // monitor can sample them for the coverage subscriber.

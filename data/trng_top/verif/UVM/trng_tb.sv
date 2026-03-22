@@ -1,31 +1,45 @@
 //======================================================================
-// trng_subscriber.sv
+// trng_tb.sv
+// Functional coverage testbench for the TRNG design.
 //
-// UVM functional coverage collector for the TRNG.
-// Modelled after sha1_subscriber: covergroups are defined inside the
-// class, NO separate handle declarations, new() called in constructor.
+// Coverage philosophy:
+//   - Minimal directed stimulus to bring the DUT up and exercise
+//     a handful of paths. The framework's constrained-random engine
+//     is expected to close the hard bins via coverage feedback.
+//   - Every FSM state, every register address, every API prefix,
+//     and many cross-product combinations are modelled as coverpoints.
+//   - Bins are intentionally narrow / hard to hit so the framework
+//     has clear targets.
 //======================================================================
+module tb_llm (
+            // Clock and reset.
+            input wire           clk,
+            input wire           reset_n,
 
-`ifndef TRNG_SUBSCRIBER_SV
-`define TRNG_SUBSCRIBER_SV
+            input wire           avalanche_noise,
 
-class trng_subscriber extends uvm_subscriber #(trng_seq_item);
-  `uvm_component_utils(trng_subscriber)
+            input wire           cs,
+            input wire           we,
+            input wire  [11 : 0] address,
+            input wire  [31 : 0] write_data,
+            input wire  [31 : 0] read_data,
+            input wire           error,
 
-  // Transaction handle populated in write() and referenced by all
-  // covergroup coverpoints.
-  trng_seq_item item;
+            input wire  [7 : 0]  debug,
+            input wire           debug_update,
 
-  //====================================================================
-  // Address-map constants
-  //====================================================================
+            input wire           security_error
+);
 
-  // Subsystem prefixes (address[11:8])
-  localparam PREFIX_TRNG   = 4'h0;
-  localparam PREFIX_ENT1   = 4'h5;
-  localparam PREFIX_ENT2   = 4'h6;
-  localparam PREFIX_MIXER  = 4'ha;
-  localparam PREFIX_CSPRNG = 4'hb;
+  //--------------------------------------------------------------------
+  // Parameters that mirror the DUT address map
+  //--------------------------------------------------------------------
+  // Top-level prefix (address[11:8])
+  localparam PREFIX_TRNG    = 4'h0;
+  localparam PREFIX_ENT1    = 4'h5;
+  localparam PREFIX_ENT2    = 4'h6;
+  localparam PREFIX_MIXER   = 4'ha;
+  localparam PREFIX_CSPRNG  = 4'hb;
 
   // TRNG sub-addresses
   localparam TRNG_NAME0       = 8'h00;
@@ -36,7 +50,7 @@ class trng_subscriber extends uvm_subscriber #(trng_seq_item);
   localparam TRNG_DEBUG_CTRL  = 8'h12;
   localparam TRNG_DEBUG_DELAY = 8'h13;
 
-  // Mixer sub-addresses
+  // MIXER sub-addresses
   localparam MIXER_CTRL    = 8'h10;
   localparam MIXER_STATUS  = 8'h11;
   localparam MIXER_TIMEOUT = 8'h20;
@@ -49,23 +63,81 @@ class trng_subscriber extends uvm_subscriber #(trng_seq_item);
   localparam CSPRNG_NUM_BLOCKS_LOW  = 8'h41;
   localparam CSPRNG_NUM_BLOCKS_HIGH = 8'h42;
 
-  // Debug mux select values
+  // Debug mux selections
   localparam DBG_ENTROPY0 = 3'h0;
   localparam DBG_ENTROPY1 = 3'h1;
   localparam DBG_ENTROPY2 = 3'h2;
   localparam DBG_MIXER    = 3'h3;
   localparam DBG_CSPRNG   = 3'h4;
 
+  //--------------------------------------------------------------------
+  // Internal state observation signals (for coverpoints)
+  // These tap internal nets – adjust hierarchy path to match
+  // your compilation unit if needed.
+  //--------------------------------------------------------------------
 
-  // Sampled error-context signals preserved from the SV testbench.
-  logic [3:0] sampled_prefix;
-  logic       sampled_we;
-  logic       sampled_error;
-  logic       sampled_sec_err;
+  // Mixer FSM states
+  wire [3:0] mixer_ctrl_state    = dut.mixer_inst.mixer_ctrl_reg;
+  wire [3:0] entropy_coll_state  = dut.mixer_inst.entropy_collect_ctrl_reg;
+  wire [4:0] word_ctr            = dut.mixer_inst.word_ctr_reg;
+  wire       mixer_enable        = dut.mixer_inst.enable_reg;
+  wire       init_done           = dut.mixer_inst.init_done_reg;
+  wire       entropy_timeout_sig = dut.mixer_inst.entropy_timeout;
 
-  covergroup cg_api_prefix;
+  // CSPRNG FSM state
+  wire [3:0] csprng_ctrl_state   = dut.csprng_inst.csprng_ctrl_reg;
+  wire [63:0] block_ctr          = dut.csprng_inst.block_ctr_reg;
+  wire        csprng_enable      = dut.csprng_inst.enable_reg;
+  wire        seed_syn_obs       = dut.csprng_inst.seed_syn;
+  wire        more_seed_obs      = dut.csprng_inst.more_seed_reg;
+
+  // CSPRNG FIFO FSM states
+  wire [2:0] fifo_rd_state = dut.csprng_inst.fifo_inst.rd_ctrl_reg;
+  wire [2:0] fifo_wr_state = dut.csprng_inst.fifo_inst.wr_ctrl_reg;
+  wire [1:0] fifo_ctr_obs  = dut.csprng_inst.fifo_inst.fifo_ctr_reg;
+  wire       fifo_empty    = dut.csprng_inst.fifo_inst.fifo_empty;
+  wire       fifo_full     = dut.csprng_inst.fifo_inst.fifo_full;
+
+  // TRNG top-level registers
+  wire       discard_reg   = dut.discard_reg;
+  wire       test_mode_reg = dut.test_mode_reg;
+  wire [2:0] debug_mux_reg = dut.debug_mux_reg;
+
+  // Entropy source enables/syn
+  wire       ent1_enabled  = dut.entropy1_entropy_enabled;
+  wire       ent1_syn      = dut.entropy1_entropy_syn;
+  wire       ent2_enabled  = dut.entropy2_entropy_enabled;
+  wire       ent2_syn      = dut.entropy2_entropy_syn;
+
+  //--------------------------------------------------------------------
+  // Derived / sampled signals for coverpoints
+  //--------------------------------------------------------------------
+  reg [3:0]  sampled_prefix;   // address[11:8] when cs=1
+  reg        sampled_we;
+  reg [7:0]  sampled_subaddr;
+  reg        sampled_error;
+  reg        sampled_sec_err;
+
+  always @(posedge clk) begin
+    if (cs) begin
+      sampled_prefix  <= address[11:8];
+      sampled_we      <= we;
+      sampled_subaddr <= address[7:0];
+    end
+    sampled_error   <= error;
+    sampled_sec_err <= security_error;
+  end
+
+  //====================================================================
+  // C O V E R G R O U P S
+  //====================================================================
+
+  //--------------------------------------------------------------------
+  // 1. API address prefix coverage
+  //--------------------------------------------------------------------
+  covergroup cg_api_prefix @(posedge clk iff cs);
 	option.cross_auto_bin_max = 0;
-    cp_prefix: coverpoint item.address[11:8] {
+    cp_prefix: coverpoint address[11:8] {
       bins trng_prefix   = {PREFIX_TRNG};
       bins ent1_prefix   = {PREFIX_ENT1};
       bins ent2_prefix   = {PREFIX_ENT2};
@@ -74,7 +146,7 @@ class trng_subscriber extends uvm_subscriber #(trng_seq_item);
       bins other[]       = default;
     }
 
-    cp_rw: coverpoint item.we {
+    cp_rw: coverpoint we {
       bins read  = {0};
       bins write = {1};
     }
@@ -94,9 +166,12 @@ class trng_subscriber extends uvm_subscriber #(trng_seq_item);
     }
   endgroup
 
-  covergroup cg_trng_regs;
+  //--------------------------------------------------------------------
+  // 2. TRNG register address coverage
+  //--------------------------------------------------------------------
+  covergroup cg_trng_regs @(posedge clk iff (cs && address[11:8] == PREFIX_TRNG));
 option.cross_auto_bin_max = 0;
-    cp_addr: coverpoint item.address[7:0] {
+    cp_addr: coverpoint address[7:0] {
       bins name0       = {TRNG_NAME0};
       bins name1       = {TRNG_NAME1};
       bins version     = {TRNG_VERSION};
@@ -107,7 +182,7 @@ option.cross_auto_bin_max = 0;
       bins other[]     = default;
     }
 
-    cp_we: coverpoint item.we {
+    cp_we: coverpoint we {
       bins rd = {0};
       bins wr = {1};
     }
@@ -122,13 +197,16 @@ option.cross_auto_bin_max = 0;
     }
   endgroup
 
-  covergroup cg_trng_ctrl_bits;
+  //--------------------------------------------------------------------
+  // 3. TRNG control register bit fields
+  //--------------------------------------------------------------------
+  covergroup cg_trng_ctrl_bits @(posedge clk);
 option.cross_auto_bin_max = 0;
-    cp_discard: coverpoint item.discard_reg {
+    cp_discard: coverpoint discard_reg {
       bins inactive = {0};
       bins active   = {1};
     }
-    cp_test_mode: coverpoint item.test_mode_reg {
+    cp_test_mode: coverpoint test_mode_reg {
       bins normal    = {0};
       bins test_mode = {1};
     }
@@ -140,20 +218,23 @@ option.cross_auto_bin_max = 0;
     }
   endgroup
 
-  covergroup cg_debug_mux;
+  //--------------------------------------------------------------------
+  // 4. Debug mux selection
+  //--------------------------------------------------------------------
+  covergroup cg_debug_mux @(posedge clk);
 option.cross_auto_bin_max = 0;
-    cp_mux: coverpoint item.debug_mux_reg {
+    cp_mux: coverpoint debug_mux_reg {
       bins entropy0 = {DBG_ENTROPY0};
       bins entropy1 = {DBG_ENTROPY1};
       bins entropy2 = {DBG_ENTROPY2};
       bins mixer    = {DBG_MIXER};
       bins csprng   = {DBG_CSPRNG};
     }
-    cp_dbg_update: coverpoint item.debug_update {
+    cp_dbg_update: coverpoint debug_update {
       bins no_update  = {0};
       bins do_update  = {1};
     }
-    // Hard cross: every mux selection × item.debug_update pulse
+    // Hard cross: every mux selection × debug_update pulse
     cx_mux_update: cross cp_mux, cp_dbg_update {
       bins ent1_update   = binsof(cp_mux.entropy1) && binsof(cp_dbg_update.do_update);
       bins ent2_update   = binsof(cp_mux.entropy2) && binsof(cp_dbg_update.do_update);
@@ -162,9 +243,12 @@ option.cross_auto_bin_max = 0;
     }
   endgroup
 
-  covergroup cg_mixer_ctrl_fsm;
+  //--------------------------------------------------------------------
+  // 5. Mixer control FSM states
+  //--------------------------------------------------------------------
+  covergroup cg_mixer_ctrl_fsm @(posedge clk);
 option.cross_auto_bin_max = 0;
-    cp_state: coverpoint item.mixer_ctrl_state {
+    cp_state: coverpoint mixer_ctrl_state {
       bins idle    = {4'h0};
       bins collect = {4'h1};
       bins mix     = {4'h2};
@@ -173,7 +257,7 @@ option.cross_auto_bin_max = 0;
       bins next    = {4'h5};
     }
 
-    cp_discard_m: coverpoint item.discard_reg {
+    cp_discard_m: coverpoint discard_reg {
       bins no_discard = {0};
       bins discard    = {1};
     }
@@ -187,7 +271,7 @@ option.cross_auto_bin_max = 0;
       bins discard_in_next    = binsof(cp_state.next)    && binsof(cp_discard_m.discard);
     }
 
-    cp_init_done: coverpoint item.init_done {
+    cp_init_done: coverpoint init_done {
       bins not_done = {0};
       bins done     = {1};
     }
@@ -199,9 +283,12 @@ option.cross_auto_bin_max = 0;
     }
   endgroup
 
-  covergroup cg_entropy_collect_fsm;
+  //--------------------------------------------------------------------
+  // 6. Entropy collection FSM states
+  //--------------------------------------------------------------------
+  covergroup cg_entropy_collect_fsm @(posedge clk);
 option.cross_auto_bin_max = 0;
-    cp_efsm: coverpoint item.entropy_coll_state {
+    cp_efsm: coverpoint entropy_coll_state {
       bins idle      = {4'h0};
       bins src0      = {4'h1};
       bins src0_ack  = {4'h2};
@@ -211,7 +298,7 @@ option.cross_auto_bin_max = 0;
       bins src2_ack  = {4'h6};
     }
 
-    cp_word_ctr_val: coverpoint item.word_ctr {
+    cp_word_ctr_val: coverpoint word_ctr {
       bins zero      = {5'h00};
       bins mid_range = {[5'h01:5'h1e]};
       bins max_val   = {5'h1f};  // block full – hardest to hit
@@ -224,7 +311,7 @@ option.cross_auto_bin_max = 0;
       bins src2_ack_full = binsof(cp_efsm.src2_ack) && binsof(cp_word_ctr_val.max_val);
     }
 
-    cp_timeout: coverpoint item.entropy_timeout_sig {
+    cp_timeout: coverpoint entropy_timeout_sig {
       bins no_timeout = {0};
       bins timeout    = {1};
     }
@@ -237,9 +324,12 @@ option.cross_auto_bin_max = 0;
     }
   endgroup
 
-  covergroup cg_csprng_fsm;
+  //--------------------------------------------------------------------
+  // 7. CSPRNG FSM states
+  //--------------------------------------------------------------------
+  covergroup cg_csprng_fsm @(posedge clk);
 option.cross_auto_bin_max = 0;
-    cp_cstate: coverpoint item.csprng_ctrl_state {
+    cp_cstate: coverpoint csprng_ctrl_state {
       bins idle   = {4'h0};
       bins seed0  = {4'h1};
       bins nsyn   = {4'h2};
@@ -252,12 +342,12 @@ option.cross_auto_bin_max = 0;
       bins cancel = {4'hf};
     }
 
-    cp_csprng_enable: coverpoint item.csprng_enable {
+    cp_csprng_enable: coverpoint csprng_enable {
       bins disabled = {0};
       bins enabled  = {1};
     }
 
-    cp_seed_reg: coverpoint item.seed_reg {
+    cp_seed_reg: coverpoint dut.csprng_inst.seed_reg {
       bins no_seed = {0};
       bins seed    = {1};
     }
@@ -283,9 +373,12 @@ option.cross_auto_bin_max = 0;
     }
   endgroup
 
-  covergroup cg_block_ctr;
+  //--------------------------------------------------------------------
+  // 8. CSPRNG block counter
+  //--------------------------------------------------------------------
+  covergroup cg_block_ctr @(posedge clk);
 option.cross_auto_bin_max = 0;
-    cp_blk_ctr: coverpoint item.block_ctr {
+    cp_blk_ctr: coverpoint block_ctr {
       bins zero      = {64'h0000000000000000};
       bins low       = {[64'h0000000000000001 : 64'h00000000000000ff]};
       bins mid       = {[64'h0000000000000100 : 64'h0ffffffffffffffe]};
@@ -298,32 +391,35 @@ option.cross_auto_bin_max = 0;
     }
   endgroup
 
-  covergroup cg_fifo;
+  //--------------------------------------------------------------------
+  // 9. CSPRNG FIFO states
+  //--------------------------------------------------------------------
+  covergroup cg_fifo @(posedge clk);
     option.cross_auto_bin_max = 0;
-    cp_wr_fsm: coverpoint item.fifo_wr_state {
+    cp_wr_fsm: coverpoint fifo_wr_state {
       bins wr_idle    = {3'h0};
       bins wr_discard = {3'h7};
     }
 
-    cp_rd_fsm: coverpoint item.fifo_rd_state {
+    cp_rd_fsm: coverpoint fifo_rd_state {
       bins rd_idle    = {3'h0};
       bins rd_ack     = {3'h1};
       bins rd_discard = {3'h7};
     }
 
-    cp_fifo_fill: coverpoint item.fifo_ctr_obs {
+    cp_fifo_fill: coverpoint fifo_ctr_obs {
       bins empty     = {2'h0};
       bins one_entry = {2'h1};
       bins two_entry = {2'h2};
       bins full      = {2'h3};  // hardest – requires 4 writes without reads
     }
 
-    cp_empty_flag: coverpoint item.fifo_empty {
+    cp_empty_flag: coverpoint fifo_empty {
       bins not_empty = {0};
       bins is_empty  = {1};
     }
 
-    cp_full_flag: coverpoint item.fifo_full {
+    cp_full_flag: coverpoint fifo_full {
       bins not_full = {0};
       bins is_full  = {1};  // hard to hit – need 4 consecutive writes
     }
@@ -350,9 +446,12 @@ option.cross_auto_bin_max = 0;
     }
   endgroup
 
-  covergroup cg_csprng_regs;
+  //--------------------------------------------------------------------
+  // 10. CSPRNG register interface
+  //--------------------------------------------------------------------
+  covergroup cg_csprng_regs @(posedge clk iff (cs && address[11:8] == PREFIX_CSPRNG));
 option.cross_auto_bin_max = 0;
-    cp_addr: coverpoint item.address[7:0] {
+    cp_addr: coverpoint address[7:0] {
       bins ctrl           = {CSPRNG_CTRL};
       bins status         = {CSPRNG_STATUS};
       bins rnd_data       = {CSPRNG_RND_DATA};
@@ -361,7 +460,7 @@ option.cross_auto_bin_max = 0;
       bins num_blocks_hi  = {CSPRNG_NUM_BLOCKS_HIGH};
       bins other[]        = default;
     }
-    cp_we: coverpoint item.we {
+    cp_we: coverpoint we {
       bins rd = {0};
       bins wr = {1};
     }
@@ -384,15 +483,18 @@ option.cross_auto_bin_max = 0;
     }
   endgroup
 
-  covergroup cg_mixer_regs;
+  //--------------------------------------------------------------------
+  // 11. Mixer register interface
+  //--------------------------------------------------------------------
+  covergroup cg_mixer_regs @(posedge clk iff (cs && address[11:8] == PREFIX_MIXER));
 option.cross_auto_bin_max = 0;
-    cp_addr: coverpoint item.address[7:0] {
+    cp_addr: coverpoint address[7:0] {
       bins ctrl    = {MIXER_CTRL};
       bins status  = {MIXER_STATUS};
       bins timeout = {MIXER_TIMEOUT};
       bins other[] = default;
     }
-    cp_we: coverpoint item.we {
+    cp_we: coverpoint we {
       bins rd = {0};
       bins wr = {1};
     }
@@ -403,7 +505,7 @@ option.cross_auto_bin_max = 0;
       bins timeout_rd = binsof(cp_addr.timeout) && binsof(cp_we.rd);
     }
     // Hard: write enable/disable to mixer while mixing is active
-    cp_mixer_state: coverpoint item.mixer_ctrl_state {
+    cp_mixer_state: coverpoint mixer_ctrl_state {
       bins idle_state    = {4'h0};
       bins active_states = {[4'h1:4'h5]};
     }
@@ -414,29 +516,32 @@ option.cross_auto_bin_max = 0;
     }
   endgroup
 
-  covergroup cg_entropy_handshake;
+  //--------------------------------------------------------------------
+  // 12. Entropy source handshake
+  //--------------------------------------------------------------------
+  covergroup cg_entropy_handshake @(posedge clk);
 option.cross_auto_bin_max = 0;
-    cp_ent1_enabled: coverpoint item.ent1_enabled {
+    cp_ent1_enabled: coverpoint ent1_enabled {
       bins disabled = {0};
       bins enabled  = {1};
     }
-    cp_ent1_syn: coverpoint item.ent1_syn {
+    cp_ent1_syn: coverpoint ent1_syn {
       bins no_data = {0};
       bins data    = {1};
     }
-    cp_ent1_ack: coverpoint item.ent1_ack {
+    cp_ent1_ack: coverpoint dut.entropy1_entropy_ack {
       bins no_ack = {0};
       bins ack    = {1};
     }
-    cp_ent2_enabled: coverpoint item.ent2_enabled {
+    cp_ent2_enabled: coverpoint ent2_enabled {
       bins disabled = {0};
       bins enabled  = {1};
     }
-    cp_ent2_syn: coverpoint item.ent2_syn {
+    cp_ent2_syn: coverpoint ent2_syn {
       bins no_data = {0};
       bins data    = {1};
     }
-    cp_ent2_ack: coverpoint item.ent2_ack {
+    cp_ent2_ack: coverpoint dut.entropy2_entropy_ack {
       bins no_ack = {0};
       bins ack    = {1};
     }
@@ -453,39 +558,46 @@ option.cross_auto_bin_max = 0;
     }
   endgroup
 
-  covergroup cg_errors;
+  //--------------------------------------------------------------------
+  // 13. Error and security error paths
+  //--------------------------------------------------------------------
+  covergroup cg_errors @(posedge clk);
 option.cross_auto_bin_max = 0;
-    cp_api_error: coverpoint item.error {
+    cp_api_error: coverpoint error {
       bins no_error = {0};
       bins has_error = {1};
     }
-    cp_security_error: coverpoint item.security_error {
+    cp_security_error: coverpoint security_error {
       bins no_sec_error  = {0};
       bins has_sec_error = {1};
     }
-    // Hard: item.error observed on each prefix
+    // Hard: error observed on each prefix
     cp_prefix_err: coverpoint sampled_prefix iff (sampled_error) {
       bins trng_err   = {PREFIX_TRNG};
       bins mixer_err  = {PREFIX_MIXER};
       bins csprng_err = {PREFIX_CSPRNG};
     }
-    // Hard: item.error from write to illegal item.address
+    // Hard: error from write to illegal address
     cp_we_err: coverpoint sampled_we iff (sampled_error) {
       bins read_error  = {0};
       bins write_error = {1};
     }
   endgroup
 
-  covergroup cg_system_state_cross;
+  //--------------------------------------------------------------------
+  // 14. Cross between CSPRNG state and Mixer state (global state)
+  //     These are the hardest cross-bins – require both FSMs active together.
+  //--------------------------------------------------------------------
+  covergroup cg_system_state_cross @(posedge clk);
 option.cross_auto_bin_max = 0;
-    cp_csprng_active: coverpoint item.csprng_ctrl_state {
+    cp_csprng_active: coverpoint csprng_ctrl_state {
       bins csprng_idle   = {4'h0};
       bins csprng_seeding = {4'h1, 4'h2, 4'h3};
       bins csprng_init    = {4'h4, 4'h5};
       bins csprng_running = {4'h6, 4'h7, 4'h8};
       bins csprng_cancel  = {4'hf};
     }
-    cp_mixer_active: coverpoint item.mixer_ctrl_state {
+    cp_mixer_active: coverpoint mixer_ctrl_state {
       bins mixer_idle    = {4'h0};
       bins mixer_collect = {4'h1};
       bins mixer_hashing = {4'h2, 4'h3};
@@ -508,17 +620,20 @@ option.cross_auto_bin_max = 0;
     }
   endgroup
 
-  covergroup cg_seed_handshake;
+  //--------------------------------------------------------------------
+  // 15. Mixer seed handshake with CSPRNG
+  //--------------------------------------------------------------------
+  covergroup cg_seed_handshake @(posedge clk);
 option.cross_auto_bin_max = 0;
-    cp_seed_syn: coverpoint item.seed_syn_obs {
+    cp_seed_syn: coverpoint seed_syn_obs {
       bins no_syn = {0};
       bins syn    = {1};
     }
-    cp_seed_ack: coverpoint item.seed_ack_reg {
+    cp_seed_ack: coverpoint dut.csprng_inst.seed_ack_reg {
       bins no_ack = {0};
       bins ack    = {1};
     }
-    cp_more_seed: coverpoint item.more_seed_obs {
+    cp_more_seed: coverpoint more_seed_obs {
       bins no_request = {0};
       bins requesting = {1};
     }
@@ -533,26 +648,34 @@ option.cross_auto_bin_max = 0;
     }
   endgroup
 
-  covergroup cg_debug_delay;
+  //--------------------------------------------------------------------
+  // 16. debug_delay counter at interesting values
+  //--------------------------------------------------------------------
+  covergroup cg_debug_delay @(posedge clk);
 option.cross_auto_bin_max = 0;
-    cp_delay_ctr: coverpoint item.debug_delay_ctr_reg {
+    cp_delay_ctr: coverpoint dut.debug_delay_ctr_reg {
       bins zero     = {32'h0};
       bins mid      = {[32'h1:32'h002625_9f]};
       bins at_delay = {32'h002625a0};  // DEFAULT_DEBUG_DELAY – triggers debug update
     }
-    cp_debug_out_we: coverpoint item.debug_out_we {
+    cp_debug_out_we: coverpoint dut.debug_out_we {
       bins no_update = {0};
       bins update    = {1};  // hard – only hits once per delay period
     }
   endgroup
 
-  covergroup cg_mixer_ctrl_write;
+  //--------------------------------------------------------------------
+  // 17. Mixer enable/restart from API
+  //--------------------------------------------------------------------
+  covergroup cg_mixer_ctrl_write @(posedge clk iff
+                                    (cs && we && address[11:8] == PREFIX_MIXER
+                                          && address[7:0] == MIXER_CTRL));
 option.cross_auto_bin_max = 0;
-    cp_enable_bit: coverpoint item.write_data[0] {
+    cp_enable_bit: coverpoint write_data[0] {
       bins mixer_off = {0};
       bins mixer_on  = {1};
     }
-    cp_restart_bit: coverpoint item.write_data[1] {
+    cp_restart_bit: coverpoint write_data[1] {
       bins no_restart = {0};
       bins restart    = {1};  // hard
     }
@@ -564,9 +687,12 @@ option.cross_auto_bin_max = 0;
     }
   endgroup
 
-  covergroup cg_csprng_rounds;
+  //--------------------------------------------------------------------
+  // 18. CSPRNG num_rounds configuration
+  //--------------------------------------------------------------------
+  covergroup cg_csprng_rounds @(posedge clk);
 option.cross_auto_bin_max = 0;
-    cp_rounds: coverpoint item.num_rounds_reg {
+    cp_rounds: coverpoint dut.csprng_inst.num_rounds_reg {
       bins min_rounds  = {5'h08};  // 8 rounds – minimum useful ChaCha
       bins default_rnd = {5'h18};  // 24 – DEFAULT_NUM_ROUNDS
       bins max_rounds  = {5'h1f};
@@ -574,14 +700,17 @@ option.cross_auto_bin_max = 0;
     }
   endgroup
 
-  covergroup cg_noise;
+  //--------------------------------------------------------------------
+  // 19. Avalanche noise toggling during operation
+  //--------------------------------------------------------------------
+  covergroup cg_noise @(posedge clk);
 option.cross_auto_bin_max = 0;
-    cp_noise: coverpoint item.avalanche_noise {
+    cp_noise: coverpoint avalanche_noise {
       bins low  = {0};
       bins high = {1};
     }
     // Hard: noise changes while entropy collection is active
-    cp_ecoll_active: coverpoint item.entropy_coll_state {
+    cp_ecoll_active: coverpoint entropy_coll_state {
       bins collecting = {[4'h1:4'h6]};
       bins idle       = {4'h0};
     }
@@ -590,131 +719,53 @@ option.cross_auto_bin_max = 0;
       bins noise_high_during_collect = binsof(cp_noise.high) && binsof(cp_ecoll_active.collecting);
     }
   endgroup
-  //====================================================================
-  // Constructor — covergroups instantiated here, exactly as in
-  // sha1_subscriber. No separate handle declarations needed; the
-  // covergroup definition inside the class IS the type, and
-  // "cg_name = new()" both creates and binds the instance.
-  //====================================================================
-  function new(string name = "trng_subscriber",
-               uvm_component parent = null);
-    super.new(name, parent);
-    cg_api_prefix          = new();
-    cg_trng_regs           = new();
-    cg_trng_ctrl_bits      = new();
-    cg_debug_mux           = new();
-    cg_mixer_ctrl_fsm      = new();
-    cg_entropy_collect_fsm = new();
-    cg_csprng_fsm          = new();
-    cg_block_ctr           = new();
-    cg_fifo                = new();
-    cg_csprng_regs         = new();
-    cg_mixer_regs          = new();
-    cg_entropy_handshake   = new();
-    cg_errors              = new();
-    cg_system_state_cross  = new();
-    cg_seed_handshake      = new();
-    cg_debug_delay         = new();
-    cg_mixer_ctrl_write    = new();
-    cg_csprng_rounds       = new();
-    cg_noise               = new();
-  endfunction : new
-
 
   //====================================================================
-  // write() — called by the monitor's analysis port on every transaction
+  // Covergroup instantiation
   //====================================================================
-  virtual function void write(trng_seq_item t);
-    item = t;
+  cg_api_prefix          cov_api_prefix;
+  cg_trng_regs           cov_trng_regs;
+  cg_trng_ctrl_bits      cov_trng_ctrl_bits;
+  cg_debug_mux           cov_debug_mux;
+  cg_mixer_ctrl_fsm      cov_mixer_ctrl_fsm;
+  cg_entropy_collect_fsm cov_entropy_collect_fsm;
+  cg_csprng_fsm          cov_csprng_fsm;
+  cg_block_ctr           cov_block_ctr;
+  cg_fifo                cov_fifo;
+  cg_csprng_regs         cov_csprng_regs;
+  cg_mixer_regs          cov_mixer_regs;
+  cg_entropy_handshake   cov_entropy_handshake;
+  cg_errors              cov_errors;
+  cg_system_state_cross  cov_system_state_cross;
+  cg_seed_handshake      cov_seed_handshake;
+  cg_debug_delay         cov_debug_delay;
+  cg_mixer_ctrl_write    cov_mixer_ctrl_write;
+  cg_csprng_rounds       cov_csprng_rounds;
+  cg_noise               cov_noise;
 
-    if (item.cs) begin
-      sampled_prefix = item.address[11:8];
-      sampled_we     = item.we;
-    end
-    sampled_error   = item.error;
-    sampled_sec_err = item.security_error;
+  initial begin
+    cov_api_prefix          = new();
+    cov_trng_regs           = new();
+    cov_trng_ctrl_bits      = new();
+    cov_debug_mux           = new();
+    cov_mixer_ctrl_fsm      = new();
+    cov_entropy_collect_fsm = new();
+    cov_csprng_fsm          = new();
+    cov_block_ctr           = new();
+    cov_fifo                = new();
+    cov_csprng_regs         = new();
+    cov_mixer_regs          = new();
+    cov_entropy_handshake   = new();
+    cov_errors              = new();
+    cov_system_state_cross  = new();
+    cov_seed_handshake      = new();
+    cov_debug_delay         = new();
+    cov_mixer_ctrl_write    = new();
+    cov_csprng_rounds       = new();
+    cov_noise               = new();
+  end
 
-    // Bus-level covergroups — always sample; each coverpoint is
-    // internally gated with iff() so only valid cycles contribute.
-    cg_api_prefix.sample();
-    cg_trng_regs.sample();
-    cg_csprng_regs.sample();
-    cg_mixer_regs.sample();
-
-    // Control register field covergroups
-    cg_trng_ctrl_bits.sample();
-    cg_debug_mux.sample();
-    cg_debug_delay.sample();
-    cg_mixer_ctrl_write.sample();
-    cg_csprng_rounds.sample();
-
-    // Always-on: error flags, noise, handshakes, block counter
-    cg_errors.sample();
-    cg_noise.sample();
-    cg_entropy_handshake.sample();
-    cg_seed_handshake.sample();
-    cg_block_ctr.sample();
-
-    // FSM and structural covergroups
-    cg_mixer_ctrl_fsm.sample();
-    cg_entropy_collect_fsm.sample();
-    cg_csprng_fsm.sample();
-    cg_fifo.sample();
-    cg_system_state_cross.sample();
-  endfunction : write
-
-
-  //====================================================================
-  // report_phase — print per-covergroup coverage summary at end of sim
-  //====================================================================
-  function void report_phase(uvm_phase phase);
-    `uvm_info("TRNG_COV", $sformatf(
-      "\n==========================================\n",
-      "TRNG Subscriber Coverage Summary\n",
-      "==========================================\n",
-      "  cg_api_prefix          : %0.2f%%\n",
-      "  cg_trng_regs           : %0.2f%%\n",
-      "  cg_trng_ctrl_bits      : %0.2f%%\n",
-      "  cg_debug_mux           : %0.2f%%\n",
-      "  cg_mixer_ctrl_fsm      : %0.2f%%\n",
-      "  cg_entropy_collect_fsm : %0.2f%%\n",
-      "  cg_csprng_fsm          : %0.2f%%\n",
-      "  cg_block_ctr           : %0.2f%%\n",
-      "  cg_fifo                : %0.2f%%\n",
-      "  cg_csprng_regs         : %0.2f%%\n",
-      "  cg_mixer_regs          : %0.2f%%\n",
-      "  cg_entropy_handshake   : %0.2f%%\n",
-      "  cg_errors              : %0.2f%%\n",
-      "  cg_system_state_cross  : %0.2f%%\n",
-      "  cg_seed_handshake      : %0.2f%%\n",
-      "  cg_debug_delay         : %0.2f%%\n",
-      "  cg_mixer_ctrl_write    : %0.2f%%\n",
-      "  cg_csprng_rounds       : %0.2f%%\n",
-      "  cg_noise               : %0.2f%%\n",
-      "==========================================",
-      cg_api_prefix.get_coverage(),
-      cg_trng_regs.get_coverage(),
-      cg_trng_ctrl_bits.get_coverage(),
-      cg_debug_mux.get_coverage(),
-      cg_mixer_ctrl_fsm.get_coverage(),
-      cg_entropy_collect_fsm.get_coverage(),
-      cg_csprng_fsm.get_coverage(),
-      cg_block_ctr.get_coverage(),
-      cg_fifo.get_coverage(),
-      cg_csprng_regs.get_coverage(),
-      cg_mixer_regs.get_coverage(),
-      cg_entropy_handshake.get_coverage(),
-      cg_errors.get_coverage(),
-      cg_system_state_cross.get_coverage(),
-      cg_seed_handshake.get_coverage(),
-      cg_debug_delay.get_coverage(),
-      cg_mixer_ctrl_write.get_coverage(),
-      cg_csprng_rounds.get_coverage(),
-      cg_noise.get_coverage()
-    ), UVM_NONE)
-  endfunction : report_phase
-
-endclass : trng_subscriber
-
-`endif // TRNG_SUBSCRIBER_SV
-
+endmodule // trng_tb
+//======================================================================
+// EOF trng_tb.sv
+//======================================================================

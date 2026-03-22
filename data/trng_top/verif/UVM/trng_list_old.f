@@ -16,9 +16,9 @@ $UVM_HOME/src/uvm_pkg.sv
 ../rtl/chacha.v
 ../rtl/chacha_core.v
 ../rtl/chacha_qr.v
-../testbench/trng_tb.sv
 ../testbench/trng_if.sv
 ../testbench/trng_seq_item.sv
+../testbench/trng_subscriber.sv
 ../testbench/trng_seq.sv
 ../testbench/trng_sequencer.sv
 ../testbench/trng_driver.sv

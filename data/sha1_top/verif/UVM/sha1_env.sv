@@ -19,7 +19,7 @@ class sha1_env extends uvm_env;
   // Component handles
   // ----------------------------------------------------------
   sha1_agent      agent;   // The single agent instance
-  sha1_subscriber cov;     // Coverage subscriber
+  // ZI sha1_subscriber cov;     // Coverage subscriber
 
   // Virtual interface handle
   virtual sha1_if vif;
@@ -52,7 +52,7 @@ class sha1_env extends uvm_env;
     agent = sha1_agent::type_id::create("agent", this);
 
     // Instantiate coverage subscriber
-    cov = sha1_subscriber::type_id::create("cov", this);
+    // ZI cov = sha1_subscriber::type_id::create("cov", this);
 
     // Note: No scoreboard or reference model present in this environment.
     // If a register model is added in the future, instantiate and configure here.
@@ -68,7 +68,7 @@ class sha1_env extends uvm_env;
 
     // Connect agent's analysis port to coverage subscriber
     // (agent_ap is the analysis port in sha1_agent, cov is a uvm_subscriber)
-    agent.agent_ap_cov.connect(cov.analysis_export);
+    // ZI agent.agent_ap_cov.connect(cov.analysis_export);
 
     // No scoreboard or reference model connections required.
   endfunction
