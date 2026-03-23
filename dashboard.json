@@ -133,6 +133,30 @@
         "uvm_seq_item_file": "$(BASE_DIR)/cvdp_agentic_alu/verif/UVM/testbench/alu_core_seq_item.sv",
         "uvm_coverage_module_file": "$(BASE_DIR)/cvdp_agentic_alu/verif/UVM/testbench/tb_alu_core.sv"
     },
+    "cvdp_agentic_memory_scheduler_uvm": {
+        "design": ["$(BASE_DIR)/cvdp_agentic_memory_scheduler/rtl/memory_scheduler.sv"],
+        "design_context": [],
+        "spec": "$(BASE_DIR)/cvdp_agentic_memory_scheduler/docs/specs.md",
+        "uvm_testbench_dir": "$(BASE_DIR)/cvdp_agentic_memory_scheduler/verif/UVM/testbench",
+        "uvm_filelist": "$(BASE_DIR)/cvdp_agentic_memory_scheduler/verif/UVM/testbench/memory_scheduler_list.f",
+        "uvm_sequence_file": "memory_scheduler_seq.sv",
+        "uvm_top_module": "memory_scheduler_Top",
+        "uvm_test_name": "memory_scheduler_test",
+        "uvm_seq_item_file": "$(BASE_DIR)/cvdp_agentic_memory_scheduler/verif/UVM/testbench/memory_scheduler_seq_item.sv",
+        "uvm_coverage_module_file": "$(BASE_DIR)/cvdp_agentic_memory_scheduler/verif/UVM/testbench/tb_memory_scheduler.sv"
+    },
+    "cvdp_agentic_rgb_color_space_conversion_uvm": {
+        "design": ["$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/rtl/rgb_color_space_hsv.sv"],
+        "design_context": [],
+        "spec": "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/docs/specification.md",
+        "uvm_testbench_dir": "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/verif/UVM/testbench",
+        "uvm_filelist": "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/verif/UVM/testbench/rgb_color_space_hsv_list.f",
+        "uvm_sequence_file": "rgb_color_space_hsv_seq.sv",
+        "uvm_top_module": "rgb_color_space_hsv_Top",
+        "uvm_test_name": "rgb_color_space_hsv_test",
+        "uvm_seq_item_file": "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/verif/UVM/testbench/rgb_color_space_hsv_seq_item.sv",
+        "uvm_coverage_module_file": "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/verif/UVM/testbench/tb_rgb_color_space_hsv.sv"
+    },
     "float_adder": {
         "verif": [],
         "verif_context": [],

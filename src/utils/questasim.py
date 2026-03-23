@@ -146,15 +146,42 @@ def parse_coverage_xml(xml_path: Path) -> Tuple[float, Dict[str, float], Dict[st
 
 ## ── UVM Command Builders ─────────────────────────────────────────────────────
 
-def build_uvm_vlog_command(simulator_path: Path, filelist: Path) -> List[str]:
-    """Build vlog compilation command for UVM using a .f file list."""
+def build_uvm_vlib_uvm_command(simulator_path: Path) -> List[str]:
+    """Build vlib command to create a dedicated UVM library."""
+    return [str(simulator_path / "vlib"), "uvm_lib"]
+
+
+def build_uvm_vlog_uvm_command(simulator_path: Path, uvm_home: str) -> List[str]:
+    """Build vlog command to compile UVM 1.2 into a dedicated library.
+
+    Compiles ``uvm_pkg`` into ``uvm_lib`` (not ``work``) so that it
+    mirrors QuestaSim's precompiled ``-L uvm`` flow.  When UVM and the
+    user's test class live in the same ``work`` library, factory
+    registration silently fails.
+    """
+    return [
+        str(simulator_path / "vlog"),
+        "-sv",
+        "-work", "uvm_lib",
+        "+incdir+" + uvm_home + "/src",
+        uvm_home + "/src/uvm_pkg.sv",
+    ]
+
+
+def build_uvm_vlog_design_command(simulator_path: Path, filelist: Path, uvm_home: str) -> List[str]:
+    """Build vlog command to compile design + testbench files with ``-mfcu``.
+
+    Runs after UVM 1.2 has been compiled into ``uvm_lib``.  Uses
+    ``-L uvm_lib`` so that ``import uvm_pkg::*`` resolves from the
+    separate library — identical to QuestaSim's ``-L uvm`` flow.
+    """
     return [
         str(simulator_path / "vlog"),
         "-sv",
         "-mfcu",
+        "+incdir+" + uvm_home + "/src",
+        "-L", "uvm_lib",
         "-f", str(filelist),
-        "+incdir+" + os.getenv("UVM_HOME", str(simulator_path.parent / "verilog_src" / "uvm-1.2" / "src")),
-        "-L", "uvm",
     ]
 
 
@@ -164,6 +191,7 @@ def build_uvm_vopt_command(simulator_path: Path, top_module: str) -> List[str]:
         str(simulator_path / "vopt"),
         "+acc",
         top_module,
+        "-L", "uvm_lib",
         "-o", "opt_top",
         "+cover=bcestf",
     ]

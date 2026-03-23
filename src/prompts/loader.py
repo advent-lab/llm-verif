@@ -151,12 +151,28 @@ A complete SystemVerilog file containing UVM sequence classes. The sequences MUS
 
 A complete SystemVerilog file containing the UVM test class. The test MUST:
 - Extend `uvm_test`
-- In `build_phase`: get the virtual interface from config_db, pass it to env,
-  create the env instance, and create sequence instances
+- Register with factory via `` `uvm_component_utils ``
+- In `build_phase`: **MANDATORY** config_db get/set for the virtual interface,
+  then create env and sequence instances. The build_phase MUST contain this
+  exact config_db pattern (the env will UVM_FATAL if vif is not set):
+
+```systemverilog
+  function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    // GET vif from config_db (set by Top module)
+    if (!uvm_config_db#(virtual alu_core_if)::get(this, "", "vif", vif))
+      `uvm_fatal(get_type_name(), "Failed to get vif from config_db")
+    // PASS vif to env (env retrieves it in its own build_phase)
+    uvm_config_db#(virtual alu_core_if)::set(this, "env*", "vif", vif);
+    // Create env and sequences
+    env = alu_core_env::type_id::create("env", this);
+    // ... create sequence instances here ...
+  endfunction
+```
+
 - In `run_phase`: raise objection, start your sequences on `env.agent.sqr`,
   drop objection
 - Import and instantiate the sequences you defined in the sequence file
-- Register with factory via `` `uvm_component_utils ``
 
 ### Sequence Item Definition (FIXED - DO NOT MODIFY)
 
@@ -232,6 +248,8 @@ finish_item(seq_item);
 - ❌ DO NOT modify the seq_item, driver, monitor, agent, env, interface, scoreboard, or Top module
 - ❌ DO NOT define covergroups in your sequences (coverage is in the passive module)
 - ❌ DO NOT use `$finish` in sequences (UVM handles simulation termination)
+- ❌ DO NOT use `#include` or `` `include `` to include the sequence file in the test file (or vice versa). Both files are compiled separately via the .f file — including one in the other causes "multiply defined" errors.
+- ✅ DO use `import uvm_pkg::*;` and `` `include "uvm_macros.svh" `` at the top of BOTH files
 - ✅ DO use the exact seq_item class name and field names shown above
 - ✅ DO write BOTH the sequence file AND the test file each iteration
 - ✅ DO target specific coverage bins by studying the coverage module above

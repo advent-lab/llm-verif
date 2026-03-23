@@ -38,6 +38,7 @@ def set_config(config):
             'top_module': config.uvm_top_module,
             'test_name': config.uvm_test_name,
             'dpi_lib': config.uvm_dpi_lib,
+            'uvm_home': config.uvm_home,
             'testbench_dir': str(config.uvm_testbench_dir) if config.uvm_testbench_dir else None,
             'sequence_file': config.uvm_sequence_file,
         }

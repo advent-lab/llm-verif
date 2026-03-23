@@ -63,6 +63,7 @@ class Config:
     uvm_sequence_file: Optional[str]      # Filename of sequence file to generate
     uvm_top_module: Optional[str]         # Top-level module name (e.g., alu_core_Top)
     uvm_test_name: Optional[str]          # UVM test class name (e.g., alu_core_test)
+    uvm_home: Optional[str]               # UVM 1.2 install root (e.g. /opt/siemens/questasim/uvm-1.2)
     uvm_dpi_lib: Optional[str]            # Path to UVM DPI shared library
     uvm_seq_item_file: Optional[Path]     # Path to seq_item file (for LLM context)
     uvm_coverage_module_file: Optional[Path]  # Path to passive coverage module
@@ -256,7 +257,12 @@ def load_config() -> Config:
     uvm_seq_item_file = None
     uvm_coverage_module_file = None
 
+    uvm_home = None
+
     if uvm_enabled:
+        # UVM_HOME: root of the UVM 1.2 installation
+        uvm_home = os.getenv("UVM_HOME", "/opt/siemens/questasim/uvm-1.2")
+
         # Pull from design_config (dashboard) or env vars
         uvm_testbench_dir = getattr(design_config, 'uvm_testbench_dir', None)
         if not uvm_testbench_dir:
@@ -337,6 +343,7 @@ def load_config() -> Config:
         functional_coverage_testbench_path=funcov_testbench_path,
         combined_coverage_enabled=combined_coverage_enabled,
         uvm_enabled=uvm_enabled,
+        uvm_home=uvm_home,
         uvm_testbench_dir=uvm_testbench_dir,
         uvm_filelist=uvm_filelist,
         uvm_sequence_file=uvm_sequence_file,

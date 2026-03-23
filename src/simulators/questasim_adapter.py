@@ -18,7 +18,9 @@ from ..utils.questasim import (
     build_vsim_command,
     build_vcover_merge_command,
     check_questasim_success,
-    build_uvm_vlog_command,
+    build_uvm_vlib_uvm_command,
+    build_uvm_vlog_uvm_command,
+    build_uvm_vlog_design_command,
     build_uvm_vopt_command,
     build_uvm_vsim_command,
 )
@@ -185,35 +187,84 @@ class QuestasimAdapter(SimulatorAdapter):
         all_stderr = []
 
         try:
-            # ── Step 1: vlib work ─────────────────────────────────────────
+            # ── Step 1: vlib work (clean + create) ────────────────────────
+            # Always recreate the work library to prevent stale incremental
+            # compilation from reusing outdated design units.
+            import shutil
             work_lib = work_dir / "work"
-            if not work_lib.exists():
-                vlib_cmd = [str(self.simulator_path / "vlib"), "work"]
-                logging.info(f"UVM vlib: {' '.join(vlib_cmd)}")
-                result = subprocess.run(
-                    vlib_cmd, capture_output=True, text=True,
-                    timeout=timeout, cwd=str(work_dir)
-                )
-                all_stdout.append(f"=== vlib ===\n{result.stdout}")
-                all_stderr.append(result.stderr)
-                if result.returncode != 0:
-                    return {
-                        "success": False,
-                        "return_code": result.returncode,
-                        "stdout": "\n".join(all_stdout),
-                        "stderr": "\n".join(all_stderr),
-                        "error": f"vlib failed: {result.stderr}",
-                        "log_path": ""
-                    }
+            if work_lib.exists():
+                shutil.rmtree(work_lib)
+                logging.info("Removed stale QuestaSim work library")
+            uvm_lib = work_dir / "uvm_lib"
+            if uvm_lib.exists():
+                shutil.rmtree(uvm_lib)
 
-            # ── Step 2: vlog (compile with UVM) ───────────────────────────
-            vlog_cmd = build_uvm_vlog_command(self.simulator_path, filelist)
-            logging.info(f"UVM vlog: {' '.join(str(c) for c in vlog_cmd)}")
+            vlib_cmd = [str(self.simulator_path / "vlib"), "work"]
+            logging.info(f"UVM vlib: {' '.join(vlib_cmd)}")
+            result = subprocess.run(
+                vlib_cmd, capture_output=True, text=True,
+                timeout=timeout, cwd=str(work_dir)
+            )
+            all_stdout.append(f"=== vlib (work) ===\n{result.stdout}")
+            all_stderr.append(result.stderr)
+            if result.returncode != 0:
+                return {
+                    "success": False,
+                    "return_code": result.returncode,
+                    "stdout": "\n".join(all_stdout),
+                    "stderr": "\n".join(all_stderr),
+                    "error": f"vlib failed: {result.stderr}",
+                    "log_path": ""
+                }
+
+            # Create dedicated UVM library (mirrors QuestaSim's -L uvm flow)
+            vlib_uvm_cmd = build_uvm_vlib_uvm_command(self.simulator_path)
+            logging.info(f"UVM vlib (uvm_lib): {' '.join(vlib_uvm_cmd)}")
+            result = subprocess.run(
+                vlib_uvm_cmd, capture_output=True, text=True,
+                timeout=timeout, cwd=str(work_dir)
+            )
+            all_stdout.append(f"=== vlib (uvm_lib) ===\n{result.stdout}")
+            all_stderr.append(result.stderr)
+            if result.returncode != 0:
+                return {
+                    "success": False,
+                    "return_code": result.returncode,
+                    "stdout": "\n".join(all_stdout),
+                    "stderr": "\n".join(all_stderr),
+                    "error": f"vlib uvm_lib failed: {result.stderr}",
+                    "log_path": ""
+                }
+
+            # ── Step 2a: vlog – compile UVM 1.2 into uvm_lib ─────────────
+            uvm_home = cfg.get("uvm_home", "/opt/siemens/questasim/uvm-1.2")
+            vlog_uvm_cmd = build_uvm_vlog_uvm_command(self.simulator_path, uvm_home)
+            logging.info(f"UVM vlog (uvm_pkg): {' '.join(str(c) for c in vlog_uvm_cmd)}")
+            result = subprocess.run(
+                vlog_uvm_cmd, capture_output=True, text=True,
+                timeout=timeout, cwd=str(work_dir)
+            )
+            all_stdout.append(f"=== vlog (uvm_pkg) ===\n{result.stdout}")
+            all_stderr.append(result.stderr)
+
+            if result.returncode != 0:
+                return {
+                    "success": False,
+                    "return_code": result.returncode,
+                    "stdout": "\n".join(all_stdout),
+                    "stderr": "\n".join(all_stderr),
+                    "error": "vlog UVM compilation failed",
+                    "log_path": ""
+                }
+
+            # ── Step 2b: vlog – compile design + testbench with -mfcu ─────
+            vlog_cmd = build_uvm_vlog_design_command(self.simulator_path, filelist, uvm_home)
+            logging.info(f"UVM vlog (design): {' '.join(str(c) for c in vlog_cmd)}")
             result = subprocess.run(
                 vlog_cmd, capture_output=True, text=True,
                 timeout=timeout, cwd=str(work_dir)
             )
-            all_stdout.append(f"=== vlog ===\n{result.stdout}")
+            all_stdout.append(f"=== vlog (design) ===\n{result.stdout}")
             all_stderr.append(result.stderr)
 
             vlog_success = check_questasim_success(result.stdout)
@@ -223,7 +274,7 @@ class QuestasimAdapter(SimulatorAdapter):
                     "return_code": result.returncode,
                     "stdout": "\n".join(all_stdout),
                     "stderr": "\n".join(all_stderr),
-                    "error": "vlog compilation failed",
+                    "error": "vlog design compilation failed",
                     "log_path": ""
                 }
 
@@ -373,7 +424,16 @@ class QuestasimAdapter(SimulatorAdapter):
                     all_stdout.append(f"=== Run {run_idx} ===\n{result.stdout}")
                     all_stderr.append(result.stderr)
 
-                    if ucdb_abs_path.exists():
+                    # Check for UVM_FATAL — the simulator may report
+                    # Errors: 0 but the UVM test died at time 0.
+                    # Match actual fatal messages (e.g. "UVM_FATAL .../file.sv(51)")
+                    # but NOT the summary line "UVM_FATAL :    0".
+                    has_uvm_fatal = bool(re.search(
+                        r"UVM_FATAL\s+[^:]", result.stdout
+                    ))
+                    if has_uvm_fatal:
+                        logging.warning(f"UVM run {run_idx}: UVM_FATAL detected in output")
+                    elif ucdb_abs_path.exists():
                         ucdb_files.append(ucdb_abs_path)
                     else:
                         logging.warning(f"UVM run {run_idx} failed or no UCDB produced")
