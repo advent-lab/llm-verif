@@ -1,5 +1,6 @@
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
+import logging
 
 def load_system_prompt(
     design_name: str,
@@ -11,7 +12,13 @@ def load_system_prompt(
     design_context_enabled: bool,
     testplan_enabled: bool,
     max_iterations: int,
-    sim_runs: int
+    sim_runs: int,
+    uvm_enabled: bool = False,
+    uvm_seq_item_content: Optional[str] = None,
+    uvm_coverage_module_content: Optional[str] = None,
+    uvm_sequence_file: Optional[str] = None,
+    uvm_test_name: Optional[str] = None,
+    uvm_testbench_files: Optional[List[str]] = None,
 ) -> str:
     """
     Load system prompt template and interpolate variables.
@@ -73,6 +80,17 @@ This plan will guide your testbench development and help ensure comprehensive co
     else:
         testplan_instruction = "(Testplan generation is disabled - proceed directly to testbench generation)"
 
+    # ── UVM Instructions (conditional) ───────────────────────────────────
+    uvm_instructions = ""
+    if uvm_enabled:
+        uvm_instructions = _build_uvm_instructions(
+            uvm_seq_item_content=uvm_seq_item_content or "",
+            uvm_coverage_module_content=uvm_coverage_module_content or "",
+            uvm_sequence_file=uvm_sequence_file or "sequence.sv",
+            uvm_test_name=uvm_test_name or "uvm_test",
+            uvm_testbench_files=uvm_testbench_files or [],
+        )
+
     # Interpolate variables
     prompt = template.format(
         design_name=design_name,
@@ -84,7 +102,138 @@ This plan will guide your testbench development and help ensure comprehensive co
         module_header=module_header,
         testplan_instruction=testplan_instruction,
         max_iterations=max_iterations,
-        sim_runs=sim_runs
+        sim_runs=sim_runs,
+        uvm_instructions=uvm_instructions,
     )
 
     return prompt
+
+
+def _build_uvm_instructions(
+    uvm_seq_item_content: str,
+    uvm_coverage_module_content: str,
+    uvm_sequence_file: str,
+    uvm_test_name: str,
+    uvm_testbench_files: List[str],
+) -> str:
+    """Build UVM-specific instructions for the system prompt."""
+
+    tb_files_list = "\n".join(f"   - {f}" for f in uvm_testbench_files) if uvm_testbench_files else "   (none listed)"
+
+    return f"""
+=================================================================================
+UVM MODE - SEQUENCE AND TEST GENERATION
+=================================================================================
+
+You are in **UVM MODE**. Instead of writing complete testbenches, you generate:
+1. A **UVM sequence file** (`testbenches/{uvm_sequence_file}`)
+2. A **UVM test file** (`testbenches/{uvm_test_name}.sv`)
+
+The UVM testbench infrastructure (driver, monitor, agent, env, interface, scoreboard,
+Top module, coverage module) is already provided and fixed. You must NOT modify these.
+
+Coverage is collected from BOTH:
+- **Code coverage**: Statement/branch/condition/expression/toggle coverage of the RTL
+- **Functional coverage**: Covergroups in the passive coverage module (tb_llm)
+
+### What You Generate
+
+**1. Sequence File (`testbenches/{uvm_sequence_file}`)**
+
+A complete SystemVerilog file containing UVM sequence classes. The sequences MUST:
+- Import `uvm_pkg::*` and include `uvm_macros.svh`
+- Extend `uvm_sequence #(<seq_item_class>)` (use the seq_item class shown below)
+- Use the `start_item()`/`finish_item()` pattern for every transaction
+- Use `randomize()` with constraints or direct field assignment on the seq_item
+- Register with factory via `` `uvm_object_utils ``
+
+**2. Test File (`testbenches/{uvm_test_name}.sv`)**
+
+A complete SystemVerilog file containing the UVM test class. The test MUST:
+- Extend `uvm_test`
+- In `build_phase`: get the virtual interface from config_db, pass it to env,
+  create the env instance, and create sequence instances
+- In `run_phase`: raise objection, start your sequences on `env.agent.sqr`,
+  drop objection
+- Import and instantiate the sequences you defined in the sequence file
+- Register with factory via `` `uvm_component_utils ``
+
+### Sequence Item Definition (FIXED - DO NOT MODIFY)
+
+This is the transaction class your sequences must use:
+
+```systemverilog
+{uvm_seq_item_content}
+```
+
+### Coverage Module (FIXED - targeting these bins)
+
+This passive module collects functional coverage. Study the covergroups
+and bins to understand what stimulus patterns are needed:
+
+```systemverilog
+{uvm_coverage_module_content}
+```
+
+### UVM Testbench Files (FIXED - DO NOT MODIFY)
+
+These files are already provided and compiled via the .f file:
+{tb_files_list}
+
+### UVM Mode Workflow
+
+1. **Read** the specification and understand the design
+2. **Study** the seq_item fields/constraints and coverage bins above
+3. **Generate** the sequence file with sequences targeting coverage
+4. **Generate** the test file that runs your sequences
+5. **Save** both using `write_file`:
+   - `write_file("testbenches/{uvm_sequence_file}", <sequence_content>)`
+   - `write_file("testbenches/{uvm_test_name}.sv", <test_content>)`
+6. **Compile** using `compile_design("testbenches/{uvm_sequence_file}")`
+   (the argument is just for logging; the .f file handles compilation)
+7. **Simulate** using `run_simulation()`
+8. **Analyze** coverage:
+   - Use `parse_coverage` for code coverage (annotated RTL lines)
+   - Use `parse_functional_coverage` for functional coverage (uncovered bins)
+9. **Iterate**: Refine sequences to target uncovered lines and bins
+
+### UVM Sequence Patterns
+
+**Constrained Random:**
+```systemverilog
+seq_item = <seq_item_class>::type_id::create("seq_item");
+if (!seq_item.randomize()) `uvm_error(get_type_name(), "Randomization failed")
+start_item(seq_item);
+finish_item(seq_item);
+```
+
+**Directed with constraint override:**
+```systemverilog
+seq_item = <seq_item_class>::type_id::create("seq_item");
+if (!seq_item.randomize() with {{ opcode == 4'h3; operand2 != 0; }})
+  `uvm_error(get_type_name(), "Randomization failed")
+start_item(seq_item);
+finish_item(seq_item);
+```
+
+**Fully directed:**
+```systemverilog
+seq_item = <seq_item_class>::type_id::create("seq_item");
+seq_item.opcode   = 4'h0;
+seq_item.operand1 = 32'h7FFF_FFFF;
+seq_item.operand2 = 32'h7FFF_FFFF;
+seq_item.operand3 = 32'h0000_0001;
+start_item(seq_item);
+finish_item(seq_item);
+```
+
+### CRITICAL UVM RULES
+
+- ❌ DO NOT modify the seq_item, driver, monitor, agent, env, interface, scoreboard, or Top module
+- ❌ DO NOT define covergroups in your sequences (coverage is in the passive module)
+- ❌ DO NOT use `$finish` in sequences (UVM handles simulation termination)
+- ✅ DO use the exact seq_item class name and field names shown above
+- ✅ DO write BOTH the sequence file AND the test file each iteration
+- ✅ DO target specific coverage bins by studying the coverage module above
+- ✅ DO use both constrained random AND directed transactions for best coverage
+"""

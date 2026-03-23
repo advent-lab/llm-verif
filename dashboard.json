@@ -121,6 +121,18 @@
 	    "design_context": [],
 	    "spec": "$(BASE_DIR)/cvdp_agentic_alu/docs/alu_core_specification.md"
     },
+    "cvdp_agentic_alu_uvm": {
+        "design": ["$(BASE_DIR)/cvdp_agentic_alu/rtl/alu_core.sv"],
+        "design_context": [],
+        "spec": "$(BASE_DIR)/cvdp_agentic_alu/docs/alu_core_specification.md",
+        "uvm_testbench_dir": "$(BASE_DIR)/cvdp_agentic_alu/verif/UVM/testbench",
+        "uvm_filelist": "$(BASE_DIR)/cvdp_agentic_alu/verif/UVM/testbench/alu_core_list.f",
+        "uvm_sequence_file": "alu_core_seq.sv",
+        "uvm_top_module": "alu_core_Top",
+        "uvm_test_name": "alu_core_test",
+        "uvm_seq_item_file": "$(BASE_DIR)/cvdp_agentic_alu/verif/UVM/testbench/alu_core_seq_item.sv",
+        "uvm_coverage_module_file": "$(BASE_DIR)/cvdp_agentic_alu/verif/UVM/testbench/tb_alu_core.sv"
+    },
     "float_adder": {
         "verif": [],
         "verif_context": [],

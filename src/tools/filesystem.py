@@ -3,6 +3,7 @@ from typing import Dict, Any
 from langchain.tools import tool
 import logging
 import re
+import shutil
 
 # Global config reference (set by graph initialization)
 _config = None
@@ -83,10 +84,17 @@ def write_file(path: str, content: str) -> Dict[str, Any]:
     NOTE: You can ONLY write to the work directory.
     """
     try:
-        # Check if functional coverage mode is enabled
+        # Check modes
+        uvm_enabled = getattr(_config, 'uvm_enabled', False)
         funcov_enabled = getattr(_config, 'functional_coverage_enabled', False)
-        
-        if funcov_enabled and path.endswith('.sv'):
+
+        if uvm_enabled and path.endswith('.sv'):
+            # UVM MODE: Full file write + snapshot for iteration tracking
+            result = _write_full_file(path, content)
+            if result.get("success"):
+                _save_uvm_iteration_snapshot(path, content)
+            return result
+        elif funcov_enabled and path.endswith('.sv'):
             # FUNCTIONAL COVERAGE MODE: Inject stimulus into user's testbench
             return _inject_stimulus_into_testbench(path, content)
         else:
@@ -128,6 +136,29 @@ def _write_full_file(path: str, content: str) -> Dict[str, Any]:
     except Exception as e:
         logging.error(f"Write file error: {e}")
         return {"success": False, "error": str(e)}
+
+
+def _save_uvm_iteration_snapshot(path: str, content: str):
+    """Save a copy of the written UVM file into an iteration snapshot folder.
+
+    Creates work_dir/iterations/iter_N/<filename> so users can observe
+    how the generated sequences and test evolve across iterations.
+    """
+    try:
+        iteration = getattr(_config, 'current_iteration', 1)
+        snapshot_dir = _config.work_dir / "iterations" / f"iter_{iteration}"
+        snapshot_dir.mkdir(parents=True, exist_ok=True)
+
+        # Use just the filename (strip any subdirectory like "testbenches/")
+        filename = Path(path).name
+        snapshot_path = snapshot_dir / filename
+
+        with open(snapshot_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+
+        logging.info(f"UVM iteration snapshot saved: {snapshot_path}")
+    except Exception as e:
+        logging.warning(f"Failed to save UVM iteration snapshot: {e}")
 
 
 def _inject_stimulus_into_testbench(path: str, content: str) -> Dict[str, Any]:

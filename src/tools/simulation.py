@@ -11,7 +11,8 @@ def set_config(config):
     """Set config and initialize appropriate simulator adapter.
 
     This function now instantiates the correct adapter (QuestaSim or Verilator)
-    based on the simulator_type in the config.
+    based on the simulator_type in the config. If UVM mode is enabled, passes
+    UVM configuration to the adapter.
     """
     global _config, _adapter
     _config = config
@@ -29,6 +30,18 @@ def set_config(config):
         logging.info("Initialized Verilator adapter")
     else:
         raise ValueError(f"Unsupported simulator type: {simulator_type}")
+
+    # If UVM mode, pass UVM config to the adapter
+    if getattr(config, 'uvm_enabled', False) and hasattr(_adapter, 'set_uvm_config'):
+        uvm_cfg = {
+            'filelist': str(config.uvm_filelist),
+            'top_module': config.uvm_top_module,
+            'test_name': config.uvm_test_name,
+            'dpi_lib': config.uvm_dpi_lib,
+            'testbench_dir': str(config.uvm_testbench_dir) if config.uvm_testbench_dir else None,
+            'sequence_file': config.uvm_sequence_file,
+        }
+        _adapter.set_uvm_config(uvm_cfg)
 
 @tool
 def compile_design(testbench_path: str) -> Dict[str, Any]:
@@ -62,15 +75,21 @@ def compile_design(testbench_path: str) -> Dict[str, Any]:
         _config.compile_attempts_this_iter += 1
         retry_num = _config.compile_attempts_this_iter
 
-        # Resolve testbench path
-        tb_path = (_config.work_dir / testbench_path).resolve()
-        if not tb_path.exists():
-            return {"success": False, "error": f"Testbench not found: {testbench_path}", "iteration": iteration, "retry": retry_num}
+        # In UVM mode, the .f file lists everything; testbench_path is just for logging.
+        # In standard mode, resolve the testbench path relative to work_dir.
+        uvm_mode = getattr(_config, 'uvm_enabled', False)
 
-        # Get design files from config (includes both main design and context files)
-        design_files = _config.design_files + _config.design_context_files
+        if uvm_mode:
+            tb_path = None  # Not used; .f file covers all sources
+            design_files = []
+        else:
+            tb_path = (_config.work_dir / testbench_path).resolve()
+            if not tb_path.exists():
+                return {"success": False, "error": f"Testbench not found: {testbench_path}", "iteration": iteration, "retry": retry_num}
+            design_files = _config.design_files + _config.design_context_files
 
-        # Delegate to adapter (adapter checks FUNCTIONAL_COVERAGE_ENABLED env var)
+        # Delegate to adapter (adapter checks FUNCTIONAL_COVERAGE_ENABLED env var
+        # and UVM config internally)
         result = _adapter.compile(
             testbench_path=tb_path,
             design_files=design_files,

@@ -52,6 +52,22 @@ class Config:
     combined_coverage_enabled: bool
     # ────────────────────────────────────────────────────────────────────────
 
+    # ── UVM Mode ──────────────────────────────────────────────────────────
+    # When True, compilation uses UVM 3-step flow (vlib → vlog → vopt),
+    # simulation uses optimized design with UVM flags, and the LLM generates
+    # UVM sequence + test files instead of complete testbenches.
+    # Coverage targets both code and functional simultaneously.
+    uvm_enabled: bool
+    uvm_testbench_dir: Optional[Path]     # Dir containing UVM TB components
+    uvm_filelist: Optional[Path]          # .f file listing all UVM sources
+    uvm_sequence_file: Optional[str]      # Filename of sequence file to generate
+    uvm_top_module: Optional[str]         # Top-level module name (e.g., alu_core_Top)
+    uvm_test_name: Optional[str]          # UVM test class name (e.g., alu_core_test)
+    uvm_dpi_lib: Optional[str]            # Path to UVM DPI shared library
+    uvm_seq_item_file: Optional[Path]     # Path to seq_item file (for LLM context)
+    uvm_coverage_module_file: Optional[Path]  # Path to passive coverage module
+    # ────────────────────────────────────────────────────────────────────────
+
     # Debug
     log_level: str
     log_truncate: bool      # Whether to truncate long content in logs
@@ -185,7 +201,10 @@ def load_config() -> Config:
     funcov_target = float(os.getenv("FUNCTIONAL_COVERAGE_TARGET", "100.0"))
 
     funcov_testbench_path = None
-    if funcov_enabled:
+    # UVM mode handles functional coverage via passive coverage module;
+    # skip the testbench template requirement.
+    uvm_will_be_enabled = os.getenv("UVM_ENABLED", "0") == "1"
+    if funcov_enabled and not uvm_will_be_enabled:
         # Only required when running functional coverage as a standalone mode
         funcov_tb_env = os.getenv("FUNCTIONAL_COVERAGE_TESTBENCH")
         if funcov_tb_env:
@@ -226,6 +245,70 @@ def load_config() -> Config:
         logging.info("Combined coverage mode enabled: code coverage → functional coverage")
     # ────────────────────────────────────────────────────────────────────────
 
+    # ── UVM Mode Configuration ────────────────────────────────────────────
+    uvm_enabled = os.getenv("UVM_ENABLED", "0") == "1"
+    uvm_testbench_dir = None
+    uvm_filelist = None
+    uvm_sequence_file = None
+    uvm_top_module = None
+    uvm_test_name = None
+    uvm_dpi_lib = None
+    uvm_seq_item_file = None
+    uvm_coverage_module_file = None
+
+    if uvm_enabled:
+        # Pull from design_config (dashboard) or env vars
+        uvm_testbench_dir = getattr(design_config, 'uvm_testbench_dir', None)
+        if not uvm_testbench_dir:
+            env_val = os.getenv("UVM_TESTBENCH_DIR")
+            uvm_testbench_dir = Path(env_val) if env_val else None
+
+        uvm_filelist = getattr(design_config, 'uvm_filelist', None)
+        if not uvm_filelist:
+            env_val = os.getenv("UVM_FILELIST")
+            uvm_filelist = Path(env_val) if env_val else None
+
+        uvm_sequence_file = getattr(design_config, 'uvm_sequence_file', None) or \
+                            os.getenv("UVM_SEQUENCE_FILE")
+
+        uvm_top_module = getattr(design_config, 'uvm_top_module', None) or \
+                         os.getenv("UVM_TOP_MODULE")
+
+        uvm_test_name = getattr(design_config, 'uvm_test_name', None) or \
+                        os.getenv("UVM_TEST_NAME")
+
+        uvm_dpi_lib = os.getenv(
+            "UVM_DPI_LIB",
+            "/opt/siemens/questasim/uvm-1.2/linux_x86_64/uvm_dpi"
+        )
+
+        uvm_seq_item_file = getattr(design_config, 'uvm_seq_item_file', None)
+        if not uvm_seq_item_file:
+            env_val = os.getenv("UVM_SEQ_ITEM_FILE")
+            uvm_seq_item_file = Path(env_val) if env_val else None
+
+        uvm_coverage_module_file = getattr(design_config, 'uvm_coverage_module_file', None)
+        if not uvm_coverage_module_file:
+            env_val = os.getenv("UVM_COVERAGE_MODULE_FILE")
+            uvm_coverage_module_file = Path(env_val) if env_val else None
+
+        # Validate required UVM fields
+        if not uvm_filelist or not uvm_filelist.exists():
+            raise ValueError(f"UVM_ENABLED=1 but filelist not found: {uvm_filelist}")
+        if not uvm_sequence_file:
+            raise ValueError("UVM_ENABLED=1 but UVM_SEQUENCE_FILE not set")
+        if not uvm_top_module:
+            raise ValueError("UVM_ENABLED=1 but UVM_TOP_MODULE not set")
+        if not uvm_test_name:
+            raise ValueError("UVM_ENABLED=1 but UVM_TEST_NAME not set")
+
+        logging.info(f"UVM mode enabled: top={uvm_top_module}, test={uvm_test_name}")
+
+        # UVM mode always targets both code + functional coverage
+        # Override funcov_enabled so coverage parsing handles both
+        funcov_enabled = True
+    # ────────────────────────────────────────────────────────────────────────
+
     return Config(
         openai_api_key=api_key,
         model=os.getenv("MODEL", "gpt-4o"),
@@ -253,6 +336,15 @@ def load_config() -> Config:
         functional_coverage_target=funcov_target,
         functional_coverage_testbench_path=funcov_testbench_path,
         combined_coverage_enabled=combined_coverage_enabled,
+        uvm_enabled=uvm_enabled,
+        uvm_testbench_dir=uvm_testbench_dir,
+        uvm_filelist=uvm_filelist,
+        uvm_sequence_file=uvm_sequence_file,
+        uvm_top_module=uvm_top_module,
+        uvm_test_name=uvm_test_name,
+        uvm_dpi_lib=uvm_dpi_lib,
+        uvm_seq_item_file=uvm_seq_item_file,
+        uvm_coverage_module_file=uvm_coverage_module_file,
         log_level=os.getenv("LOG_LEVEL", "INFO"),
         log_truncate=os.getenv("LOG_TRUNCATE", "1") == "1",
     )

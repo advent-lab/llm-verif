@@ -24,6 +24,7 @@ from ..utils.design_loader import scan_design_directory, extract_module_header, 
 from ..utils.tokens import count_message_tokens, format_token_count
 from ..prompts.loader import load_system_prompt
 from ..tools import get_all_tools, set_tool_config
+import shutil
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -61,6 +62,101 @@ def _signal_done_accepted(state: AgentState) -> bool:
     return False
 
 
+# ── UVM Helpers ───────────────────────────────────────────────────────────────
+
+def _prepare_uvm_workdir(config: Config):
+    """Prepare the work directory for UVM compilation.
+
+    1. Copy the .f file to work_dir, rewriting relative paths to absolute.
+    2. Replace the sequence file and test file entries so they point to
+       work_dir/testbenches/ where the LLM will generate them.
+    3. Create work_dir/testbenches/ and work_dir/iterations/.
+    """
+    work_dir = config.work_dir
+    original_filelist = config.uvm_filelist
+
+    # The .f file's relative paths are relative to the sim/ directory,
+    # which is a sibling of the testbench/ directory.
+    # e.g., filelist is at .../testbench/alu_core_list.f
+    # paths in it are like ../testbench/X.sv and ../rtl/X.sv
+    # These are relative to sim/ (one level up from testbench/, then into testbench/)
+    sim_dir = config.uvm_testbench_dir.parent / "sim" if config.uvm_testbench_dir else original_filelist.parent.parent / "sim"
+
+    # Read original .f file
+    with open(original_filelist, 'r') as f:
+        lines = f.readlines()
+
+    # Rewrite paths to absolute, replacing sequence and test file entries
+    new_lines = []
+    seq_file = config.uvm_sequence_file  # e.g., "alu_core_seq.sv"
+    test_file = f"{config.uvm_test_name}.sv"  # e.g., "alu_core_test.sv"
+
+    testbenches_dir = work_dir / "testbenches"
+    testbenches_dir.mkdir(parents=True, exist_ok=True)
+    (work_dir / "iterations").mkdir(parents=True, exist_ok=True)
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("//") or stripped.startswith("#"):
+            new_lines.append(line)
+            continue
+
+        # Resolve the relative path against sim_dir
+        resolved = (sim_dir / stripped).resolve()
+        filename = resolved.name
+
+        # Redirect sequence file and test file to work_dir/testbenches/
+        if filename == seq_file:
+            new_lines.append(str(testbenches_dir / seq_file) + "\n")
+            logging.info(f"UVM .f file: redirecting {filename} → {testbenches_dir / seq_file}")
+        elif filename == test_file:
+            new_lines.append(str(testbenches_dir / test_file) + "\n")
+            logging.info(f"UVM .f file: redirecting {filename} → {testbenches_dir / test_file}")
+        else:
+            new_lines.append(str(resolved) + "\n")
+
+    # Write the modified .f file to work_dir
+    work_filelist = work_dir / "filelist.f"
+    with open(work_filelist, 'w') as f:
+        f.writelines(new_lines)
+
+    # Update config to use the new filelist
+    config.uvm_filelist = work_filelist
+    logging.info(f"UVM filelist prepared: {work_filelist}")
+
+
+def _build_uvm_prompt_context(config: Config) -> dict:
+    """Read UVM context files and build kwargs for load_system_prompt()."""
+    # Read seq_item content
+    seq_item_content = ""
+    if config.uvm_seq_item_file and config.uvm_seq_item_file.exists():
+        with open(config.uvm_seq_item_file, 'r') as f:
+            seq_item_content = f.read()
+
+    # Read coverage module content
+    cov_module_content = ""
+    if config.uvm_coverage_module_file and config.uvm_coverage_module_file.exists():
+        with open(config.uvm_coverage_module_file, 'r') as f:
+            cov_module_content = f.read()
+
+    # List UVM testbench files for context
+    uvm_tb_files = []
+    if config.uvm_testbench_dir and config.uvm_testbench_dir.exists():
+        for f in sorted(config.uvm_testbench_dir.iterdir()):
+            if f.suffix == '.sv' and f.name != config.uvm_sequence_file and \
+               f.name != f"{config.uvm_test_name}.sv":
+                uvm_tb_files.append(str(f))
+
+    return {
+        'uvm_enabled': True,
+        'uvm_seq_item_content': seq_item_content,
+        'uvm_coverage_module_content': cov_module_content,
+        'uvm_sequence_file': config.uvm_sequence_file,
+        'uvm_test_name': config.uvm_test_name,
+        'uvm_testbench_files': uvm_tb_files,
+    }
+
+
 # ── Graph nodes ───────────────────────────────────────────────────────────────
 
 def initialize_node(state: AgentState) -> AgentState:
@@ -93,6 +189,12 @@ def initialize_node(state: AgentState) -> AgentState:
 
     module_header = extract_all_module_headers(config.design_files)
 
+    # ── UVM setup: prepare .f file, read context files ────────────────────
+    uvm_prompt_kwargs = {}
+    if config.uvm_enabled:
+        _prepare_uvm_workdir(config)
+        uvm_prompt_kwargs = _build_uvm_prompt_context(config)
+
     system_prompt = load_system_prompt(
         design_name=config.design_name,
         design_dir=config.design_dir,
@@ -103,7 +205,8 @@ def initialize_node(state: AgentState) -> AgentState:
         design_context_enabled=config.design_context_enabled,
         testplan_enabled=config.testplan_enabled,
         max_iterations=config.max_iterations,
-        sim_runs=config.sim_runs
+        sim_runs=config.sim_runs,
+        **uvm_prompt_kwargs,
     )
 
     config.current_iteration = 1
@@ -113,10 +216,20 @@ def initialize_node(state: AgentState) -> AgentState:
     # coverage_phase is "code" in combined mode, None in single-mode runs
     coverage_phase = "code" if config.combined_coverage_enabled else None
 
+    # Choose appropriate initial human message
+    if config.uvm_enabled:
+        human_msg = (
+            "Begin UVM verification. Start by reading the specification. "
+            "Then generate UVM sequences and a test file to achieve both "
+            "code and functional coverage."
+        )
+    else:
+        human_msg = "Begin verification. Start by reading the specification."
+
     return {
         "messages": [
             SystemMessage(content=system_prompt),
-            HumanMessage(content="Begin verification. Start by reading the specification.")
+            HumanMessage(content=human_msg)
         ],
         "config": config,
         "design_name": config.design_name,
@@ -150,6 +263,8 @@ def initialize_node(state: AgentState) -> AgentState:
         # Combined mode fields
         "coverage_phase": coverage_phase,
         "code_coverage_summary": None,
+        # UVM mode
+        "uvm_enabled": config.uvm_enabled,
         # Termination
         "is_done": False,
         "done_reason": None,
@@ -503,7 +618,10 @@ def update_state_node(state: AgentState) -> AgentState:
     latest_msg = state["messages"][-1] if state["messages"] else None
 
     # Validate correct tool for current mode
-    if latest_msg and hasattr(latest_msg, 'name'):
+    # In UVM mode, both parse_coverage and parse_functional_coverage are valid
+    # since UVM targets both code and functional coverage simultaneously.
+    uvm_mode = getattr(config, 'uvm_enabled', False)
+    if not uvm_mode and latest_msg and hasattr(latest_msg, 'name'):
         tool_name = latest_msg.name
 
         if config.functional_coverage_enabled and tool_name == 'parse_coverage':

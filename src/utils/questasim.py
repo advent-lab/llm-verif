@@ -144,6 +144,56 @@ def parse_coverage_xml(xml_path: Path) -> Tuple[float, Dict[str, float], Dict[st
         logging.error(f"Coverage XML parsing failed: {e}")
         return 0.0, {}, {}
 
+## ── UVM Command Builders ─────────────────────────────────────────────────────
+
+def build_uvm_vlog_command(simulator_path: Path, filelist: Path) -> List[str]:
+    """Build vlog compilation command for UVM using a .f file list."""
+    return [
+        str(simulator_path / "vlog"),
+        "-sv",
+        "-mfcu",
+        "-f", str(filelist),
+        "+incdir+" + os.getenv("UVM_HOME", str(simulator_path.parent / "verilog_src" / "uvm-1.2" / "src")),
+        "-L", "uvm",
+    ]
+
+
+def build_uvm_vopt_command(simulator_path: Path, top_module: str) -> List[str]:
+    """Build vopt optimization command with full coverage instrumentation."""
+    return [
+        str(simulator_path / "vopt"),
+        "+acc",
+        top_module,
+        "-o", "opt_top",
+        "+cover=bcestf",
+    ]
+
+
+def build_uvm_vsim_command(
+    simulator_path: Path,
+    ucdb_path: Path,
+    test_name: str,
+    dpi_lib: str,
+    seed: str = "random",
+) -> List[str]:
+    """Build vsim simulation command for UVM with coverage collection."""
+    do_script = (
+        f"coverage save -onexit {ucdb_path}; "
+        f"run -all; quit"
+    )
+    return [
+        str(simulator_path / "vsim"),
+        "-c",
+        "opt_top",
+        "-coverage",
+        "-sv_seed", seed,
+        "-sv_lib", dpi_lib,
+        f"+UVM_TESTNAME={test_name}",
+        "+UVM_VERBOSITY=UVM_HIGH",
+        "-do", do_script,
+    ]
+
+
 def parse_functional_coverage_text(report_path: Path) -> Dict:
     """
     Parse QuestaSim functional coverage text report.

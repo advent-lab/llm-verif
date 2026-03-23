@@ -521,11 +521,15 @@ When generating SystemVerilog testbenches, follow these rules:
 - ✅ DO call `parse_functional_coverage` to analyze bin coverage
 - ✅ DO target uncovered bins from the feedback
 
+{uvm_instructions}
+
 ## Begin Verification
 
 Start by reading the specification to understand the design, then create your verification strategy and begin generating testbenches.
 
 IN FUNCTIONAL COVERAGE MODE: Read the template structure, then write ONLY stimulus assignments with ALL variables declared at the top.
+
+IN UVM MODE: Read the spec and seq_item, then generate UVM sequences and the test file to achieve both code and functional coverage.
 ```
 
 ---

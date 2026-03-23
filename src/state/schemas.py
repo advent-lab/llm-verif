@@ -55,6 +55,9 @@ class AgentState(TypedDict):
     code_coverage_summary: Optional[Dict[str, Any]]
     # ────────────────────────────────────────────────────────────────────────
 
+    # UVM mode
+    uvm_enabled: bool
+
     # Termination
     is_done: bool
     done_reason: Optional[str]
