@@ -61,6 +61,42 @@ def _signal_done_accepted(state: AgentState) -> bool:
     return False
 
 
+def _should_generate_hole_report(state: AgentState) -> bool:
+    # Current phase coverage below 100%
+    if state.get("cumulative_coverage", 0.0) < 100.0:
+        return True
+    # In combined mode, check if Phase 1 code coverage was below 100%
+    config = state.get("config")
+    if config and getattr(config, "combined_coverage_enabled", False):
+        code_summary = state.get("code_coverage_summary") or {}
+        if code_summary.get("cumulative_coverage", 0.0) < 100.0:
+            return True
+    return False
+
+
+def _maybe_generate_hole_report(state: AgentState) -> None:
+    """
+    Generate a coverage hole report if at least one stage is below 100%.
+
+    Delegates to ``generate_coverage_hole_report`` in
+    ``src.utils.questasim``.  All errors are caught and logged so that a
+    report-generation failure never prevents the agent from terminating
+    cleanly.
+    """
+    try:
+        from ..utils.questasim import generate_coverage_hole_report
+        config      = state["config"]
+        report_path = generate_coverage_hole_report(state, config.simulator_path)
+        if report_path:
+            logging.info(
+                f"{Colors.GREEN}Coverage hole report generated: {report_path}{Colors.RESET}"
+            )
+        else:
+            logging.warning("Coverage hole report generation returned None – check logs")
+    except Exception as e:
+        logging.error(f"_maybe_generate_hole_report failed: {e}")
+
+
 # ── Graph nodes ───────────────────────────────────────────────────────────────
 
 def initialize_node(state: AgentState) -> AgentState:
@@ -521,7 +557,7 @@ def update_state_node(state: AgentState) -> AgentState:
         result = parse_tool_result(latest_msg.content)
 
         if result.get('success'):
-            iteration_coverage = result.get('iteration_coverage', result.get('total_coverage', 0.0))
+            iteration_coverage  = result.get('iteration_coverage', result.get('total_coverage', 0.0))
             cumulative_coverage = result.get('cumulative_coverage', result.get('total_coverage', 0.0))
             cumulative_db       = result.get('cumulative_coverage_db')
             next_iteration      = state["iteration"] + 1
@@ -529,19 +565,27 @@ def update_state_node(state: AgentState) -> AgentState:
             config.current_iteration = next_iteration
             prev_cumulative = state.get("cumulative_coverage", 0.0)
 
+            # Track max_functional_coverage when in functional coverage mode
+            func_cov_update = {}
+            if config.functional_coverage_enabled:
+                func_cov_update["max_functional_coverage"] = max(
+                    state.get("max_functional_coverage", 0.0), iteration_coverage
+                )
+
             if cumulative_coverage > prev_cumulative:
                 logging.info(
                     f"Cumulative coverage improved: {prev_cumulative:.1f}% → "
                     f"{cumulative_coverage:.1f}% (this iteration: {iteration_coverage:.1f}%)"
                 )
                 return {
-                    "current_coverage":     iteration_coverage,
-                    "max_coverage":         max(state["max_coverage"], iteration_coverage),
-                    "cumulative_coverage":  cumulative_coverage,
+                    "current_coverage":       iteration_coverage,
+                    "max_coverage":           max(state["max_coverage"], iteration_coverage),
+                    "cumulative_coverage":    cumulative_coverage,
                     "cumulative_coverage_db": cumulative_db,
-                    "iteration":            next_iteration,
-                    "consecutive_failures": 0,
-                    "no_progress_count":    0,
+                    "iteration":              next_iteration,
+                    "consecutive_failures":   0,
+                    "no_progress_count":      0,
+                    **func_cov_update,
                 }
             else:
                 logging.warning(
@@ -549,12 +593,13 @@ def update_state_node(state: AgentState) -> AgentState:
                     f"(this iteration: {iteration_coverage:.1f}%)"
                 )
                 return {
-                    "current_coverage":     iteration_coverage,
-                    "cumulative_coverage":  cumulative_coverage,
+                    "current_coverage":       iteration_coverage,
+                    "cumulative_coverage":    cumulative_coverage,
                     "cumulative_coverage_db": cumulative_db,
-                    "iteration":            next_iteration,
-                    "consecutive_failures": 0,
-                    "no_progress_count":    state["no_progress_count"] + 1,
+                    "iteration":              next_iteration,
+                    "consecutive_failures":   0,
+                    "no_progress_count":      state["no_progress_count"] + 1,
+                    **func_cov_update,
                 }
 
     return {}
@@ -636,6 +681,7 @@ def create_react_graph() -> StateGraph:
                                     state.get("coverage_phase") == "code"):
                                 logging.info("Combined mode: transitioning to Phase 2")
                                 return "phase_transition"
+                            # 100% on final phase – no hole report needed
                             return END
                         else:
                             logging.warning(
@@ -650,6 +696,9 @@ def create_react_graph() -> StateGraph:
                                 state.get("coverage_phase") == "code"):
                             logging.info("Combined mode: transitioning to Phase 2")
                             return "phase_transition"
+                        # Generate hole report before ending if coverage < 100%
+                        if _should_generate_hole_report(state):
+                            _maybe_generate_hole_report(state)
                         return END
                     else:
                         logging.warning(
@@ -665,6 +714,10 @@ def create_react_graph() -> StateGraph:
         # ── Check hard termination conditions ──────────────────────────────
         route = _termination_route(state)
         if route is not None:
+            # Generate hole report before a hard END (not before phase_transition,
+            # as Phase 2 may still recover coverage)
+            if route == END and _should_generate_hole_report(state):
+                _maybe_generate_hole_report(state)
             return route
 
         # ── Route to tools if tool calls present ───────────────────────────
@@ -688,6 +741,9 @@ def create_react_graph() -> StateGraph:
     def route_after_update(state: AgentState) -> Literal["agent", "phase_transition", "__end__"]:
         route = _termination_route(state)
         if route is not None:
+            # Generate hole report before a hard END (not before phase_transition)
+            if route == END and _should_generate_hole_report(state):
+                _maybe_generate_hole_report(state)
             return route
         return "agent"
 

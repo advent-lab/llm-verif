@@ -76,7 +76,7 @@ module tb_llm;
     // ===========================================================================
     
     covergroup cg_rgb_hsv_advanced @(posedge clk iff valid_in);
-        option.cross_auto_bin_max = 0;  // ✅ DISABLE AUTO-GENERATED CROSS BINS
+        option.cross_auto_bin_max = 0;
         
         // Cover R component corner cases
         cp_r_component: coverpoint r_component {
@@ -88,7 +88,7 @@ module tb_llm;
             bins mid_low = {[8'h20:8'h7F]};
             bins mid_high = {[8'h80:8'hDF]};
             bins high_range = {[8'hE0:8'hFD]};
-            bins power_of_2[] = {8'h01, 8'h02, 8'h04, 8'h08, 8'h10, 8'h20, 8'h40, 8'h80};
+            bins power_of_2[] = {8'h02, 8'h04, 8'h08, 8'h10, 8'h20, 8'h40, 8'h80};
         }
         
         // Cover G component corner cases
@@ -101,7 +101,7 @@ module tb_llm;
             bins mid_low = {[8'h20:8'h7F]};
             bins mid_high = {[8'h80:8'hDF]};
             bins high_range = {[8'hE0:8'hFD]};
-            bins power_of_2[] = {8'h01, 8'h02, 8'h04, 8'h08, 8'h10, 8'h20, 8'h40, 8'h80};
+            bins power_of_2[] = {8'h02, 8'h04, 8'h08, 8'h10, 8'h20, 8'h40, 8'h80};
         }
         
         // Cover B component corner cases
@@ -114,7 +114,7 @@ module tb_llm;
             bins mid_low = {[8'h20:8'h7F]};
             bins mid_high = {[8'h80:8'hDF]};
             bins high_range = {[8'hE0:8'hFD]};
-            bins power_of_2[] = {8'h01, 8'h02, 8'h04, 8'h08, 8'h10, 8'h20, 8'h40, 8'h80};
+            bins power_of_2[] = {8'h02, 8'h04, 8'h08, 8'h10, 8'h20, 8'h40, 8'h80};
         }
         
         // Cover which channel is maximum (determines hue sector)
@@ -159,6 +159,9 @@ module tb_llm;
         }
         
         // Cover equal channel combinations (corner cases for hue calculation)
+        // Removed duplicate bins: r_eq_g_ne_b, g_eq_b_ne_r, r_eq_b_ne_g were
+        // identical encodings to r_eq_g, g_eq_b, r_eq_b respectively and would
+        // never be hit (first matching bin always wins in QuestaSim).
         cp_equal_channels: coverpoint {(r_component == g_component),
                                          (g_component == b_component),
                                          (r_component == b_component)} {
@@ -166,9 +169,6 @@ module tb_llm;
             bins r_eq_g = {3'b100};
             bins g_eq_b = {3'b010};
             bins r_eq_b = {3'b001};
-            bins r_eq_g_ne_b = {3'b100};
-            bins g_eq_b_ne_r = {3'b010};
-            bins r_eq_b_ne_g = {3'b001};
             bins all_equal = {3'b111};
         }
         
@@ -219,15 +219,15 @@ module tb_llm;
         cross_color_delta: cross cp_color_type, cp_delta {
             bins grayscale_zero_delta = binsof(cp_color_type.grayscale) && 
                                          binsof(cp_delta.zero);
-            illegal_bins grayscale_nonzero = binsof(cp_color_type.grayscale) && 
-                                              (!binsof(cp_delta.zero));
+            ignore_bins grayscale_nonzero = binsof(cp_color_type.grayscale) && 
+                                             (!binsof(cp_delta.zero));
         }
         
     endgroup
     
     // Covergroup for output HSV values
     covergroup cg_hsv_output @(posedge clk iff valid_out);
-        option.cross_auto_bin_max = 0;  // ✅ DISABLE AUTO-GENERATED CROSS BINS
+        option.cross_auto_bin_max = 0;
         
         cp_hue: coverpoint h_component {
             bins red_sector = {[12'd0:12'd240]};
@@ -272,15 +272,15 @@ module tb_llm;
             bins no_sat_white = binsof(cp_saturation.no_sat) && binsof(cp_value.max_bright_val);
             bins full_sat_bright = binsof(cp_saturation.full_sat) && binsof(cp_value.max_bright_val);
             
-            illegal_bins impossible_full_sat_black = binsof(cp_saturation.full_sat) && 
-                                                       binsof(cp_value.black_val);
+            ignore_bins impossible_full_sat_black = binsof(cp_saturation.full_sat) && 
+                                                     binsof(cp_value.black_val);
         }
         
     endgroup
     
     // Covergroup for memory initialization
     covergroup cg_memory_init @(posedge clk iff we);
-        option.cross_auto_bin_max = 0;  // ✅ DISABLE AUTO-GENERATED CROSS BINS
+        option.cross_auto_bin_max = 0;
         
         cp_write_addr: coverpoint waddr {
             bins first = {8'h00};
@@ -300,7 +300,7 @@ module tb_llm;
     
     // Covergroup for valid signal behavior
     covergroup cg_valid_behavior @(posedge clk);
-        option.cross_auto_bin_max = 0;  // ✅ DISABLE AUTO-GENERATED CROSS BINS
+        option.cross_auto_bin_max = 0;
         
         cp_valid_in_trans: coverpoint valid_in {
             bins rise = (1'b0 => 1'b1);

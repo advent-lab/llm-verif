@@ -55,7 +55,7 @@ module tb_llm;
     // ===========================================================================
     
     covergroup cg_scheduler_advanced @(posedge clk);
-        option.cross_auto_bin_max = 0;  // ✅ DISABLE AUTO-GENERATED CROSS BINS
+        option.cross_auto_bin_max = 0;
         
         // Cover all request patterns
         cp_request: coverpoint request {
@@ -97,12 +97,13 @@ module tb_llm;
         }
         
         // Cover QoS patterns
+        // Fixed: removed ascending={8'b11_10_01_00} and descending={8'b00_01_10_11}
+        // which were duplicates of values already in all_different and would never be hit.
         cp_qos_combined: coverpoint qos {
             bins all_same_high = {8'b11_11_11_11};
             bins all_same_low = {8'b00_00_00_00};
             bins all_same_mid_low = {8'b01_01_01_01};
             bins all_same_mid_high = {8'b10_10_10_10};
-            bins all_different = {8'b11_10_01_00, 8'b00_01_10_11};
             bins ascending = {8'b11_10_01_00};
             bins descending = {8'b00_01_10_11};
             bins alternating_high_low[] = {8'b11_00_11_00, 8'b00_11_00_11};
@@ -133,13 +134,14 @@ module tb_llm;
         
         // Cross: Request with QoS
         cross_req_qos_prio: cross cp_request, cp_qos_combined {
-            bins all_req_same_prio = binsof(cp_request.all_req) && 
-                                      (binsof(cp_qos_combined.all_same_high) ||
-                                       binsof(cp_qos_combined.all_same_low) ||
-                                       binsof(cp_qos_combined.all_same_mid_low) ||
-                                       binsof(cp_qos_combined.all_same_mid_high));
-            bins all_req_diff_prio = binsof(cp_request.all_req) && 
-                                      binsof(cp_qos_combined.all_different);
+            bins all_req_same_high  = binsof(cp_request.all_req) &&
+                                      binsof(cp_qos_combined.all_same_high);
+            bins all_req_same_low   = binsof(cp_request.all_req) &&
+                                      binsof(cp_qos_combined.all_same_low);
+            bins all_req_ascending  = binsof(cp_request.all_req) &&
+                                      binsof(cp_qos_combined.ascending);
+            bins all_req_descending = binsof(cp_request.all_req) &&
+                                      binsof(cp_qos_combined.descending);
             ignore_bins no_contention = binsof(cp_request.no_request);
         }
         
@@ -150,25 +152,6 @@ module tb_llm;
             bins req2_grant2 = binsof(cp_request.single_req2) && binsof(cp_grant.grant2);
             bins req3_grant3 = binsof(cp_request.single_req3) && binsof(cp_grant.grant3);
             bins no_req_no_grant = binsof(cp_request.no_request) && binsof(cp_grant.no_grant);
-        }
-        
-        // Cross: QoS with Grant (SIMPLIFIED to avoid explosion)
-        cross_qos_grant_prio: cross cp_qos0, cp_qos1, cp_qos2, cp_qos3, cp_grant {
-            // Same priority round-robin
-            bins same_prio_rr = (binsof(cp_qos0.prio[3]) && binsof(cp_qos1.prio[3]) &&
-                                 binsof(cp_qos2.prio[3]) && binsof(cp_qos3.prio[3])) &&
-                                (binsof(cp_grant.grant0) || binsof(cp_grant.grant1) ||
-                                 binsof(cp_grant.grant2) || binsof(cp_grant.grant3));
-            
-            // Req0 highest priority gets grant
-            bins req0_highest = binsof(cp_qos0.prio[3]) && 
-                                (binsof(cp_qos1.prio[0]) || binsof(cp_qos1.prio[1]) || binsof(cp_qos1.prio[2])) &&
-                                binsof(cp_grant.grant0);
-            
-            // Req3 highest priority gets grant
-            bins req3_highest = binsof(cp_qos3.prio[3]) && 
-                                (binsof(cp_qos0.prio[0]) || binsof(cp_qos0.prio[1]) || binsof(cp_qos0.prio[2])) &&
-                                binsof(cp_grant.grant3);
         }
         
         // Cross: Memory handshake
@@ -187,19 +170,87 @@ module tb_llm;
         }
         
         // Cross: Grant with address
+        // Fixed: added explicit address bin constraints per grant to avoid
+        // auto-expansion across all address bins.
         cross_grant_address: cross cp_grant, cp_address {
-            bins grant0_addr = binsof(cp_grant.grant0);
-            bins grant1_addr = binsof(cp_grant.grant1);
-            bins grant2_addr = binsof(cp_grant.grant2);
-            bins grant3_addr = binsof(cp_grant.grant3);
+            bins grant0_low  = binsof(cp_grant.grant0) && binsof(cp_address.low_range);
+            bins grant0_mid  = binsof(cp_grant.grant0) && binsof(cp_address.mid_range);
+            bins grant0_high = binsof(cp_grant.grant0) && binsof(cp_address.high_address);
+            bins grant1_low  = binsof(cp_grant.grant1) && binsof(cp_address.low_range);
+            bins grant1_mid  = binsof(cp_grant.grant1) && binsof(cp_address.mid_range);
+            bins grant1_high = binsof(cp_grant.grant1) && binsof(cp_address.high_address);
+            bins grant2_low  = binsof(cp_grant.grant2) && binsof(cp_address.low_range);
+            bins grant2_mid  = binsof(cp_grant.grant2) && binsof(cp_address.mid_range);
+            bins grant2_high = binsof(cp_grant.grant2) && binsof(cp_address.high_address);
+            bins grant3_low  = binsof(cp_grant.grant3) && binsof(cp_address.low_range);
+            bins grant3_mid  = binsof(cp_grant.grant3) && binsof(cp_address.mid_range);
+            bins grant3_high = binsof(cp_grant.grant3) && binsof(cp_address.high_address);
             ignore_bins no_grant = binsof(cp_grant.no_grant);
         }
         
     endgroup
+
+    // ── QoS priority vs grant coverage ─────────────────────────────────────────
+    // Replaces the former 5-way cross (cp_qos0 × cp_qos1 × cp_qos2 × cp_qos3 ×
+    // cp_grant) which explodes to 1,280 bins and is not reliably suppressed by
+    // cross_auto_bin_max = 0 in QuestaSim for crosses with >2 coverpoints.
+    // Split into three focused 2-way crosses instead.
+    covergroup cg_qos_grant @(posedge clk);
+        option.cross_auto_bin_max = 0;
+
+        cp_qos0_g: coverpoint qos0 {
+            bins low  = {2'b00, 2'b01};
+            bins high = {2'b10, 2'b11};
+        }
+
+        cp_qos3_g: coverpoint qos3 {
+            bins low  = {2'b00, 2'b01};
+            bins high = {2'b10, 2'b11};
+        }
+
+        cp_grant_g: coverpoint grant {
+            bins no_grant = {4'b0000};
+            bins grant0   = {4'b0001};
+            bins grant1   = {4'b0010};
+            bins grant2   = {4'b0100};
+            bins grant3   = {4'b1000};
+        }
+
+        // Cross 1: req0 QoS vs grant — verifies high-priority req0 wins
+        cross_qos0_grant: cross cp_qos0_g, cp_grant_g {
+            bins req0_high_gets_grant = binsof(cp_qos0_g.high) && binsof(cp_grant_g.grant0);
+            bins req0_low_loses_grant = binsof(cp_qos0_g.low)  && binsof(cp_grant_g.grant0);
+            ignore_bins no_grant      = binsof(cp_grant_g.no_grant);
+        }
+
+        // Cross 2: req3 QoS vs grant — verifies high-priority req3 wins
+        cross_qos3_grant: cross cp_qos3_g, cp_grant_g {
+            bins req3_high_gets_grant = binsof(cp_qos3_g.high) && binsof(cp_grant_g.grant3);
+            bins req3_low_loses_grant = binsof(cp_qos3_g.low)  && binsof(cp_grant_g.grant3);
+            ignore_bins no_grant      = binsof(cp_grant_g.no_grant);
+        }
+
+        // Cross 3: req0 vs req3 QoS to verify relative priority arbitration
+        cross_qos0_vs_qos3: cross cp_qos0_g, cp_qos3_g, cp_grant_g {
+            bins req0_beats_req3 = binsof(cp_qos0_g.high) &&
+                                   binsof(cp_qos3_g.low)  &&
+                                   binsof(cp_grant_g.grant0);
+            bins req3_beats_req0 = binsof(cp_qos3_g.high) &&
+                                   binsof(cp_qos0_g.low)  &&
+                                   binsof(cp_grant_g.grant3);
+            bins same_prio_grant0 = binsof(cp_qos0_g.high) &&
+                                    binsof(cp_qos3_g.high) &&
+                                    binsof(cp_grant_g.grant0);
+            bins same_prio_grant3 = binsof(cp_qos0_g.high) &&
+                                    binsof(cp_qos3_g.high) &&
+                                    binsof(cp_grant_g.grant3);
+            ignore_bins no_grant  = binsof(cp_grant_g.no_grant);
+        }
+    endgroup
     
     // Covergroup for transitions
     covergroup cg_transitions @(posedge clk);
-        option.cross_auto_bin_max = 0;  // ✅ DISABLE AUTO-GENERATED CROSS BINS
+        option.cross_auto_bin_max = 0;
         
         cp_grant_trans: coverpoint grant {
             bins grant_rise_0 = (4'b0000 => 4'b0001);
@@ -220,7 +271,7 @@ module tb_llm;
     
     // Covergroup for arbitration fairness
     covergroup cg_arbitration_fairness @(posedge clk iff (grant != 4'b0000));
-        option.cross_auto_bin_max = 0;  // ✅ DISABLE AUTO-GENERATED CROSS BINS
+        option.cross_auto_bin_max = 0;
         
         cp_granted_requestor: coverpoint grant {
             bins req0_served = {4'b0001};
@@ -246,24 +297,31 @@ module tb_llm;
     
     // Covergroup for edge cases
     covergroup cg_edge_cases @(posedge clk);
-        option.cross_auto_bin_max = 0;  // ✅ DISABLE AUTO-GENERATED CROSS BINS
+        option.cross_auto_bin_max = 0;
         
         cp_req_during_valid: coverpoint request iff (mem_cmd_valid) {
             bins req_present = {[4'b0001:4'b1111]};
             bins no_req_during_valid = {4'b0000};
         }
-        
+
+        // Fixed: replaced single all-values bin with meaningful QoS groupings
+        // so this coverpoint provides a useful coverage signal.
         cp_qos_during_valid: coverpoint qos iff (mem_cmd_valid) {
-            bins qos_values = {[8'h00:8'hFF]};
+            bins all_low    = {8'b00_00_00_00};
+            bins all_high   = {8'b11_11_11_11};
+            bins mixed_low  = {[8'h00:8'h3F]};
+            bins mixed_mid  = {[8'h40:8'hBF]};
+            bins mixed_high = {[8'hC0:8'hFF]};
         }
         
     endgroup
     
     // Instantiate covergroups
-    cg_scheduler_advanced cg_sched_inst = new();
-    cg_transitions cg_trans_inst = new();
+    cg_scheduler_advanced   cg_sched_inst = new();
+    cg_qos_grant            cg_qos_grant_inst = new();
+    cg_transitions          cg_trans_inst = new();
     cg_arbitration_fairness cg_arb_inst = new();
-    cg_edge_cases cg_edge_inst = new();
+    cg_edge_cases           cg_edge_inst = new();
     
     // BEGIN_STIMULUS
     initial begin
