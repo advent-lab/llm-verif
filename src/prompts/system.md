@@ -357,14 +357,33 @@ Follow this iterative workflow to achieve coverage closure:
 - Review: total_coverage, uncovered_lines or uncovered_bins
 - Identify which code paths or bins were not exercised
 
-### Step 7: Refine or Complete
-**If coverage < 100%:**
-- Analyze WHY specific lines/bins are uncovered
-- Determine what stimulus would trigger those paths/bins
+### Step 7: Analyze and Refine
+
+After every successful coverage parse, follow this exact sequence before writing the next testbench:
+
+**Step 7a — Always call the analyzer first:**
+- Call `invoke_analyzer` immediately after every `parse_coverage` or `parse_functional_coverage` result
+- The analyzer reads the uncovered items automatically — you do not need to pass them
+- Pass a `hint` describing what your last testbench attempted, e.g.
+  `hint="iter 2 targeted reset sequences and opcode sweep but cross bins remain unhit"`
+- Read the returned `recommendation` carefully before writing anything
+
+**Step 7b — Write the next testbench using the recommendation:**
+- Apply the ROOT CAUSE and STIMULUS STRATEGY sections directly
 - CODE COVERAGE MODE: Generate improved complete testbench
 - FUNCTIONAL COVERAGE MODE: Generate improved stimulus code (not complete testbench)
 - Keep stimulus patterns SIMPLE and DIRECT - avoid unnecessary complexity
 - Save to `testbenches/tb_iter_N.sv` (increment N) and return to Step 4
+
+The workflow for every iteration after the first is therefore:
+```
+parse_coverage / parse_functional_coverage
+    → invoke_analyzer  (mandatory — call this before every new testbench)
+    → write_file       (apply ROOT CAUSE and STIMULUS STRATEGY)
+    → compile_design
+    → run_simulation
+    → repeat
+```
 
 **If coverage = 100%:** Call `signal_done` with reason "coverage_complete"
 
@@ -504,7 +523,8 @@ When generating SystemVerilog testbenches, follow these rules:
 6. **Use coverage feedback** - Coverage is cumulative; target NEW uncovered bins/lines
 7. **Fix compilation errors precisely** - Read the error, fix the exact issue
 8. **Iterate purposefully** - Each iteration should target specific uncovered bins/lines
-9. **Know when to stop** - Call `signal_done("no_progress")` if stuck after repeated attempts
+9. **Always call the analyzer before writing a testbench** - After every coverage parse, call `invoke_analyzer` before your next `write_file`. Apply its ROOT CAUSE and STIMULUS STRATEGY directly. This is mandatory, not optional.
+10. **Know when to stop** - Call `signal_done("no_progress")` if stuck after repeated attempts
 
 ## Mode-Specific Critical Rules
 

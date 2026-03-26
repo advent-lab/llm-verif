@@ -55,6 +55,23 @@ class AgentState(TypedDict):
     code_coverage_summary: Optional[Dict[str, Any]]
     # ────────────────────────────────────────────────────────────────────────
 
+    # ── Multi-agent: Analyzer ───────────────────────────────────────────────
+    # The most recent recommendation produced by the analyzer agent.
+    # Set to None at initialization and reset at each phase transition so
+    # Phase 2 starts without stale Phase 1 analysis.  The orchestrator
+    # (agent_node) reads this field when building its next testbench so it
+    # can incorporate the analyzer's targeted suggestions.
+    analyzer_recommendation: Optional[str]
+
+    # Running count of analyzer invocations across the entire run.
+    # Used for logging and can be used in future to cap analyzer budget.
+    analyzer_calls: int
+    # ────────────────────────────────────────────────────────────────────────
+
+    # Internal routing key — set by router_node, read by _router_edge.
+    # Not intended to be read or written by any other node.
+    _route: Optional[str]
+
     # Termination
     is_done: bool
     done_reason: Optional[str]

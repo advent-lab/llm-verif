@@ -280,7 +280,7 @@ Examples:
             graph  = create_react_graph()
             result = graph.invoke(
                 {"messages": []},
-                config={"recursion_limit": config.max_iterations * 6}
+                config={"recursion_limit": config.max_iterations * 10}
             )
 
             final_state = result

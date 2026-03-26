@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langchain_openai import ChatOpenAI
@@ -62,10 +62,12 @@ def _signal_done_accepted(state: AgentState) -> bool:
 
 
 def _should_generate_hole_report(state: AgentState) -> bool:
-    # Current phase coverage below 100%
+    """
+    Return True if at least one coverage stage finished below 100% and a hole
+    report should therefore be produced.
+    """
     if state.get("cumulative_coverage", 0.0) < 100.0:
         return True
-    # In combined mode, check if Phase 1 code coverage was below 100%
     config = state.get("config")
     if config and getattr(config, "combined_coverage_enabled", False):
         code_summary = state.get("code_coverage_summary") or {}
@@ -74,46 +76,63 @@ def _should_generate_hole_report(state: AgentState) -> bool:
     return False
 
 
-def _maybe_generate_hole_report(state: AgentState) -> None:
+def _determine_done_reason(state: AgentState) -> str:
     """
-    Generate a coverage hole report if at least one stage is below 100%.
+    Inspect the final state and return a human-readable string explaining
+    why the run terminated.  Used by finalize_node to set done_reason.
+    """
+    config = state["config"]
 
-    Delegates to ``generate_coverage_hole_report`` in
-    ``src.utils.questasim``.  All errors are caught and logged so that a
-    report-generation failure never prevents the agent from terminating
-    cleanly.
+    if state.get("cumulative_coverage", 0.0) >= 100.0:
+        return "coverage_complete"
+    if state["consecutive_failures"] >= config.max_retries:
+        return f"max_failures ({state['consecutive_failures']}/{config.max_retries})"
+    if state["no_progress_count"] >= config.max_no_progress:
+        return f"no_progress ({state['no_progress_count']}/{config.max_no_progress})"
+    if state["api_calls"] >= config.max_iterations:
+        return f"max_api_calls ({state['api_calls']}/{config.max_iterations})"
+    if state["iteration"] > config.max_iterations:
+        return f"max_iterations ({state['iteration']}/{config.max_iterations})"
+    token_count = count_message_tokens(state["messages"], config.model)
+    if token_count >= config.context_window:
+        return f"context_window_exceeded ({token_count} tokens)"
+    return "unknown"
+
+
+def _termination_route(state: AgentState) -> Optional[str]:
     """
-    try:
-        from ..utils.questasim import generate_coverage_hole_report
-        config      = state["config"]
-        report_path = generate_coverage_hole_report(state, config.simulator_path)
-        if report_path:
-            logging.info(
-                f"{Colors.GREEN}Coverage hole report generated: {report_path}{Colors.RESET}"
-            )
-        else:
-            logging.warning("Coverage hole report generation returned None – check logs")
-    except Exception as e:
-        logging.error(f"_maybe_generate_hole_report failed: {e}")
+    Evaluate hard termination conditions and return the appropriate route key,
+    or None if the run should continue.
+    """
+    config = state["config"]
+
+    terminated = (
+        state["api_calls"]            >= config.max_iterations or
+        state["iteration"]            >  config.max_iterations or
+        state["consecutive_failures"] >= config.max_retries    or
+        state["no_progress_count"]    >= config.max_no_progress or
+        count_message_tokens(state["messages"], config.model) >= config.context_window
+    )
+
+    if not terminated:
+        return None
+
+    if (config.combined_coverage_enabled and
+            state.get("coverage_phase") == "code"):
+        logging.info("Phase 1 termination condition met → transitioning to Phase 2")
+        return "phase_transition"
+
+    return "finalize"
 
 
 # ── Graph nodes ───────────────────────────────────────────────────────────────
 
 def initialize_node(state: AgentState) -> AgentState:
-    """
-    Initialize node: One-time setup of environment.
-
-    Steps:
-    1. Load configuration (dashboard or direct mode)
-    2. Create work directory structure
-    3. Extract module headers from all design files
-    4. Construct system prompt
-    """
+    """Initialize node: One-time setup of environment."""
     logging.info("Initializing workflow")
 
     config = load_config()
 
-    # Create work directory structure
     (config.work_dir / "testbenches").mkdir(parents=True, exist_ok=True)
     (config.work_dir / "logs").mkdir(parents=True, exist_ok=True)
     (config.work_dir / "coverage").mkdir(parents=True, exist_ok=True)
@@ -146,7 +165,6 @@ def initialize_node(state: AgentState) -> AgentState:
     config.current_attempt = 1
     set_tool_config(config)
 
-    # coverage_phase is "code" in combined mode, None in single-mode runs
     coverage_phase = "code" if config.combined_coverage_enabled else None
 
     return {
@@ -183,10 +201,11 @@ def initialize_node(state: AgentState) -> AgentState:
         "max_functional_coverage": 0.0,
         "functional_coverage_history": [],
         "uncovered_bins": [],
-        # Combined mode fields
         "coverage_phase": coverage_phase,
         "code_coverage_summary": None,
-        # Termination
+        "analyzer_recommendation": None,
+        "analyzer_calls": 0,
+        "_route": None,
         "is_done": False,
         "done_reason": None,
     }
@@ -196,18 +215,6 @@ def phase_transition_node(state: AgentState) -> AgentState:
     """
     Phase transition node: switches from code coverage (Phase 1) to
     functional coverage (Phase 2).
-
-    Only reached when COMBINED_COVERAGE_ENABLED=1 and Phase 1 has terminated.
-
-    Actions:
-    1. Snapshot Phase 1 results into code_coverage_summary
-    2. Mutate config: flip functional_coverage_enabled, update work_dir,
-       set functional_coverage_testbench_path
-    3. Create Phase 2 work directory structure
-    4. Reset all iteration/failure counters
-    5. Replace message history with fresh system prompt + human message
-       so Phase 2 starts with a clean context
-    6. Re-register tools with updated config
     """
     config = state["config"]
 
@@ -219,34 +226,26 @@ def phase_transition_node(state: AgentState) -> AgentState:
     logging.info(f"    Cumulative coverage:{state['cumulative_coverage']:.1f}%")
     logging.info("=" * 70)
 
-    # ── 1. Snapshot Phase 1 results ────────────────────────────────────────
     code_summary = {
-        "iteration":            state["iteration"],
-        "max_coverage":         state["max_coverage"],
-        "cumulative_coverage":  state["cumulative_coverage"],
+        "iteration":              state["iteration"],
+        "max_coverage":           state["max_coverage"],
+        "cumulative_coverage":    state["cumulative_coverage"],
         "cumulative_coverage_db": state.get("cumulative_coverage_db"),
-        "work_dir":             state["work_dir"],
+        "work_dir":               state["work_dir"],
     }
 
-    # ── 2. Mutate config for Phase 2 ───────────────────────────────────────
-    # Switch work_dir: .../code_cov  →  .../func_cov
     old_work = Path(config.work_dir)
     new_work = old_work.parent / "func_cov"
     config.work_dir = new_work
-
-    # Activate functional coverage mode
     config.functional_coverage_enabled = True
 
-    # Resolve the functional coverage testbench path (validated at load_config time)
     funcov_tb_env = os.getenv("FUNCTIONAL_COVERAGE_TESTBENCH")
     if funcov_tb_env:
         config.functional_coverage_testbench_path = Path(funcov_tb_env)
     elif hasattr(state["config"], 'functional_coverage_testbench_path') and \
             state["config"].functional_coverage_testbench_path:
-        pass  # Already set from dashboard config at load time
-    # (load_config already validated existence, so no need to re-check here)
+        pass
 
-    # Reset iteration counters so Phase 2 starts fresh
     config.current_iteration = 1
     config.current_attempt = 1
     config.compile_attempts_this_iter = 0
@@ -254,16 +253,13 @@ def phase_transition_node(state: AgentState) -> AgentState:
     config._last_iter_for_compile = 0
     config._last_iter_for_sim = 0
 
-    # ── 3. Create Phase 2 work directory structure ─────────────────────────
     (new_work / "testbenches").mkdir(parents=True, exist_ok=True)
     (new_work / "logs").mkdir(parents=True, exist_ok=True)
     (new_work / "coverage").mkdir(parents=True, exist_ok=True)
     logging.info(f"Phase 2 work directory created: {new_work}")
 
-    # ── 4. Re-register tools with updated config ───────────────────────────
     set_tool_config(config)
 
-    # ── 5. Build fresh system prompt for Phase 2 ───────────────────────────
     from ..utils.design_loader import extract_all_module_headers
     module_header = extract_all_module_headers(config.design_files)
 
@@ -289,11 +285,6 @@ def phase_transition_node(state: AgentState) -> AgentState:
         "Read the testbench template, then generate stimulus to hit all coverage bins."
     )
 
-    # ── Patch orphaned tool calls ───────────────────────────────────────────
-    # OpenAI requires every AIMessage tool_call to be followed by a matching
-    # ToolMessage. The signal_done call that triggered this transition has no
-    # response yet. Inject a synthetic ToolMessage for each unanswered call
-    # so the message history is valid when sent to the Phase 2 LLM.
     from langchain_core.messages import ToolMessage
     closing_tool_messages = []
     last_ai = None
@@ -302,7 +293,6 @@ def phase_transition_node(state: AgentState) -> AgentState:
             last_ai = msg
             break
     if last_ai and hasattr(last_ai, "tool_calls") and last_ai.tool_calls:
-        # Collect tool_call_ids that already have a response
         answered_ids = {
             msg.tool_call_id
             for msg in state["messages"]
@@ -318,29 +308,6 @@ def phase_transition_node(state: AgentState) -> AgentState:
                     )
                 )
 
-    # ── 6. Return updated state (reset messages to clean slate) ────────────
-    # We do NOT use add_messages here — we return the full replacement list
-    # by replacing the key directly. LangGraph merges via add_messages for
-    # "messages" keys, so to truly replace we emit a brand-new list.
-    # The trick: return messages as a plain replacement by using the special
-    # RemoveMessage pattern isn't needed here — we just return the new list
-    # and LangGraph's add_messages will append. Instead we clear first by
-    # returning a state update that replaces messages entirely.
-    #
-    # LangGraph's add_messages reducer APPENDS. To replace the entire history
-    # we must clear existing messages first. We do this by returning a list
-    # that starts with the special sentinel understood by add_messages: an
-    # empty list clears nothing, but wrapping in a RemoveMessage would need
-    # langgraph >=0.1. The safest cross-version approach: store messages as
-    # the new list. Since AgentState uses add_messages we instead return the
-    # key as a *replace* by using a trick: return all existing IDs as removes
-    # then add new ones.
-    #
-    # Simplest compatible approach: just return the two new messages.
-    # The Phase 2 agent will have the Phase 1 history but the new system
-    # prompt at the top will reorient it. This is the lowest-risk option.
-    # If context pressure becomes an issue the caller can trim old messages.
-
     return {
         "messages": (
             closing_tool_messages +
@@ -349,23 +316,19 @@ def phase_transition_node(state: AgentState) -> AgentState:
                 HumanMessage(content=phase2_human),
             ]
         ),
-        "config":  config,
-        "work_dir": str(new_work),
+        "config":        config,
+        "work_dir":      str(new_work),
         "module_header": module_header,
-        # Coverage phase
-        "coverage_phase": "functional",
+        "coverage_phase":        "functional",
         "code_coverage_summary": code_summary,
-        # Reset all counters for Phase 2
-        "iteration": 1,
-        "attempt": 1,
-        "api_calls": 0,
+        "iteration":            1,
+        "attempt":              1,
+        "api_calls":            0,
         "consecutive_failures": 0,
-        "no_progress_count": 0,
-        # Reset code-coverage metrics (Phase 2 tracks functional coverage)
-        "current_coverage": 0.0,
-        "cumulative_coverage": 0.0,
+        "no_progress_count":    0,
+        "current_coverage":      0.0,
+        "cumulative_coverage":   0.0,
         "cumulative_coverage_db": None,
-        # Activate functional coverage tracking
         "functional_coverage_enabled": True,
         "functional_coverage_testbench_path": (
             str(config.functional_coverage_testbench_path)
@@ -373,17 +336,84 @@ def phase_transition_node(state: AgentState) -> AgentState:
             else None
         ),
         "current_functional_coverage": 0.0,
-        "max_functional_coverage": 0.0,
+        "max_functional_coverage":     0.0,
         "functional_coverage_history": [],
         "uncovered_bins": [],
-        # Keep termination fields clean
-        "is_done": False,
+        "analyzer_recommendation": None,
+        "_route": None,
+        "is_done":    False,
         "done_reason": None,
     }
 
 
+def _build_analyzer_context_message(state: AgentState):
+    """
+    Build a HumanMessage that surfaces the latest analyzer recommendation to
+    the orchestrator LLM, or return None if no recommendation is available.
+
+    In the always-on multi-agent model the analyzer is called after every
+    coverage parse, so a recommendation is available from iteration 1 onwards.
+    We inject it on every agent_node call where a recommendation exists,
+    with one exception: we skip injection immediately after the
+    invoke_analyzer ToolMessage has just landed in the message history because
+    at that point the orchestrator is still mid-turn and the result is already
+    visible as a ToolMessage — injecting the same content again would be
+    redundant and could confuse the LLM.
+
+    Injection is therefore suppressed only when the very last message in
+    history is already the invoke_analyzer ToolMessage itself.  In all other
+    situations — the orchestrator is about to write a testbench, compile,
+    simulate, etc. — the recommendation is surfaced so the orchestrator always
+    has the latest expert guidance in view.
+
+    Returns:
+        HumanMessage with the recommendation text, or None.
+    """
+    recommendation = state.get("analyzer_recommendation", "")
+    if not recommendation:
+        return None
+
+    messages = state.get("messages", [])
+    last_msg = messages[-1] if messages else None
+
+    # Suppress only when the orchestrator is immediately processing the
+    # invoke_analyzer result — it can read the ToolMessage directly.
+    just_received_result = (
+        last_msg is not None
+        and hasattr(last_msg, "name")
+        and last_msg.name == "invoke_analyzer"
+    )
+
+    if just_received_result:
+        return None
+
+    context = (
+        "=== ANALYZER RECOMMENDATION ===\n"
+        "The analyzer agent has examined the uncovered coverage items and the "
+        "RTL source. Its recommendation is below. Read it carefully and apply "
+        "it directly when generating your next testbench.\n\n"
+        f"{recommendation}\n"
+        "=== END ANALYZER RECOMMENDATION ===\n\n"
+        "Use the ROOT CAUSE and STIMULUS STRATEGY sections above to write "
+        "targeted stimulus for the next testbench iteration. Do not repeat "
+        "approaches that have already been tried."
+    )
+
+    from langchain_core.messages import HumanMessage as _HumanMessage
+    return _HumanMessage(content=context)
+
+
 def agent_node(state: AgentState) -> AgentState:
-    """Agent node: LLM reasoning and tool selection."""
+    """
+    Agent node: LLM reasoning and tool selection.
+
+    Before invoking the LLM, checks whether an analyzer recommendation is
+    available in state and, if so, injects it as a transient HumanMessage
+    appended to the message history for this call only.  The injected message
+    is NOT persisted to state — it is only added to the list passed to the
+    LLM so the orchestrator can act on it without permanently polluting the
+    conversation history with repeated copies of the same recommendation.
+    """
     config = state["config"]
 
     llm = ChatOpenAI(
@@ -398,7 +428,19 @@ def agent_node(state: AgentState) -> AgentState:
 
     _log_agent_request(state)
 
-    response = llm_with_tools.invoke(state["messages"])
+    # ── Inject analyzer recommendation if available ─────────────────────────
+    analyzer_context_msg = _build_analyzer_context_message(state)
+    if analyzer_context_msg is not None:
+        messages_for_llm = list(state["messages"]) + [analyzer_context_msg]
+        logging.info(
+            f"{Colors.MAGENTA}Injecting analyzer recommendation into LLM context "
+            f"(iter={state.get('iteration', '?')}, "
+            f"no_progress={state.get('no_progress_count', 0)}){Colors.RESET}"
+        )
+    else:
+        messages_for_llm = state["messages"]
+
+    response = llm_with_tools.invoke(messages_for_llm)
 
     new_api_calls = state.get("api_calls", 0) + 1
 
@@ -435,7 +477,10 @@ def _log_agent_request(state: AgentState):
     config = state.get("config")
     model  = config.model if config else "gpt-4"
     token_count   = count_message_tokens(messages, model)
-    token_display = format_token_count(token_count, config.context_window) if config else format_token_count(token_count)
+    token_display = (
+        format_token_count(token_count, config.context_window)
+        if config else format_token_count(token_count)
+    )
 
     phase_tag = f" | Phase: {phase}" if phase else ""
 
@@ -460,7 +505,10 @@ def _log_agent_request(state: AgentState):
             should_truncate = config.log_truncate if config else True
 
             if should_truncate and len(content) > max_content_length:
-                truncated = content[:max_content_length] + f"... [truncated {len(content) - max_content_length} chars]"
+                truncated = (
+                    content[:max_content_length]
+                    + f"... [truncated {len(content) - max_content_length} chars]"
+                )
                 logging.info(f"{Colors.CYAN}{truncated}{Colors.RESET}")
             else:
                 logging.info(f"{Colors.CYAN}{content}{Colors.RESET}")
@@ -475,7 +523,10 @@ def _log_agent_response(response, state: AgentState):
     api_calls = state.get("api_calls", "?")
 
     logging.debug(f"{Colors.GREEN}{Colors.BOLD}{'='*80}{Colors.RESET}")
-    logging.debug(f"{Colors.GREEN}{Colors.BOLD}AGENT RESPONSE [API Call #{api_calls} | Iter {iteration}]{Colors.RESET}")
+    logging.debug(
+        f"{Colors.GREEN}{Colors.BOLD}AGENT RESPONSE "
+        f"[API Call #{api_calls} | Iter {iteration}]{Colors.RESET}"
+    )
     logging.debug(f"{Colors.GREEN}{'='*80}{Colors.RESET}")
 
     if hasattr(response, 'content') and response.content:
@@ -506,10 +557,12 @@ def update_state_node(state: AgentState) -> AgentState:
     Update state based on tool results.
 
     Checks for:
-    1. compile_design failures  → increment consecutive_failures
-    2. run_simulation failures  → increment consecutive_failures
-    3. parse_coverage OR parse_functional_coverage success
-                                → update coverage metrics, increment iteration
+    1. compile_design failures       → increment consecutive_failures
+    2. run_simulation failures       → increment consecutive_failures
+    3. parse_coverage OR
+       parse_functional_coverage     → update coverage metrics, increment iteration,
+                                       hand off coverage data to analyzer tool
+    4. invoke_analyzer success       → store recommendation, increment analyzer_calls
     """
     config = state["config"]
 
@@ -543,13 +596,23 @@ def update_state_node(state: AgentState) -> AgentState:
         tool_name = latest_msg.name
 
         if config.functional_coverage_enabled and tool_name == 'parse_coverage':
-            logging.error(f"{Colors.RED}❌ WRONG TOOL: Agent called parse_coverage in FUNCTIONAL coverage mode!{Colors.RESET}")
-            logging.error(f"{Colors.RED}   Should have called: parse_functional_coverage{Colors.RESET}")
+            logging.error(
+                f"{Colors.RED}❌ WRONG TOOL: Agent called parse_coverage "
+                f"in FUNCTIONAL coverage mode!{Colors.RESET}"
+            )
+            logging.error(
+                f"{Colors.RED}   Should have called: parse_functional_coverage{Colors.RESET}"
+            )
             return {}
 
         if not config.functional_coverage_enabled and tool_name == 'parse_functional_coverage':
-            logging.error(f"{Colors.RED}❌ WRONG TOOL: Agent called parse_functional_coverage in CODE coverage mode!{Colors.RESET}")
-            logging.error(f"{Colors.RED}   Should have called: parse_coverage{Colors.RESET}")
+            logging.error(
+                f"{Colors.RED}❌ WRONG TOOL: Agent called parse_functional_coverage "
+                f"in CODE coverage mode!{Colors.RESET}"
+            )
+            logging.error(
+                f"{Colors.RED}   Should have called: parse_coverage{Colors.RESET}"
+            )
             return {}
 
     if latest_msg and hasattr(latest_msg, 'name') and \
@@ -565,11 +628,34 @@ def update_state_node(state: AgentState) -> AgentState:
             config.current_iteration = next_iteration
             prev_cumulative = state.get("cumulative_coverage", 0.0)
 
-            # Track max_functional_coverage when in functional coverage mode
             func_cov_update = {}
             if config.functional_coverage_enabled:
                 func_cov_update["max_functional_coverage"] = max(
                     state.get("max_functional_coverage", 0.0), iteration_coverage
+                )
+
+            # ── Hand off structured coverage data to the analyzer tool ─────
+            try:
+                from ..tools.analyzer import set_last_coverage_result
+                if latest_msg.name == 'parse_functional_coverage':
+                    set_last_coverage_result({
+                        "phase":           "functional",
+                        "covergroups":     result.get("covergroups", []),
+                        "uncovered_bins":  result.get("uncovered_bins", []),
+                        "uncovered_lines": {},
+                        "coverage_pct":    cumulative_coverage,
+                    })
+                else:
+                    set_last_coverage_result({
+                        "phase":           "code",
+                        "covergroups":     [],
+                        "uncovered_bins":  [],
+                        "uncovered_lines": result.get("uncovered_lines", {}),
+                        "coverage_pct":    cumulative_coverage,
+                    })
+            except Exception as e:
+                logging.warning(
+                    f"update_state_node: could not update analyzer coverage result: {e}"
                 )
 
             if cumulative_coverage > prev_cumulative:
@@ -602,158 +688,196 @@ def update_state_node(state: AgentState) -> AgentState:
                     **func_cov_update,
                 }
 
+    # Priority 4: invoke_analyzer result — store recommendation in state
+    if latest_msg and hasattr(latest_msg, 'name') and \
+            latest_msg.name == 'invoke_analyzer':
+        result = parse_tool_result(latest_msg.content)
+        if result.get('success', False):
+            recommendation = result.get('recommendation', '')
+            logging.info(
+                f"Analyzer recommendation received "
+                f"({len(recommendation)} chars, "
+                f"phase={result.get('coverage_phase', 'unknown')}, "
+                f"items={result.get('uncovered_item_count', 0)})"
+            )
+            return {
+                "analyzer_recommendation": recommendation,
+                "analyzer_calls":          state.get("analyzer_calls", 0) + 1,
+            }
+        else:
+            logging.warning(
+                f"invoke_analyzer failed: {result.get('error', 'unknown error')}"
+            )
+            return {
+                "analyzer_calls": state.get("analyzer_calls", 0) + 1,
+            }
+
     return {}
+
+
+def router_node(state: AgentState) -> AgentState:
+    """
+    Router node: the single decision point for all routing in the graph.
+
+    Routing decisions (evaluated in priority order):
+    1. signal_done + coverage_complete + 100% achieved  → finalize (or phase_transition)
+    2. signal_done + coverage_complete + < 100%         → warn, continue as normal
+    3. signal_done + other valid reason                 → finalize (or phase_transition)
+    4. signal_done rejected (conditions not yet met)    → fall through
+    5. Hard termination condition met                   → finalize (or phase_transition)
+    6. Pending tool calls in last message               → tools
+    7. No tool calls                                    → agent
+    """
+    config       = state["config"]
+    last_message = state["messages"][-1]
+
+    # ── Handle signal_done tool call ────────────────────────────────────────
+    if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+        for tool_call in last_message.tool_calls:
+            if tool_call['name'] == 'signal_done':
+                reason = tool_call['args'].get('reason', 'unknown')
+                logging.info(f"Agent called signal_done with reason: {reason}")
+
+                if reason == "coverage_complete":
+                    cumulative_cov = state.get("cumulative_coverage", 0.0)
+                    if cumulative_cov >= 100.0:
+                        logging.info("✓ Accepting signal_done: 100% coverage achieved!")
+                        if (config.combined_coverage_enabled and
+                                state.get("coverage_phase") == "code"):
+                            logging.info("Combined mode: transitioning to Phase 2")
+                            return {"_route": "phase_transition"}
+                        return {"_route": "finalize"}
+                    else:
+                        logging.warning(
+                            f"⚠️  Agent claimed coverage_complete but coverage is "
+                            f"{cumulative_cov:.1f}%"
+                        )
+
+                if _signal_done_accepted(state):
+                    logging.info(f"✓ Accepting signal_done: {reason}")
+                    if (config.combined_coverage_enabled and
+                            state.get("coverage_phase") == "code"):
+                        logging.info("Combined mode: transitioning to Phase 2")
+                        return {"_route": "phase_transition"}
+                    return {"_route": "finalize"}
+
+                logging.warning(
+                    f"⚠️  REJECTING signal_done: termination conditions not met\n"
+                    f"   consecutive_failures: {state['consecutive_failures']}/{config.max_retries}\n"
+                    f"   no_progress_count:    {state['no_progress_count']}/{config.max_no_progress}\n"
+                    f"   api_calls:            {state['api_calls']}/{config.max_iterations}\n"
+                    f"   iteration:            {state['iteration']}/{config.max_iterations}\n"
+                    f"   cumulative_coverage:  {state.get('cumulative_coverage', 0.0):.1f}%"
+                )
+                break
+
+    # ── Hard termination conditions ─────────────────────────────────────────
+    hard_route = _termination_route(state)
+    if hard_route is not None:
+        return {"_route": hard_route}
+
+    # ── Route to tools if tool calls are pending ────────────────────────────
+    if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+        return {"_route": "tools"}
+
+    return {"_route": "agent"}
+
+
+def finalize_node(state: AgentState) -> AgentState:
+    """
+    Finalize node: the single explicit landing point for all termination paths.
+    """
+    config = state["config"]
+
+    done_reason = _determine_done_reason(state)
+    logging.info(f"Finalizing run. Reason: {done_reason}")
+
+    report_path = None
+    if _should_generate_hole_report(state):
+        try:
+            from ..utils.questasim import generate_coverage_hole_report
+            report_path = generate_coverage_hole_report(state, config.simulator_path)
+            if report_path:
+                logging.info(
+                    f"{Colors.GREEN}Coverage hole report: {report_path}{Colors.RESET}"
+                )
+            else:
+                logging.warning(
+                    "Coverage hole report generation returned None — check logs"
+                )
+        except Exception as e:
+            logging.error(f"finalize_node: hole report generation failed: {e}")
+    else:
+        logging.info("All coverage targets met — no hole report needed")
+
+    logging.info(f"{Colors.GREEN}{Colors.BOLD}{'='*70}{Colors.RESET}")
+    logging.info(f"{Colors.GREEN}{Colors.BOLD}RUN COMPLETE{Colors.RESET}")
+    logging.info(f"{Colors.GREEN}{'='*70}{Colors.RESET}")
+    logging.info(f"{Colors.GREEN}  Design:          {state.get('design_name', 'N/A')}{Colors.RESET}")
+    logging.info(f"{Colors.GREEN}  Done reason:     {done_reason}{Colors.RESET}")
+    logging.info(f"{Colors.GREEN}  Iterations:      {state.get('iteration', 0)}{Colors.RESET}")
+    logging.info(f"{Colors.GREEN}  API calls:       {state.get('api_calls', 0)}{Colors.RESET}")
+    logging.info(f"{Colors.GREEN}  Final coverage:  {state.get('cumulative_coverage', 0.0):.1f}%{Colors.RESET}")
+    logging.info(f"{Colors.GREEN}  Analyzer calls:  {state.get('analyzer_calls', 0)}{Colors.RESET}")
+    if report_path:
+        logging.info(f"{Colors.GREEN}  Hole report:     {report_path}{Colors.RESET}")
+    logging.info(f"{Colors.GREEN}{'='*70}{Colors.RESET}")
+
+    return {
+        "is_done":    True,
+        "done_reason": done_reason,
+    }
 
 
 # ── Graph wiring ───────────────────────────────────────────────────────────────
 
 def create_react_graph() -> StateGraph:
-    """Create the ReAct agent graph."""
+    """
+    Create the ReAct agent graph.
 
+    Graph topology::
+
+        initialize
+             |
+           agent  <──────────────────────────────┐
+             |                                    |
+          router ──> tools ──> update_state ──> router
+             |
+             |──> phase_transition ──> agent
+             |
+             └──> finalize ──> END
+    """
     graph = StateGraph(AgentState)
 
-    # ── Nodes ──────────────────────────────────────────────────────────────
-    graph.add_node("initialize",        initialize_node)
-    graph.add_node("agent",             agent_node)
-    graph.add_node("tools",             ToolNode(get_all_tools()))
-    graph.add_node("update_state",      update_state_node)
-    graph.add_node("phase_transition",  phase_transition_node)
+    graph.add_node("initialize",       initialize_node)
+    graph.add_node("agent",            agent_node)
+    graph.add_node("tools",            ToolNode(get_all_tools()))
+    graph.add_node("update_state",     update_state_node)
+    graph.add_node("router",           router_node)
+    graph.add_node("phase_transition", phase_transition_node)
+    graph.add_node("finalize",         finalize_node)
 
-    # ── Static edges ───────────────────────────────────────────────────────
     graph.set_entry_point("initialize")
     graph.add_edge("initialize",       "agent")
+    graph.add_edge("agent",            "router")
     graph.add_edge("tools",            "update_state")
-    graph.add_edge("phase_transition", "agent")   # Phase 2 starts fresh agent loop
+    graph.add_edge("update_state",     "router")
+    graph.add_edge("phase_transition", "agent")
+    graph.add_edge("finalize",         END)
 
-    # ── Routing helper ─────────────────────────────────────────────────────
-    def _termination_route(state: AgentState) -> str:
-        """
-        Shared termination check used by both route_after_agent and
-        route_after_update.
-
-        Returns:
-            "phase_transition" – Phase 1 done, combined mode → go to Phase 2
-            END                – truly done (single mode, or Phase 2 finished)
-            None               – not done yet
-        """
-        config = state["config"]
-
-        terminated = (
-            state["api_calls"]          >= config.max_iterations or
-            state["iteration"]          >  config.max_iterations or
-            state["consecutive_failures"] >= config.max_retries  or
-            state["no_progress_count"]  >= config.max_no_progress or
-            count_message_tokens(state["messages"], config.model) >= config.context_window
-        )
-
-        if not terminated:
-            return None   # Keep running
-
-        # We are terminating — decide where to go
-        if (config.combined_coverage_enabled and
-                state.get("coverage_phase") == "code"):
-            # Phase 1 is done → transition to Phase 2
-            logging.info("Phase 1 termination condition met → transitioning to Phase 2")
-            return "phase_transition"
-
-        # Single-mode run, or Phase 2 ending → truly done
-        return END
-
-    # ── Conditional routing from agent ─────────────────────────────────────
-    def route_after_agent(state: AgentState) -> Literal["tools", "agent", "phase_transition", "__end__"]:
-        config      = state["config"]
-        last_message = state["messages"][-1]
-
-        # ── Handle signal_done tool call ────────────────────────────────────
-        if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-            for tool_call in last_message.tool_calls:
-                if tool_call['name'] == 'signal_done':
-                    reason = tool_call['args'].get('reason', 'unknown')
-                    logging.info(f"Agent called signal_done with reason: {reason}")
-
-                    # Check 100% coverage specifically
-                    if reason == "coverage_complete":
-                        cumulative_cov = state.get("cumulative_coverage", 0.0)
-                        if cumulative_cov >= 100.0:
-                            logging.info("✓ Accepting signal_done: 100% coverage achieved!")
-                            # In combined mode Phase 1 → go to Phase 2
-                            if (config.combined_coverage_enabled and
-                                    state.get("coverage_phase") == "code"):
-                                logging.info("Combined mode: transitioning to Phase 2")
-                                return "phase_transition"
-                            # 100% on final phase – no hole report needed
-                            return END
-                        else:
-                            logging.warning(
-                                f"⚠️  Agent claimed coverage_complete but coverage is "
-                                f"{cumulative_cov:.1f}%"
-                            )
-
-                    # Other accepted termination reasons
-                    if _signal_done_accepted(state):
-                        logging.info(f"✓ Accepting signal_done: {reason}")
-                        if (config.combined_coverage_enabled and
-                                state.get("coverage_phase") == "code"):
-                            logging.info("Combined mode: transitioning to Phase 2")
-                            return "phase_transition"
-                        # Generate hole report before ending if coverage < 100%
-                        if _should_generate_hole_report(state):
-                            _maybe_generate_hole_report(state)
-                        return END
-                    else:
-                        logging.warning(
-                            f"⚠️  REJECTING signal_done: termination conditions not met\n"
-                            f"   consecutive_failures: {state['consecutive_failures']}/{config.max_retries}\n"
-                            f"   no_progress_count:    {state['no_progress_count']}/{config.max_no_progress}\n"
-                            f"   api_calls:            {state['api_calls']}/{config.max_iterations}\n"
-                            f"   iteration:            {state['iteration']}/{config.max_iterations}\n"
-                            f"   cumulative_coverage:  {state.get('cumulative_coverage', 0.0):.1f}%"
-                        )
-                        break  # Fall through to normal tool processing
-
-        # ── Check hard termination conditions ──────────────────────────────
-        route = _termination_route(state)
-        if route is not None:
-            # Generate hole report before a hard END (not before phase_transition,
-            # as Phase 2 may still recover coverage)
-            if route == END and _should_generate_hole_report(state):
-                _maybe_generate_hole_report(state)
-            return route
-
-        # ── Route to tools if tool calls present ───────────────────────────
-        if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-            return "tools"
-
-        return "agent"
+    def _router_edge(state: AgentState) -> Literal[
+        "tools", "agent", "phase_transition", "finalize"
+    ]:
+        return state.get("_route", "agent")
 
     graph.add_conditional_edges(
-        "agent",
-        route_after_agent,
+        "router",
+        _router_edge,
         {
             "tools":            "tools",
             "agent":            "agent",
             "phase_transition": "phase_transition",
-            END:                END,
-        }
-    )
-
-    # ── Conditional routing after state update ─────────────────────────────
-    def route_after_update(state: AgentState) -> Literal["agent", "phase_transition", "__end__"]:
-        route = _termination_route(state)
-        if route is not None:
-            # Generate hole report before a hard END (not before phase_transition)
-            if route == END and _should_generate_hole_report(state):
-                _maybe_generate_hole_report(state)
-            return route
-        return "agent"
-
-    graph.add_conditional_edges(
-        "update_state",
-        route_after_update,
-        {
-            "agent":            "agent",
-            "phase_transition": "phase_transition",
-            END:                END,
+            "finalize":         "finalize",
         }
     )
 
