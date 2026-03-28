@@ -3,7 +3,12 @@ configs/
 temp/
 docs/plans/
 docs/tasks/
+docs/prompts/
 .claude/
+
+scratch/
+analysis/
+repos/
 
 
 # Project specific ignores
@@ -147,6 +152,7 @@ celerybeat.pid
 
 # Environments
 .env
+eval.env
 .venv
 env/
 venv/

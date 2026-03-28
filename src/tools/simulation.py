@@ -65,14 +65,16 @@ def compile_design(testbench_path: str) -> Dict[str, Any]:
             return {"success": False, "error": f"Testbench not found: {testbench_path}", "iteration": iteration, "retry": retry_num}
 
         # Get design files from config (includes both main design and context files)
-        design_files = _config.design_files + _config.design_context_files
+        design_files = _config.design_context_files + _config.design_files
+        compile_deps_files = getattr(_config, 'compile_deps_files', [])
 
         # Delegate to adapter
         result = _adapter.compile(
             testbench_path=tb_path,
             design_files=design_files,
             work_dir=_config.work_dir,
-            timeout=_config.sim_timeout
+            timeout=_config.sim_timeout,
+            compile_deps_files=compile_deps_files
         )
 
         # Build log filename: compile_iter_N.log or compile_iter_N_retry_M.log
@@ -88,13 +90,17 @@ def compile_design(testbench_path: str) -> Dict[str, Any]:
             f.write(f"Testbench: {testbench_path}\n")
             f.write(f"Success: {result.get('success', False)}\n")
             f.write(f"Return Code: {result.get('return_code', 'N/A')}\n\n")
-            f.write(f"STDOUT:\n{result.get('stdout', '(empty)')}\n\n")
-            f.write(f"STDERR:\n{result.get('stderr', '(empty)')}\n")
+            # Prefer full_stdout/full_stderr (includes dep output) for disk log
+            f.write(f"STDOUT:\n{result.get('full_stdout', result.get('stdout', '(empty)'))}\n\n")
+            f.write(f"STDERR:\n{result.get('full_stderr', result.get('stderr', '(empty)'))}\n")
         result["log_path"] = str(log_path)
+        # Drop full_* keys so they don't leak into LLM-facing result
+        result.pop("full_stdout", None)
+        result.pop("full_stderr", None)
 
         # Summarize output for the LLM (full output already saved to log file)
         if result.get("success", False):
-            result["stdout"] = f"Compilation successful. Full log: {log_name}"
+            result["stdout"] = f"Full log: {log_name}"
             result.pop("stderr", None)
         else:
             stderr = result.get("stderr", "")
@@ -177,7 +183,7 @@ def run_simulation(testbench_name: str = "tb_llm", num_runs: int = None) -> Dict
         # Summarize output for the LLM (full output already saved to log file)
         if result.get("success", False):
             summary = (
-                f"Simulation completed: {result.get('num_runs_completed', num_runs)}/{num_runs} "
+                f"{result.get('num_runs_completed', num_runs)}/{num_runs} "
                 f"runs successful."
             )
             if result.get("warning"):

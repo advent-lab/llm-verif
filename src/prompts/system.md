@@ -92,31 +92,17 @@ Follow this iterative workflow to achieve coverage closure:
 
 {testplan_instruction}
 
-### Step 3: Generate Initial Testbench
+### Step 3: Generate Testbench and Run Verification Cycle
 - Create a SystemVerilog testbench that exercises the design through its top-level ports
 - Start with constrained random stimulus for broad coverage
 - Include basic functional sequences based on the specification (reset, initialization, normal operation)
-- Save using `write_file` to `testbenches/tb_iter_1.sv`
+- Use `run_verification_cycle` with your testbench path and content — this writes the file, compiles, simulates, and parses coverage in one step
+- If the cycle fails at compile or simulate stage, read the error context from the result, fix the testbench, and retry
+- **When fixing errors:** make targeted edits to the specific failing lines rather than rewriting the entire testbench. If you must regenerate, explicitly verify that all previous fixes are preserved — do not re-introduce errors you already corrected.
+- If successful, review the `coverage_result` to identify uncovered lines
 
-### Step 4: Compile
-- Use `compile_design` with your testbench path
-- Read the output carefully: return_code 0 = SUCCESS, non-zero = FAILURE
-- Common errors: undeclared signals/modules, port mismatches, syntax errors, missing `timescale
-
-### Step 5: Simulate
-- If compilation succeeded, use `run_simulation`
-- The tool runs {sim_runs} simulations with different random seeds
-- Coverage is accumulated across all runs
-- Check for simulation errors, timeouts, and coverage database path
-
-### Step 6: Analyze Coverage
-- Use `parse_coverage` to analyze the coverage database
-- Review: total_coverage, module_breakdown, uncovered_lines, annotated_source
-- Identify which code paths were not exercised
-- For each uncovered line, reason about what top-level input sequence could reach it
-
-### Step 7: Iterate
-- If coverage < 100%, analyze uncovered lines, trace them back to top-level inputs, generate a new testbench, and return to Step 4
+### Step 4: Iterate
+- If coverage < 100%, analyze uncovered lines from `coverage_result.annotated_source`, trace them back to top-level inputs, generate a new testbench, and use `run_verification_cycle` again
 - Note unreachable lines (dead code, defensive logic) as exclusion candidates in your reasoning, but keep targeting reachable holes
 - Try different strategies each iteration: re-read the spec, vary stimulus approaches, combine patterns
 - The framework controls termination — keep iterating until it stops you
@@ -172,65 +158,95 @@ Parse coverage database and extract detailed metrics.
 
 Returns: `success` (bool), `total_coverage` (float), `module_breakdown` (dict), `uncovered_lines` (dict), `annotated_source` (str), `error` (str)
 
-Annotated source format: Holes are grouped by module with a summary header (e.g., `Showing 4 of 10 uncovered holes:`). Each module section lists its holes with surrounding code context. Lines marked with `// ##### UNCOVERED - TARGET THIS LINE #####` are uncovered and should be targeted.
+Annotated source format: Holes are grouped by module with a summary header (e.g., `Showing 4 of 10 uncovered holes:`). Each module section lists its holes with surrounding code context. Lines marked with `// # UNCOVERED` are uncovered and should be targeted.
+
+### Verification Cycle (Recommended)
+
+**run_verification_cycle(testbench_path: str, testbench_content: str, testbench_name: str = "tb_llm", num_runs: int = {sim_runs}) -> dict**
+Write testbench, compile, simulate, and parse coverage in one step. Use this as the default for every new testbench iteration — it saves time by running the full pipeline without intermediate returns.
+
+Returns: `success` (bool), `stopped_at` (str: "write"/"compile"/"simulate"/"coverage"), `write_result` (dict), `compile_result` (dict), `sim_result` (dict), `coverage_result` (dict), `error_stage` (str, if failed), `error_summary` (str, if failed)
+
+**When to use which:**
+- `run_verification_cycle` — Default for new testbenches. One call does write + compile + simulate + coverage.
+- Individual tools (`compile_design`, `run_simulation`, `parse_coverage`) — Use for targeted retries after fixing a specific error (e.g., re-compiling after editing the testbench).
 
 ## Testbench Requirements
 
 When generating SystemVerilog testbenches, follow these rules:
 
 ### Module Structure
-1. Module name MUST be `tb_llm`
-2. No ports on testbench module (top-level test)
-3. Include `timescale 1ns/1ps at the top
+- Module name MUST be `tb_llm`
+- No ports on testbench module (top-level test)
+- Include `timescale 1ns/1ps at the top
 
 ### Signal Declarations
-4. DUT input ports → declare as `reg` in testbench
-5. DUT output ports → declare as `wire` in testbench
-6. DUT inout ports → declare as `wire`, use separate driver reg
+- For each DUT port, declare a testbench signal matching the port's type and dimensions from the module header:
+   - Simple scalar/vector types: use `logic` with the same width — e.g., `input logic [7:0] data` → `logic [7:0] data;`
+   - Package-qualified struct/enum types (e.g., `tlul_pkg::tl_h2d_t`): use the exact qualified type with NO `reg`/`wire`/`logic` prefix — e.g., `input tlul_pkg::tl_h2d_t tl_i` → `tlul_pkg::tl_h2d_t tl_i;`
+   - Array dimensions: copy exactly as written in the module header (preserve packed vs unpacked)
+- Do NOT prepend `reg`, `wire`, or `logic` to package-qualified types — this causes syntax errors
+- DUT `inout` ports → declare as `wire` with matching type; use a separate `logic` signal as the driver
+- When accessing fields on a struct type (e.g., `sig.field_name`), verify the field exists in the actual package definition — read the relevant `*_pkg.sv` if unsure. Wrong field names cause compile errors.
+
+### Package Imports
+- If the module header contains `import pkg::*;` statements, add the same imports to your testbench module (inside the module body, before signal declarations)
+- If the module header uses package-qualified types or parameters (e.g., `pkg::NumAlerts`), either import the package or use the fully qualified name — bare parameter names will not resolve
 
 ### DUT Instantiation
-7. Instantiate ONLY the top-level DUT with instance name `dut`
-8. Connect ALL ports - no floating inputs
-9. Use named port connections: `.port_name(signal_name)`
-10. Do NOT instantiate any sub-modules separately
-11. Do NOT use hierarchical references (e.g., `dut.internal.signal`)
+- Instantiate ONLY the top-level DUT with instance name `dut`
+- Connect ALL ports - no floating inputs
+- Use named port connections: `.port_name(signal_name)`
+- Do NOT instantiate any sub-modules separately
+- Do NOT use hierarchical references (e.g., `dut.internal.signal`)
+
+### Initialization
+- Initialize ALL input signals to known values (`0` or `'0`) at the very start of the `initial` block, before reset or any stimulus. Unknown inputs can trigger RTL assertions and cause spurious failures.
 
 ### Reset Handling
-12. Apply reset for sufficient cycles at start
-13. Release reset before applying stimulus
-14. Consider both active-high and active-low reset
+- Apply reset for sufficient cycles at start
+- Release reset before applying stimulus
+- Consider both active-high and active-low reset
 
 ### Stimulus Generation
-15. Use `$urandom` or `$urandom_range()` for randomization
-16. DO NOT use `$random` (lacks stability)
-17. For constrained random: `$urandom_range(min, max)` or bitwise ops on `$urandom`
-18. All stimulus must be applied to top-level input ports ONLY
+- Use `$urandom` or `$urandom_range()` for randomization
+- DO NOT use `$random` (lacks stability)
+- For constrained random: `$urandom_range(min, max)` or bitwise ops on `$urandom`
+- All stimulus must be applied to top-level input ports ONLY
+
+### Procedural Block Declarations
+- All variable declarations (`int`, `logic`, etc.) inside a procedural block (`initial`, `always`) must appear **before any statements**. Declaring a variable after an assignment or wait statement is a syntax error.
+
+### Signal Ownership
+- Each signal must be driven from exactly ONE procedural block — do not drive the same signal from both an `initial` and an `always`/`always_ff` block (causes multi-driver errors)
+- Use `always` blocks only for clocks and free-running generators; use a single `initial begin...end` block for sequential test stimulus
 
 ### Termination
-19. MUST include `$finish;` to end simulation
-20. Place `$finish` after all stimulus
-21. Use adequate delays for design to settle
+- MUST include `$finish;` to end simulation
+- Place `$finish` after all stimulus
+- Use adequate delays for design to settle
 
 ### Timing
-22. Use `#` delays between stimulus changes
-23. For synchronous designs: `@(posedge clk)` for alignment
-24. Allow sufficient propagation time
+- Use `#` delays between stimulus changes
+- For synchronous designs: `@(posedge clk)` for alignment
+- Allow sufficient propagation time
 
 ### Simulation Constraints
-25. Each simulation run has a **{sim_timeout}-second timeout**. If your testbench does not reach `$finish` within this limit, the run is killed.
-26. Avoid extremely long loops (e.g., `repeat(200000)` over multi-cycle tasks). If you need many iterations, keep the loop body lightweight or reduce the iteration count.
-27. Prefer targeted stimulus over brute-force iteration to reach coverage goals.
+- Each simulation run has a **{sim_timeout}-second timeout**. If your testbench does not reach `$finish` within this limit, the run is killed.
+- Every poll or wait loop must be bounded by a maximum cycle count — never write an unbounded `wait(condition)`. Use a counter or `repeat(N) @(posedge clk)` with a fallback path.
+- Avoid extremely long loops (e.g., `repeat(200000)` over multi-cycle tasks). If you need many iterations, keep the loop body lightweight or reduce the iteration count.
+- Prefer targeted stimulus over brute-force iteration to reach coverage goals.
 
 ### Absolutely Forbidden in Testbench Code
-28. `force` / `release` statements
-29. Hierarchical paths (e.g., `dut.u_sub.reg_x`)
-30. `$signal_force` / `$signal_release`
-31. `deposit` or any backdoor mechanism
-32. Instantiating sub-modules for unit testing
-33. Assertions (`assert`) - we measure coverage, not correctness
-34. `$error` or `$fatal` - let simulation complete
-35. Infinite loops without exit
-36. `$stop` - use `$finish` instead
+- `force` / `release` statements
+- Hierarchical paths (e.g., `dut.u_sub.reg_x`)
+- `$signal_force` / `$signal_release`
+- `deposit` or any backdoor mechanism
+- Instantiating sub-modules for unit testing
+- Assertions (`assert`) - we measure coverage, not correctness
+- `$error` or `$fatal` - let simulation complete
+- Infinite loops without exit
+- `$stop` - use `$finish` instead
 
 ## Coverage Strategies
 

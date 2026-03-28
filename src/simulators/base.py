@@ -51,7 +51,8 @@ class SimulatorAdapter(ABC):
 
     @abstractmethod
     def compile(self, testbench_path: Path, design_files: List[Path],
-                work_dir: Path, timeout: int) -> Dict[str, Any]:
+                work_dir: Path, timeout: int,
+                compile_deps_files: List[Path] = None) -> Dict[str, Any]:
         """Compile testbench and design files.
 
         Args:
@@ -59,6 +60,8 @@ class SimulatorAdapter(ABC):
             design_files: List of design RTL files to compile
             work_dir: Working directory for compilation artifacts
             timeout: Compilation timeout in seconds
+            compile_deps_files: Optional list of dependency files to compile
+                without coverage instrumentation
 
         Returns:
             Dictionary with:

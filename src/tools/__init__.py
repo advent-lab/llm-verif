@@ -20,8 +20,10 @@ else:
     from . import simulation
     from . import analysis
 
-# Import filesystem module for config
+# Import filesystem and workflow modules for config
 from . import filesystem
+from .workflow import run_verification_cycle
+from . import workflow
 
 def get_all_tools():
     """Get all tools for the agent."""
@@ -32,6 +34,7 @@ def get_all_tools():
         compile_design,
         run_simulation,
         parse_coverage,
+        run_verification_cycle,
     ]
 
 def set_tool_config(config):
@@ -39,3 +42,4 @@ def set_tool_config(config):
     filesystem.set_config(config)
     simulation.set_config(config)
     analysis.set_config(config)
+    workflow.set_config(config)

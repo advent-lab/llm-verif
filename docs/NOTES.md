@@ -85,3 +85,16 @@ INFO:root:======================================================================
 At DEBUG level, the OpenAI and LangChain libraries log extensive details including the entire conversation
 history on each API request. This cannot be easily suppressed. **Recommendation**: Use `LOG_LEVEL=INFO`
 to see agent interactions without the verbose library internals.
+
+
+ot_dma — ASAP7 tech cells
+Replaced prim_flop_en.sv and prim_flop_no_rst.sv in data/ot_dma/deps/ with generic (behavioral) implementations. The originals used ASAP7-specific cells (DFFASRHQNx1_ASAP7_75t_R, DFFHQNx1_ASAP7_75t_R) that aren't available in simulation.
+
+ot_rom_ctrl — Xilinx memory primitive
+Replaced prim_xilinx_rom.sv with the generic prim_rom implementation from opentitan/hw/ip/prim_generic/rtl/. The original used xpm_memory_sprom (Xilinx-specific).
+
+ot_lc_ctrl — Package compile ordering in dashboard.json
+Moved lc_ctrl_state_pkg.sv, lc_ctrl_reg_pkg.sv, and lc_ctrl_pkg.sv from design_context into compile_deps, and reordered so that:
+
+lc_ctrl_state_pkg → lc_ctrl_reg_pkg → lc_ctrl_pkg → otp_ctrl_pkg (respecting the dependency chain)
+All come before tlul_lc_gate.sv which imports lc_ctrl_pkg

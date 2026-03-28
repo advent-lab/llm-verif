@@ -1,6 +1,17 @@
 from typing import TypedDict, Annotated, Optional, List, Any
 from langgraph.graph.message import add_messages
 from langchain_core.messages import BaseMessage
+import operator
+
+
+def _append_token_records(left: List[dict], right: List[dict]) -> List[dict]:
+    """Reducer that appends new token usage records to the list."""
+    if left is None:
+        left = []
+    if right is None:
+        right = []
+    return left + right
+
 
 class AgentState(TypedDict):
     """State for the Spec2Cov ReAct agent."""
@@ -28,6 +39,7 @@ class AgentState(TypedDict):
     api_calls: int  # Total agent_node invocations (LLM API calls) - for max_iterations limit
     consecutive_failures: int  # Compilation OR simulation failures in a row - for max_retries limit
     no_progress_count: int  # Consecutive cycles with no coverage improvement - for max_no_progress limit
+    no_tool_call_count: int  # Consecutive agent responses with no tool calls - for max_no_tool_calls limit
 
     # Coverage tracking
     current_coverage: float  # Latest coverage percentage (0-100) - single iteration
@@ -35,7 +47,13 @@ class AgentState(TypedDict):
     cumulative_coverage: float  # Merged coverage across ALL iterations
     cumulative_coverage_db: Optional[str]  # Path to merged coverage database file
 
+    # Token usage tracking (per-API-call records, appended via reducer)
+    # Each record: {api_call, iteration, input_tokens, output_tokens, total_tokens,
+    #               reasoning_tokens, cached_input_tokens,
+    #               tool_calls, tool_call_args, category, failures, cumulative_coverage}
+    token_usage: Annotated[List[dict], _append_token_records]
+
     # Termination
     is_done: bool
-    done_reason: Optional[str]  # "coverage_complete", "no_progress", "max_iterations"
+    done_reason: Optional[str]  # "coverage_complete", "no_progress", "no_tool_calls", "max_iterations"
     is_finalizing: bool  # True when framework has triggered termination and agent gets one last turn for report

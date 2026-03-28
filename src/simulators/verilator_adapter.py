@@ -24,7 +24,8 @@ class VerilatorAdapter(SimulatorAdapter):
     """
 
     def compile(self, testbench_path: Path, design_files: List[Path],
-                work_dir: Path, timeout: int) -> Dict[str, Any]:
+                work_dir: Path, timeout: int,
+                compile_deps_files: List[Path] = None) -> Dict[str, Any]:
         """Compile testbench using Verilator.
 
         Verilator compiles Verilog/SystemVerilog to C++, then compiles to executable.
@@ -35,11 +36,17 @@ class VerilatorAdapter(SimulatorAdapter):
             design_files: List of design RTL files
             work_dir: Working directory for compilation
             timeout: Compilation timeout in seconds
+            compile_deps_files: Optional dependency files (included in
+                compilation; Verilator cannot exclude per-file coverage)
 
         Returns:
             Compilation result dictionary with success status
         """
         try:
+            # Include compile_deps in the file list (Verilator has no per-file coverage control)
+            compile_deps_files = compile_deps_files or []
+            all_design_files = compile_deps_files + design_files
+
             # Build Verilator compilation command
             command = [
                 str(self.simulator_path / "verilator"),
@@ -49,7 +56,7 @@ class VerilatorAdapter(SimulatorAdapter):
                 "-Wno-fatal",           # Don't treat warnings as fatal errors
                 "--Mdir", str(work_dir / "obj_dir"),  # Output directory
                 str(testbench_path)
-            ] + [str(f) for f in design_files]
+            ] + [str(f) for f in all_design_files]
 
             logging.info(f"Verilator compile: {' '.join(command)}")
 

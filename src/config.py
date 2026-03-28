@@ -12,6 +12,7 @@ class Config:
     model: str
     temperature: float
     max_tokens: int
+    reasoning_effort: str  # 'disabled', 'none', 'low', 'medium', or 'high'
 
     # Design
     design_name: str
@@ -19,6 +20,7 @@ class Config:
     spec_path: Path
     design_files: List[Path]
     design_context_files: List[Path]
+    compile_deps_files: List[Path]
     design_context_enabled: bool
 
     # Paths
@@ -31,12 +33,14 @@ class Config:
     max_iterations: int
     max_retries: int
     max_no_progress: int  # Maximum consecutive cycles with no coverage improvement
+    max_no_tool_calls: int  # Maximum consecutive agent responses with no tool calls
     sim_runs: int
     sim_timeout: int
     testplan_enabled: bool
     num_feedback_holes: int  # Priority coverage holes in feedback (0 = unbounded)
-    coverage_hole_radius: int  # Context lines above/below each coverage hole (1-20)
+    coverage_hole_radius: int  # Context lines above/below each coverage hole (0-20)
     context_window: int  # Max tokens before terminating run
+    keep_latest_failures: int  # Number of latest failed verification cycle pairs to keep in context
 
     # LangGraph
     recursion_limit: int  # LangGraph graph recursion limit
@@ -152,6 +156,12 @@ def load_config() -> Config:
     work_base = Path(os.getenv("WORK_DIR", "./work"))
     work_dir = (work_base / run_id).resolve()
 
+    # Validate reasoning effort
+    reasoning_effort = os.getenv("REASONING_EFFORT", "disabled").lower()
+    # valid_reasoning = ["disabled", "none", "minimal", "low", "medium", "high", "xhigh"]
+    # if reasoning_effort not in valid_reasoning:
+    #     raise ValueError(f"Invalid REASONING_EFFORT: {reasoning_effort}. Must be one of: {valid_reasoning}")
+
     # Determine design_dir from spec_path (spec is always in docs/ under design root)
     # spec_path.parent = docs/, spec_path.parent.parent = design root
     design_dir = design_config.spec_path.parent.parent
@@ -161,11 +171,13 @@ def load_config() -> Config:
         model=os.getenv("MODEL", "gpt-4o"),
         temperature=float(os.getenv("TEMPERATURE", "0.4")),
         max_tokens=int(os.getenv("MAX_TOKENS", "4096")),
+        reasoning_effort=reasoning_effort,
         design_name=design_config.design_name,
         design_dir=design_dir,
         spec_path=design_config.spec_path,
         design_files=design_config.design_files,
         design_context_files=design_config.design_context_files,
+        compile_deps_files=design_config.compile_deps_files,
         design_context_enabled=os.getenv("DESIGN_CONTEXT", "1") == "1",
         work_dir=work_dir,
         simulator_path=Path(compiler),
@@ -174,12 +186,14 @@ def load_config() -> Config:
         max_iterations=int(os.getenv("MAX_ITERATIONS", "10")),
         max_retries=int(os.getenv("MAX_RETRIES", "3")),
         max_no_progress=int(os.getenv("MAX_NO_PROGRESS", "5")),
+        max_no_tool_calls=int(os.getenv("MAX_NO_TOOL_CALLS", "3")),
         sim_runs=int(os.getenv("SIM_RUNS", "5")),
         sim_timeout=int(os.getenv("SIM_TIMEOUT", "60")),
         testplan_enabled=os.getenv("TESTPLAN", "1") == "1",
         num_feedback_holes=int(os.getenv("NUM_FEEDBACK_HOLES", "0")),
-        coverage_hole_radius=max(1, min(20, int(os.getenv("COVERAGE_HOLE_RADIUS", "5")))),
+        coverage_hole_radius=max(0, min(20, int(os.getenv("COVERAGE_HOLE_RADIUS", "5")))),
         context_window=int(os.getenv("CONTEXT_WINDOW", "128000")),
+        keep_latest_failures=int(os.getenv("KEEP_LATEST_FAILURES", "1")),
         recursion_limit=int(os.getenv("RECURSION_LIMIT", "300")),
         log_level=os.getenv("LOG_LEVEL", "INFO"),
         log_truncate=os.getenv("LOG_TRUNCATE", "1") == "1"

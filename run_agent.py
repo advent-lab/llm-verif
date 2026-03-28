@@ -27,6 +27,7 @@ import logging
 import os
 import re
 import sys
+import time
 from pathlib import Path
 
 
@@ -280,12 +281,17 @@ Environment File Format:
         print("  5. Iterate until coverage target or max iterations reached")
         print("\n" + "-" * 70)
 
+        start_time = time.monotonic()
         try:
+            from src.utils.event_log import emit, close_event_log
+
             graph = create_react_graph()
             result = graph.invoke(
                 {"messages": []},
                 config={"recursion_limit": config.recursion_limit}
             )
+
+            duration_seconds = time.monotonic() - start_time
 
             # Print summary
             final_state = result
@@ -301,15 +307,58 @@ Environment File Format:
 
             # Save final state to JSON for visualization
             work_path = Path(final_state.get('work_dir', config.work_dir))
-            serializable = {k: v for k, v in final_state.items() if k != 'messages'}
+            serializable = {k: v for k, v in final_state.items() if k not in ('messages',)}
             if 'config' in serializable and serializable['config'] is not None:
                 config_dict = dataclasses.asdict(serializable['config'])
                 config_dict.pop('openai_api_key', None)
                 serializable['config'] = config_dict
+            # Strip tool_call_args from token_usage records (verbose, not needed in JSON)
+            if 'token_usage' in serializable and serializable['token_usage']:
+                cleaned_records = []
+                for rec in serializable['token_usage']:
+                    rec_copy = {k: v for k, v in rec.items() if k != 'tool_call_args'}
+                    cleaned_records.append(rec_copy)
+                serializable['token_usage'] = cleaned_records
             state_path = work_path / "final_state.json"
             with open(state_path, 'w') as f:
                 json.dump(serializable, f, indent=2, default=str)
             print(f"\nFinal state saved: {state_path}")
+
+            # --- JSONL: agent_message + session_end ---
+            summary_text = (
+                f"Design: {final_state.get('design_name', 'N/A')}, "
+                f"Iterations: {final_state.get('iteration', 0)}, "
+                f"Final Coverage: {final_state.get('cumulative_coverage', 0):.1f}%, "
+                f"Done Reason: {final_state.get('done_reason', 'N/A')}"
+            )
+            emit("agent_message", {"message": summary_text})
+
+            token_usage = final_state.get("token_usage", [])
+            total_input = sum(r.get("input_tokens", 0) for r in token_usage)
+            total_output = sum(r.get("output_tokens", 0) for r in token_usage)
+            total_reasoning = sum(r.get("reasoning_tokens", 0) for r in token_usage)
+            total_cached = sum(r.get("cached_input_tokens", 0) for r in token_usage)
+            total_all = sum(r.get("total_tokens", 0) for r in token_usage)
+
+            emit("session_end", {
+                "design_name": final_state.get("design_name"),
+                "final_coverage": final_state.get("cumulative_coverage", 0.0),
+                "max_coverage": final_state.get("max_coverage", 0.0),
+                "iterations": final_state.get("iteration", 0),
+                "total_api_calls": final_state.get("api_calls", 0),
+                "done_reason": final_state.get("done_reason"),
+                "duration_seconds": round(duration_seconds, 2),
+                "tokens_summary": {
+                    "input_tokens": total_input,
+                    "output_tokens": total_output,
+                    "reasoning_tokens": total_reasoning,
+                    "cached_input_tokens": total_cached,
+                    "total_tokens": total_all,
+                    "cache_hit_rate": round(total_cached / total_input, 4) if total_input > 0 else 0.0,
+                },
+                "token_usage": token_usage,
+            })
+            close_event_log()
 
             # Check for generated artifacts
             work_path = Path(final_state.get('work_dir', config.work_dir))
@@ -347,6 +396,7 @@ Environment File Format:
             return 0
 
         except Exception as e:
+            duration_seconds = time.monotonic() - start_time
             print("\n" + "=" * 70)
             print("❌ EXECUTION FAILED")
             print("=" * 70)
@@ -354,6 +404,17 @@ Environment File Format:
             if args.verbose:
                 import traceback
                 traceback.print_exc()
+
+            # --- JSONL: session_end on error ---
+            try:
+                emit("session_end", {
+                    "error": str(e),
+                    "duration_seconds": round(duration_seconds, 2),
+                })
+                close_event_log()
+            except Exception:
+                pass  # Don't let logging failure mask the real error
+
             return 1
 
     except FileNotFoundError as e:
