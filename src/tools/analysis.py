@@ -79,7 +79,7 @@ def parse_coverage(coverage_db_path: str) -> Dict[str, Any]:
         logging.info("Parsing iteration coverage database")
         iteration_result = _adapter.parse_coverage(db_path)
         iteration_coverage = iteration_result.total_coverage
-        logging.info(f"Iteration coverage: {iteration_coverage:.1f}%")
+        logging.info(f"Iteration coverage: {iteration_coverage:.2f}%")
 
         # Step 2: Determine cumulative coverage database path
         coverage_dir = db_path.parent
@@ -103,7 +103,7 @@ def parse_coverage(coverage_db_path: str) -> Dict[str, Any]:
         logging.info("Parsing cumulative coverage database")
         cumulative_result = _adapter.parse_coverage(cumulative_db_path)
         cumulative_coverage = cumulative_result.total_coverage
-        logging.info(f"Cumulative coverage: {cumulative_coverage:.1f}%")
+        logging.info(f"Cumulative coverage: {cumulative_coverage:.2f}%")
 
         # Step 5: Create annotated source based on CUMULATIVE uncovered lines
         # (what still needs to be covered by future testbenches)

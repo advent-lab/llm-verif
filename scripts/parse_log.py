@@ -193,7 +193,7 @@ Metrics extracted:
             print(f"End time:            {metrics['end_time'].strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}")
             print(f"Total duration:      {format_duration(metrics['total_seconds'])} ({metrics['total_seconds']:.2f} seconds)")
             print()
-            print(f"Final coverage:      {metrics['cumulative_coverage']:.1f}%")
+            print(f"Final coverage:      {metrics['cumulative_coverage']:.2f}%")
             print(f"Final token count:   {metrics['final_tokens']:,}")
             print()
             

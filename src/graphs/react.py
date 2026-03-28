@@ -387,8 +387,8 @@ def update_state_node(state: AgentState) -> AgentState:
 
             if cumulative_coverage > prev_cumulative:
                 logging.info(
-                    f"Cumulative coverage improved: {prev_cumulative:.1f}% → "
-                    f"{cumulative_coverage:.1f}% (this iteration: {iteration_coverage:.1f}%)"
+                    f"Cumulative coverage improved: {prev_cumulative:.2f}% → "
+                    f"{cumulative_coverage:.2f}% (this iteration: {iteration_coverage:.2f}%)"
                 )
                 return _emit_and_return("verification_cycle_coverage_improved", {
                     "current_coverage": iteration_coverage,
@@ -401,8 +401,8 @@ def update_state_node(state: AgentState) -> AgentState:
                 })
             else:
                 logging.warning(
-                    f"No cumulative coverage improvement: {cumulative_coverage:.1f}% "
-                    f"(this iteration: {iteration_coverage:.1f}%)"
+                    f"No cumulative coverage improvement: {cumulative_coverage:.2f}% "
+                    f"(this iteration: {iteration_coverage:.2f}%)"
                 )
                 return _emit_and_return("verification_cycle_no_improvement", {
                     "current_coverage": iteration_coverage,
@@ -472,7 +472,7 @@ def update_state_node(state: AgentState) -> AgentState:
 
             # Check if cumulative coverage improved
             if cumulative_coverage > prev_cumulative:
-                logging.info(f"Cumulative coverage improved: {prev_cumulative:.1f}% → {cumulative_coverage:.1f}% (this iteration: {iteration_coverage:.1f}%)")
+                logging.info(f"Cumulative coverage improved: {prev_cumulative:.2f}% → {cumulative_coverage:.2f}% (this iteration: {iteration_coverage:.2f}%)")
                 return _emit_and_return("coverage_improved", {
                     "current_coverage": iteration_coverage,
                     "max_coverage": max(state["max_coverage"], iteration_coverage),
@@ -483,7 +483,7 @@ def update_state_node(state: AgentState) -> AgentState:
                     "no_progress_count": 0  # Reset no_progress on improvement
                 })
             else:
-                logging.warning(f"No cumulative coverage improvement: {cumulative_coverage:.1f}% (this iteration: {iteration_coverage:.1f}%)")
+                logging.warning(f"No cumulative coverage improvement: {cumulative_coverage:.2f}% (this iteration: {iteration_coverage:.2f}%)")
                 return _emit_and_return("no_improvement", {
                     "current_coverage": iteration_coverage,
                     "cumulative_coverage": cumulative_coverage,  # Update even if no improvement
@@ -547,7 +547,7 @@ def finalize_node(state: AgentState) -> AgentState:
 
     finalize_message = (
         f"FRAMEWORK NOTICE: Verification terminated (reason: {reason}). "
-        f"Final cumulative coverage: {cumulative_coverage:.1f}%. "
+        f"Final cumulative coverage: {cumulative_coverage:.2f}%. "
         f"Iterations completed: {iteration - 1}.\n\n"
         f"You MUST now write your final run report to `report.md` using `write_file`. "
         f"This is your LAST turn — only `write_file` tool calls will be executed. "
@@ -562,7 +562,7 @@ def finalize_node(state: AgentState) -> AgentState:
 
     logging.info(f"{Colors.MAGENTA}{Colors.BOLD}{'='*80}{Colors.RESET}")
     logging.info(f"{Colors.MAGENTA}{Colors.BOLD}FINALIZE ({reason}): Giving agent one last turn to write report.md{Colors.RESET}")
-    logging.info(f"{Colors.MAGENTA}Cumulative coverage: {cumulative_coverage:.1f}% | No-progress count: {no_progress} | No-tool-call count: {no_tool_calls}{Colors.RESET}")
+    logging.info(f"{Colors.MAGENTA}Cumulative coverage: {cumulative_coverage:.2f}% | No-progress count: {no_progress} | No-tool-call count: {no_tool_calls}{Colors.RESET}")
     logging.info(f"{Colors.MAGENTA}{'='*80}{Colors.RESET}\n")
 
     # --- JSONL: finalize + human_message events ---
@@ -725,7 +725,7 @@ def create_react_graph() -> StateGraph:
             return _route("finalize", f"max_retries ({state['consecutive_failures']}/{config.max_retries})")
 
         if state["no_progress_count"] >= config.max_no_progress:
-            logging.info(f"No progress after {state['no_progress_count']} attempts (MAX_NO_PROGRESS={config.max_no_progress}) - cumulative coverage stuck at {state.get('cumulative_coverage', 0.0):.1f}% — routing to finalize")
+            logging.info(f"No progress after {state['no_progress_count']} attempts (MAX_NO_PROGRESS={config.max_no_progress}) - cumulative coverage stuck at {state.get('cumulative_coverage', 0.0):.2f}% — routing to finalize")
             return _route("finalize", f"max_no_progress ({state['no_progress_count']}/{config.max_no_progress})")
 
         # Check context window limit
@@ -791,8 +791,8 @@ def create_react_graph() -> StateGraph:
         # Coverage complete: route to finalize so agent can write report
         cumulative = state.get("cumulative_coverage", 0.0)
         if cumulative >= 100.0:
-            logging.info(f"Coverage complete ({cumulative:.1f}%) — routing to finalize")
-            return _route("finalize", f"coverage_complete ({cumulative:.1f}%)")
+            logging.info(f"Coverage complete ({cumulative:.2f}%) — routing to finalize")
+            return _route("finalize", f"coverage_complete ({cumulative:.2f}%)")
 
         # Check termination conditions with UPDATED state — route to finalize so agent writes report.md
         if state["api_calls"] >= config.max_iterations:
@@ -809,7 +809,7 @@ def create_react_graph() -> StateGraph:
 
         # No-progress: route to finalize so agent can write report
         if state["no_progress_count"] >= config.max_no_progress:
-            logging.info(f"No progress after {state['no_progress_count']} attempts (MAX_NO_PROGRESS={config.max_no_progress}) - cumulative coverage stuck at {state.get('cumulative_coverage', 0.0):.1f}% — routing to finalize")
+            logging.info(f"No progress after {state['no_progress_count']} attempts (MAX_NO_PROGRESS={config.max_no_progress}) - cumulative coverage stuck at {state.get('cumulative_coverage', 0.0):.2f}% — routing to finalize")
             return _route("finalize", f"max_no_progress ({state['no_progress_count']}/{config.max_no_progress})")
 
         # Check context window limit

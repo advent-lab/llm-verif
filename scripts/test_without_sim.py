@@ -155,8 +155,8 @@ def main():
 
         print(f"\nDesign:            {design_name}")
         print(f"Iterations:        {iteration}")
-        print(f"Final Coverage:    {current_coverage:.1f}% (MOCKED)")
-        print(f"Max Coverage:      {max_coverage:.1f}%")
+        print(f"Final Coverage:    {current_coverage:.2f}% (MOCKED)")
+        print(f"Max Coverage:      {max_coverage:.2f}%")
         print(f"Termination:       {done_reason}")
         print(f"Work Directory:    {work_dir}")
 

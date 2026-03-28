@@ -137,7 +137,7 @@ def run_verification_cycle(
     cumulative = coverage_result.get("cumulative_coverage", coverage_result.get("total_coverage", 0))
     iteration = coverage_result.get("iteration_coverage", coverage_result.get("total_coverage", 0))
     logging.info(
-        f"[verification_cycle] Complete — iteration coverage: {iteration:.1f}%, "
-        f"cumulative coverage: {cumulative:.1f}%"
+        f"[verification_cycle] Complete — iteration coverage: {iteration:.2f}%, "
+        f"cumulative coverage: {cumulative:.2f}%"
     )
     return result

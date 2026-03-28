@@ -300,8 +300,8 @@ Environment File Format:
             print("=" * 70)
             print(f"\nDesign:            {final_state.get('design_name', 'N/A')}")
             print(f"Iterations:        {final_state.get('iteration', 0)}")
-            print(f"Max Coverage:      {final_state.get('max_coverage', 0):.1f}%")
-            print(f"Merged Coverage:    {final_state.get('cumulative_coverage', 0):.1f}%")
+            print(f"Max Coverage:      {final_state.get('max_coverage', 0):.2f}%")
+            print(f"Merged Coverage:    {final_state.get('cumulative_coverage', 0):.2f}%")
             print(f"Termination:       {final_state.get('done_reason', 'N/A')}")
             print(f"Work Directory:    {final_state.get('work_dir', config.work_dir)}")
 
@@ -328,7 +328,7 @@ Environment File Format:
             summary_text = (
                 f"Design: {final_state.get('design_name', 'N/A')}, "
                 f"Iterations: {final_state.get('iteration', 0)}, "
-                f"Final Coverage: {final_state.get('cumulative_coverage', 0):.1f}%, "
+                f"Final Coverage: {final_state.get('cumulative_coverage', 0):.2f}%, "
                 f"Done Reason: {final_state.get('done_reason', 'N/A')}"
             )
             emit("agent_message", {"message": summary_text})

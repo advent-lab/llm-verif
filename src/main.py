@@ -43,7 +43,7 @@ def main():
         summary_text = (
             f"Design: {final_state.get('design_name', 'N/A')}, "
             f"Iterations: {final_state.get('iteration', 0)}, "
-            f"Final Coverage: {final_state.get('cumulative_coverage', 0):.1f}%, "
+            f"Final Coverage: {final_state.get('cumulative_coverage', 0):.2f}%, "
             f"Done Reason: {final_state.get('done_reason', 'N/A')}"
         )
 
@@ -52,11 +52,11 @@ def main():
         print("="*80)
         print(f"Design: {final_state.get('design_name', 'N/A')}")
         print(f"Iterations: {final_state.get('iteration', 0)}")
-        print(f"Final Coverage: {final_state.get('cumulative_coverage', 0):.1f}%")
-        print(f"Max Coverage: {final_state.get('max_coverage', 0):.1f}%")
+        print(f"Final Coverage: {final_state.get('cumulative_coverage', 0):.2f}%")
+        print(f"Max Coverage: {final_state.get('max_coverage', 0):.2f}%")
         print(f"Done Reason: {final_state.get('done_reason', 'N/A')}")
         print(f"Work Directory: {final_state.get('work_dir', 'N/A')}")
-        print(f"Duration: {duration_seconds:.1f}s")
+        print(f"Duration: {duration_seconds:.2f}s")
         print("="*80)
 
         # --- JSONL: agent_message + session_end ---
