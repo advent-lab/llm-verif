@@ -145,6 +145,26 @@ def parse_coverage_xml(xml_path: Path) -> Tuple[float, Dict[str, float], Dict[st
         return 0.0, {}, {}
 
 ## ── UVM Command Builders ─────────────────────────────────────────────────────
+#
+# UVM compilation strategy (combined approach):
+#
+#   1. vlib work          – standard work library
+#   2. vlib uvm_lib       – dedicated UVM library
+#   3. vlog -sv -work uvm_lib  uvm_pkg.sv
+#                         – compile UVM 1.2 from source with CURRENT QuestaSim
+#                           (avoids vsim-12460 stale-binary errors from the
+#                            pre-compiled /opt/siemens/questasim/uvm-1.2)
+#   4. vmap mtiUvm uvm_lib
+#                         – redirect QuestaSim's default mtiUvm (points to 1.1d
+#                           in modelsim.ini) so the LibrarySearchPath loads our
+#                           freshly compiled 1.2 instead of 1.1d
+#   5. vlog -sv -mfcu -L uvm_lib -f filelist.f
+#   6. vopt +acc <Top> -L uvm_lib -o opt_top +cover=bcestf
+#
+# This avoids TWO failure modes:
+#   A. Dual-UVM conflict (mtiUvm 1.1d + uvm_lib 1.2) → INVTST factory errors
+#   B. Stale pre-compiled UVM library → vsim-12460 / vsim-8754 type errors
+
 
 def build_uvm_vlib_uvm_command(simulator_path: Path) -> List[str]:
     """Build vlib command to create a dedicated UVM library."""
@@ -152,12 +172,12 @@ def build_uvm_vlib_uvm_command(simulator_path: Path) -> List[str]:
 
 
 def build_uvm_vlog_uvm_command(simulator_path: Path, uvm_home: str) -> List[str]:
-    """Build vlog command to compile UVM 1.2 into a dedicated library.
+    """Compile UVM 1.2 from source into ``uvm_lib``.
 
-    Compiles ``uvm_pkg`` into ``uvm_lib`` (not ``work``) so that it
-    mirrors QuestaSim's precompiled ``-L uvm`` flow.  When UVM and the
-    user's test class live in the same ``work`` library, factory
-    registration silently fails.
+    Must be compiled from source (not using the pre-compiled library at
+    ``/opt/siemens/questasim/uvm-1.2``) because QuestaSim 2025.x added
+    stricter type checks (vsim-12460, vsim-8754) that reject classes
+    compiled with older QuestaSim versions.
     """
     return [
         str(simulator_path / "vlog"),
@@ -168,13 +188,23 @@ def build_uvm_vlog_uvm_command(simulator_path: Path, uvm_home: str) -> List[str]
     ]
 
 
-def build_uvm_vlog_design_command(simulator_path: Path, filelist: Path, uvm_home: str) -> List[str]:
-    """Build vlog command to compile design + testbench files with ``-mfcu``.
+def build_uvm_vmap_command(simulator_path: Path) -> List[str]:
+    """Redirect ``mtiUvm`` to our freshly compiled ``uvm_lib``.
 
-    Runs after UVM 1.2 has been compiled into ``uvm_lib``.  Uses
-    ``-L uvm_lib`` so that ``import uvm_pkg::*`` resolves from the
-    separate library — identical to QuestaSim's ``-L uvm`` flow.
+    QuestaSim's ``modelsim.ini`` maps ``mtiUvm → uvm-1.1d`` and the
+    ``LibrarySearchPath`` auto-loads ``mtiUvm`` during elaboration.
+    Without this vmap, both UVM 1.1d *and* our UVM 1.2 are loaded,
+    causing factory registration to silently fail (INVTST).
     """
+    return [
+        str(simulator_path / "vmap"),
+        "mtiUvm",
+        "uvm_lib",
+    ]
+
+
+def build_uvm_vlog_design_command(simulator_path: Path, filelist: Path, uvm_home: str) -> List[str]:
+    """Compile design + testbench files with ``-mfcu -L uvm_lib``."""
     return [
         str(simulator_path / "vlog"),
         "-sv",

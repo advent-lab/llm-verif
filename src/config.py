@@ -37,6 +37,7 @@ class Config:
     testplan_enabled: bool
     num_feedback_holes: int # Number of priority coverage holes in feedback (0 = none)
     context_window: int     # Max tokens before terminating run
+    read_file_token_limit: int  # Max chars returned by read_file (0 = unlimited)
 
     # Functional Coverage
     functional_coverage_enabled: bool          # Enable functional coverage mode
@@ -75,6 +76,10 @@ class Config:
 
     # Runtime tracking (mutable)
     current_iteration: int = 1
+    # Auto-detected UVM names (populated at init, used by validators)
+    uvm_interface_name: Optional[str] = None   # e.g., alu_core_if
+    uvm_env_class: Optional[str] = None        # e.g., alu_core_env
+    uvm_driver_file: Optional[Path] = None    # Auto-detected driver file path
     current_attempt: int = 1  # Tracks all compilation/simulation attempts
 
     # Iteration-based retry tracking (for log naming)
@@ -338,6 +343,7 @@ def load_config() -> Config:
         testplan_enabled=os.getenv("TESTPLAN", "1") == "1",
         num_feedback_holes=int(os.getenv("NUM_FEEDBACK_HOLES", "3")),
         context_window=int(os.getenv("CONTEXT_WINDOW", "128000")),
+        read_file_token_limit=int(os.getenv("READ_FILE_TOKEN_LIMIT", "16000")),
         functional_coverage_enabled=funcov_enabled,
         functional_coverage_target=funcov_target,
         functional_coverage_testbench_path=funcov_testbench_path,

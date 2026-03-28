@@ -58,6 +58,13 @@ class AgentState(TypedDict):
     # UVM mode
     uvm_enabled: bool
 
+    # Agent loop tracking
+    consecutive_no_tool_calls: int  # Consecutive LLM responses with no tool calls
+
+    # Infrastructure modification pipeline
+    infra_modification_enabled: bool   # True = LLM may modify driver file
+    original_driver_path: Optional[str]  # Path to original (unmodified) driver
+
     # Termination
     is_done: bool
     done_reason: Optional[str]

@@ -46,11 +46,45 @@ def _is_phase_1_done(state: AgentState) -> bool:
     return False
 
 
+def _get_functional_coverage(state: AgentState) -> float:
+    """Get the current functional coverage from state or cumulative report.
+
+    The LLM may not always call parse_functional_coverage explicitly,
+    so we also check the cumulative report file on disk as a fallback.
+    """
+    # First check state (set when LLM calls parse_functional_coverage)
+    funcov = state.get("current_functional_coverage", 0.0)
+    if funcov > 0.0:
+        return funcov
+
+    # Fallback: read the cumulative functional coverage report from disk
+    config = state["config"]
+    if not getattr(config, 'uvm_enabled', False):
+        return 0.0
+
+    report_path = config.work_dir / "coverage" / "cumulative_functional_coverage.txt"
+    if report_path.exists():
+        try:
+            from ..utils.questasim import parse_functional_coverage_text
+            result = parse_functional_coverage_text(report_path)
+            return result.get('total_coverage', 0.0)
+        except Exception:
+            pass
+    return 0.0
+
+
 def _signal_done_accepted(state: AgentState) -> bool:
     """Return True if the agent's signal_done call meets termination conditions."""
     config = state["config"]
     if state.get("cumulative_coverage", 0.0) >= 100.0:
         return True
+    # In UVM mode, functional coverage reaching target is a valid completion
+    # (code coverage is often dragged down by UVM infrastructure lines)
+    if getattr(config, 'uvm_enabled', False):
+        funcov = _get_functional_coverage(state)
+        target = getattr(config, 'functional_coverage_target', 100.0)
+        if funcov >= target:
+            return True
     if state["consecutive_failures"] >= config.max_retries:
         return True
     if state["no_progress_count"] >= config.max_no_progress:
@@ -68,28 +102,48 @@ def _prepare_uvm_workdir(config: Config):
     """Prepare the work directory for UVM compilation.
 
     1. Copy the .f file to work_dir, rewriting relative paths to absolute.
-    2. Replace the sequence file and test file entries so they point to
-       work_dir/testbenches/ where the LLM will generate them.
-    3. Create work_dir/testbenches/ and work_dir/iterations/.
+    2. Replace the sequence file, test file, and driver file entries so they
+       point to work_dir/testbenches/ where the LLM will generate/modify them.
+    3. Auto-detect the driver file and copy original to work_dir/testbenches/.
+    4. Create work_dir/testbenches/ and work_dir/iterations/.
     """
+    import re as _re
+
     work_dir = config.work_dir
     original_filelist = config.uvm_filelist
 
     # The .f file's relative paths are relative to the sim/ directory,
     # which is a sibling of the testbench/ directory.
-    # e.g., filelist is at .../testbench/alu_core_list.f
-    # paths in it are like ../testbench/X.sv and ../rtl/X.sv
-    # These are relative to sim/ (one level up from testbench/, then into testbench/)
     sim_dir = config.uvm_testbench_dir.parent / "sim" if config.uvm_testbench_dir else original_filelist.parent.parent / "sim"
+
+    # Auto-detect the driver file from the testbench directory
+    driver_file = None
+    if config.uvm_testbench_dir and config.uvm_testbench_dir.exists():
+        for f in config.uvm_testbench_dir.iterdir():
+            if f.suffix == '.sv':
+                try:
+                    content = f.read_text()
+                    if _re.search(r'extends\s+uvm_driver', content):
+                        driver_file = f
+                        logging.info(f"UVM driver auto-detected: {f.name}")
+                        break
+                except Exception:
+                    pass
+
+    if driver_file:
+        config.uvm_driver_file = driver_file
+    else:
+        logging.warning("Could not auto-detect UVM driver file")
 
     # Read original .f file
     with open(original_filelist, 'r') as f:
         lines = f.readlines()
 
-    # Rewrite paths to absolute, replacing sequence and test file entries
+    # Rewrite paths to absolute, replacing sequence, test, and driver entries
     new_lines = []
     seq_file = config.uvm_sequence_file  # e.g., "alu_core_seq.sv"
     test_file = f"{config.uvm_test_name}.sv"  # e.g., "alu_core_test.sv"
+    driver_filename = driver_file.name if driver_file else None
 
     testbenches_dir = work_dir / "testbenches"
     testbenches_dir.mkdir(parents=True, exist_ok=True)
@@ -101,19 +155,37 @@ def _prepare_uvm_workdir(config: Config):
             new_lines.append(line)
             continue
 
+        # Skip compiler directives and env-var lines — these are handled
+        # separately by the UVM compilation step (vlog already gets
+        # +incdir+$UVM_HOME/src and uvm_pkg.sv via explicit flags).
+        if stripped.startswith("+") or "$" in stripped:
+            logging.info(f"UVM .f file: skipping compiler directive: {stripped}")
+            continue
+
         # Resolve the relative path against sim_dir
         resolved = (sim_dir / stripped).resolve()
         filename = resolved.name
 
-        # Redirect sequence file and test file to work_dir/testbenches/
+        # Redirect sequence file, test file, and driver to work_dir/testbenches/
         if filename == seq_file:
             new_lines.append(str(testbenches_dir / seq_file) + "\n")
             logging.info(f"UVM .f file: redirecting {filename} → {testbenches_dir / seq_file}")
         elif filename == test_file:
             new_lines.append(str(testbenches_dir / test_file) + "\n")
             logging.info(f"UVM .f file: redirecting {filename} → {testbenches_dir / test_file}")
+        elif driver_filename and filename == driver_filename:
+            # Redirect driver to work_dir/testbenches/ for infra modification
+            dest = testbenches_dir / driver_filename
+            new_lines.append(str(dest) + "\n")
+            logging.info(f"UVM .f file: redirecting driver {filename} → {dest}")
         else:
             new_lines.append(str(resolved) + "\n")
+
+    # Copy original driver to work_dir/testbenches/ (unmodified starting point)
+    if driver_file:
+        dest_driver = testbenches_dir / driver_file.name
+        shutil.copy2(driver_file, dest_driver)
+        logging.info(f"UVM driver copied to work_dir: {dest_driver}")
 
     # Write the modified .f file to work_dir
     work_filelist = work_dir / "filelist.f"
@@ -127,6 +199,8 @@ def _prepare_uvm_workdir(config: Config):
 
 def _build_uvm_prompt_context(config: Config) -> dict:
     """Read UVM context files and build kwargs for load_system_prompt()."""
+    import re as _re
+
     # Read seq_item content
     seq_item_content = ""
     if config.uvm_seq_item_file and config.uvm_seq_item_file.exists():
@@ -139,13 +213,34 @@ def _build_uvm_prompt_context(config: Config) -> dict:
         with open(config.uvm_coverage_module_file, 'r') as f:
             cov_module_content = f.read()
 
-    # List UVM testbench files for context
+    # List UVM testbench files for context and extract interface/env names
     uvm_tb_files = []
+    uvm_interface_name = None
+    uvm_env_class = None
     if config.uvm_testbench_dir and config.uvm_testbench_dir.exists():
         for f in sorted(config.uvm_testbench_dir.iterdir()):
             if f.suffix == '.sv' and f.name != config.uvm_sequence_file and \
                f.name != f"{config.uvm_test_name}.sv":
                 uvm_tb_files.append(str(f))
+                # Extract interface and env class names from file contents
+                try:
+                    content = f.read_text()
+                    if not uvm_interface_name:
+                        # Match top-level interface declaration (start of line)
+                        m = _re.search(r'^interface\s+(\w+)', content, _re.MULTILINE)
+                        if m:
+                            uvm_interface_name = m.group(1)
+                    if not uvm_env_class:
+                        m = _re.search(r'class\s+(\w+)\s+extends\s+uvm_env', content)
+                        if m:
+                            uvm_env_class = m.group(1)
+                except Exception:
+                    pass
+
+    if uvm_interface_name:
+        logging.info(f"UVM interface name detected: {uvm_interface_name}")
+    if uvm_env_class:
+        logging.info(f"UVM env class detected: {uvm_env_class}")
 
     return {
         'uvm_enabled': True,
@@ -154,6 +249,8 @@ def _build_uvm_prompt_context(config: Config) -> dict:
         'uvm_sequence_file': config.uvm_sequence_file,
         'uvm_test_name': config.uvm_test_name,
         'uvm_testbench_files': uvm_tb_files,
+        'uvm_interface_name': uvm_interface_name,
+        'uvm_env_class': uvm_env_class,
     }
 
 
@@ -194,6 +291,11 @@ def initialize_node(state: AgentState) -> AgentState:
     if config.uvm_enabled:
         _prepare_uvm_workdir(config)
         uvm_prompt_kwargs = _build_uvm_prompt_context(config)
+        # Store detected names on config for use by validators
+        if uvm_prompt_kwargs.get('uvm_interface_name'):
+            config.uvm_interface_name = uvm_prompt_kwargs['uvm_interface_name']
+        if uvm_prompt_kwargs.get('uvm_env_class'):
+            config.uvm_env_class = uvm_prompt_kwargs['uvm_env_class']
 
     system_prompt = load_system_prompt(
         design_name=config.design_name,
@@ -245,6 +347,7 @@ def initialize_node(state: AgentState) -> AgentState:
         "api_calls": 0,
         "consecutive_failures": 0,
         "no_progress_count": 0,
+        "consecutive_no_tool_calls": 0,
         "current_coverage": 0.0,
         "max_coverage": 0.0,
         "cumulative_coverage": 0.0,
@@ -265,6 +368,11 @@ def initialize_node(state: AgentState) -> AgentState:
         "code_coverage_summary": None,
         # UVM mode
         "uvm_enabled": config.uvm_enabled,
+        # Infrastructure modification pipeline
+        "infra_modification_enabled": False,
+        "original_driver_path": (
+            str(config.uvm_driver_file) if getattr(config, 'uvm_driver_file', None) else None
+        ),
         # Termination
         "is_done": False,
         "done_reason": None,
@@ -440,6 +548,7 @@ def phase_transition_node(state: AgentState) -> AgentState:
         "api_calls": 0,
         "consecutive_failures": 0,
         "no_progress_count": 0,
+        "consecutive_no_tool_calls": 0,
         # Reset code-coverage metrics (Phase 2 tracks functional coverage)
         "current_coverage": 0.0,
         "cumulative_coverage": 0.0,
@@ -475,9 +584,49 @@ def agent_node(state: AgentState) -> AgentState:
     tools = get_all_tools()
     llm_with_tools = llm.bind_tools(tools)
 
+    # If the LLM gave a text-only response, nudge immediately.
+    messages = state["messages"]
+    no_tool_count = state.get("consecutive_no_tool_calls", 0)
+    infra_mod_enabled = state.get("infra_modification_enabled", False)
+
+    if no_tool_count >= 1:
+        infra_hint = ""
+        if infra_mod_enabled:
+            infra_hint = " or modify the driver"
+        elif (getattr(config, 'uvm_enabled', False) and
+              getattr(config, 'uvm_driver_file', None)):
+            infra_hint = (
+                "\n5. Call request_infra_modification if you believe the driver "
+                "protocol is blocking coverage bins (e.g., timing, back-to-back "
+                "transactions). This will grant you permission to modify the driver."
+            )
+
+        nudge = HumanMessage(content=(
+            "You responded with text only — no tool calls. "
+            "You MUST take action now. Either:\n"
+            "1. Call plan_coverage_strategy to analyze uncovered bins and plan your approach\n"
+            "2. Call write_file to generate new sequence/test files"
+            + (" or modify the driver" if infra_mod_enabled else "") + "\n"
+            "3. Call compile_design to compile\n"
+            "4. Call signal_done if you believe no further progress is possible"
+            + infra_hint + "\n"
+            "Do NOT respond with only text — you must call a tool."
+        ))
+        messages = list(messages) + [nudge]
+
     _log_agent_request(state)
 
-    response = llm_with_tools.invoke(state["messages"])
+    try:
+        response = llm_with_tools.invoke(messages)
+    except Exception as e:
+        import traceback
+        logging.error(f"{Colors.RED}{'='*80}{Colors.RESET}")
+        logging.error(f"{Colors.RED}LLM API CALL FAILED{Colors.RESET}")
+        logging.error(f"{Colors.RED}Error: {e}{Colors.RESET}")
+        logging.error(f"{Colors.RED}Traceback:\n{traceback.format_exc()}{Colors.RESET}")
+        logging.error(f"{Colors.RED}{'='*80}{Colors.RESET}")
+        # Re-raise so LangGraph terminates the run
+        raise
 
     new_api_calls = state.get("api_calls", 0) + 1
 
@@ -485,10 +634,20 @@ def agent_node(state: AgentState) -> AgentState:
     temp_state["api_calls"] = new_api_calls
     _log_agent_response(response, temp_state)
 
-    return {
+    # Track consecutive text-only responses (no tool calls)
+    has_tool_calls = hasattr(response, 'tool_calls') and response.tool_calls
+    if has_tool_calls:
+        new_no_tool = 0
+    else:
+        new_no_tool = state.get("consecutive_no_tool_calls", 0) + 1
+
+    result = {
         "messages": [response],
         "api_calls": new_api_calls,
+        "consecutive_no_tool_calls": new_no_tool,
     }
+
+    return result
 
 
 def _log_agent_request(state: AgentState):
@@ -498,11 +657,6 @@ def _log_agent_request(state: AgentState):
 
     messages = state.get("messages", [])
 
-    if messages:
-        latest_msg = messages[-1]
-        if type(latest_msg).__name__ == "AIMessage":
-            return
-
     iteration      = state.get("iteration", "?")
     api_calls      = state.get("api_calls", "?")
     current_cov    = state.get("current_coverage", 0.0)
@@ -510,6 +664,7 @@ def _log_agent_request(state: AgentState):
     cons_failures  = state.get("consecutive_failures", 0)
     no_progress    = state.get("no_progress_count", 0)
     phase          = state.get("coverage_phase")
+    no_tool        = state.get("consecutive_no_tool_calls", 0)
 
     config = state.get("config")
     model  = config.model if config else "gpt-4"
@@ -517,13 +672,14 @@ def _log_agent_request(state: AgentState):
     token_display = format_token_count(token_count, config.context_window) if config else format_token_count(token_count)
 
     phase_tag = f" | Phase: {phase}" if phase else ""
+    no_tool_tag = f" | NoTool: {no_tool}" if no_tool > 0 else ""
 
     logging.info(f"{Colors.CYAN}{Colors.BOLD}{'='*80}{Colors.RESET}")
     logging.info(
         f"{Colors.CYAN}{Colors.BOLD}API REQUEST "
         f"[API Call #{api_calls} | Iter {iteration}{phase_tag} | "
         f"Cumulative: {cumulative_cov:.1f}% | Last: {current_cov:.1f}% | "
-        f"Failures: {cons_failures} | No Progress: {no_progress} | "
+        f"Failures: {cons_failures} | No Progress: {no_progress}{no_tool_tag} | "
         f"Tokens: {token_display}]{Colors.RESET}"
     )
     logging.info(f"{Colors.CYAN}{'='*80}{Colors.RESET}")
@@ -592,6 +748,20 @@ def update_state_node(state: AgentState) -> AgentState:
     """
     config = state["config"]
 
+    # Priority 0: request_infra_modification → enable infra mod in state
+    for msg in reversed(state["messages"][-5:]):
+        if hasattr(msg, 'name') and msg.name == 'request_infra_modification':
+            result = parse_tool_result(msg.content)
+            if result.get('infra_modification_granted'):
+                if not state.get("infra_modification_enabled", False):
+                    logging.info(
+                        f"{Colors.MAGENTA}{'='*80}{Colors.RESET}\n"
+                        f"{Colors.MAGENTA}INFRASTRUCTURE MODIFICATION GRANTED (LLM-requested){Colors.RESET}\n"
+                        f"{Colors.MAGENTA}{'='*80}{Colors.RESET}"
+                    )
+                return {"infra_modification_enabled": True}
+            break
+
     # Priority 1: compile_design failures
     for msg in reversed(state["messages"][-5:]):
         if hasattr(msg, 'name') and msg.name == 'compile_design':
@@ -637,6 +807,7 @@ def update_state_node(state: AgentState) -> AgentState:
     if latest_msg and hasattr(latest_msg, 'name') and \
             latest_msg.name in ['parse_coverage', 'parse_functional_coverage']:
         result = parse_tool_result(latest_msg.content)
+        is_funcov = latest_msg.name == 'parse_functional_coverage'
 
         if result.get('success'):
             iteration_coverage = result.get('iteration_coverage', result.get('total_coverage', 0.0))
@@ -646,6 +817,15 @@ def update_state_node(state: AgentState) -> AgentState:
 
             config.current_iteration = next_iteration
             prev_cumulative = state.get("cumulative_coverage", 0.0)
+
+            # Track functional coverage separately so code coverage
+            # results don't overwrite it (and vice versa)
+            updates = {}
+            if is_funcov:
+                updates["current_functional_coverage"] = cumulative_coverage
+                updates["max_functional_coverage"] = max(
+                    state.get("max_functional_coverage", 0.0), cumulative_coverage
+                )
 
             if cumulative_coverage > prev_cumulative:
                 logging.info(
@@ -660,6 +840,7 @@ def update_state_node(state: AgentState) -> AgentState:
                     "iteration":            next_iteration,
                     "consecutive_failures": 0,
                     "no_progress_count":    0,
+                    **updates,
                 }
             else:
                 logging.warning(
@@ -673,6 +854,7 @@ def update_state_node(state: AgentState) -> AgentState:
                     "iteration":            next_iteration,
                     "consecutive_failures": 0,
                     "no_progress_count":    state["no_progress_count"] + 1,
+                    **updates,
                 }
 
     return {}
@@ -711,21 +893,39 @@ def create_react_graph() -> StateGraph:
         """
         config = state["config"]
 
-        terminated = (
-            state["api_calls"]          >= config.max_iterations or
-            state["iteration"]          >  config.max_iterations or
-            state["consecutive_failures"] >= config.max_retries  or
-            state["no_progress_count"]  >= config.max_no_progress or
-            count_message_tokens(state["messages"], config.model) >= config.context_window
-        )
+        # Check each condition individually so we can log the reason
+        reason = None
+        if state["api_calls"] >= config.max_iterations:
+            reason = f"max API calls reached ({state['api_calls']}/{config.max_iterations})"
+        elif state["iteration"] > config.max_iterations:
+            reason = f"max iterations reached ({state['iteration']}/{config.max_iterations})"
+        elif state["consecutive_failures"] >= config.max_retries:
+            reason = f"max consecutive failures ({state['consecutive_failures']}/{config.max_retries})"
+        elif state["no_progress_count"] >= config.max_no_progress:
+            reason = f"max no-progress count ({state['no_progress_count']}/{config.max_no_progress})"
+        else:
+            token_count = count_message_tokens(state["messages"], config.model)
+            if token_count >= config.context_window:
+                reason = f"context window exceeded ({token_count}/{config.context_window} tokens)"
 
-        if not terminated:
+        if reason is None:
             return None   # Keep running
 
-        # We are terminating — decide where to go
+        # We are terminating — log and decide where to go
+        cumulative_cov = state.get("cumulative_coverage", 0.0)
+        funcov = _get_functional_coverage(state)
+        logging.info(
+            f"{Colors.RED}{Colors.BOLD}{'='*80}{Colors.RESET}\n"
+            f"{Colors.RED}{Colors.BOLD}TERMINATING: {reason}{Colors.RESET}\n"
+            f"{Colors.RED}  Code coverage:       {cumulative_cov:.1f}%{Colors.RESET}\n"
+            f"{Colors.RED}  Functional coverage: {funcov:.1f}%{Colors.RESET}\n"
+            f"{Colors.RED}  Iterations:          {state.get('iteration', 0)}{Colors.RESET}\n"
+            f"{Colors.RED}  API calls:           {state.get('api_calls', 0)}{Colors.RESET}\n"
+            f"{Colors.RED}{Colors.BOLD}{'='*80}{Colors.RESET}"
+        )
+
         if (config.combined_coverage_enabled and
                 state.get("coverage_phase") == "code"):
-            # Phase 1 is done → transition to Phase 2
             logging.info("Phase 1 termination condition met → transitioning to Phase 2")
             return "phase_transition"
 
@@ -747,8 +947,17 @@ def create_react_graph() -> StateGraph:
                     # Check 100% coverage specifically
                     if reason == "coverage_complete":
                         cumulative_cov = state.get("cumulative_coverage", 0.0)
-                        if cumulative_cov >= 100.0:
-                            logging.info("✓ Accepting signal_done: 100% coverage achieved!")
+                        funcov = _get_functional_coverage(state)
+                        funcov_target = getattr(config, 'functional_coverage_target', 100.0)
+                        uvm_mode = getattr(config, 'uvm_enabled', False)
+                        # Accept if code coverage is 100%, OR in UVM mode if
+                        # functional coverage meets target (code coverage is
+                        # often dragged down by UVM infrastructure lines)
+                        if cumulative_cov >= 100.0 or (uvm_mode and funcov >= funcov_target):
+                            logging.info(
+                                f"✓ Accepting signal_done: coverage target met! "
+                                f"(code={cumulative_cov:.1f}%, funcov={funcov:.1f}%)"
+                            )
                             # In combined mode Phase 1 → go to Phase 2
                             if (config.combined_coverage_enabled and
                                     state.get("coverage_phase") == "code"):
@@ -770,6 +979,12 @@ def create_react_graph() -> StateGraph:
                             return "phase_transition"
                         return END
                     else:
+                        # Increment no_progress_count on rejection so repeated
+                        # signal_done calls eventually trigger termination.
+                        # Without this, the LLM enters a deadlock: it knows it
+                        # can't improve coverage but the counter never reaches
+                        # max_no_progress because no simulations are running.
+                        state["no_progress_count"] = state.get("no_progress_count", 0) + 1
                         logging.warning(
                             f"⚠️  REJECTING signal_done: termination conditions not met\n"
                             f"   consecutive_failures: {state['consecutive_failures']}/{config.max_retries}\n"
@@ -788,6 +1003,16 @@ def create_react_graph() -> StateGraph:
         # ── Route to tools if tool calls present ───────────────────────────
         if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
             return "tools"
+
+        # ── No tool calls — LLM responded with text only ─────────────────
+        # Counter is already updated by agent_node via state return dict.
+        # Nudge is injected immediately (no_tool_count >= 1) in agent_node.
+        no_tool_count = state.get("consecutive_no_tool_calls", 0)
+
+        logging.warning(
+            f"{Colors.YELLOW}⚠️  LLM responded with text only (no tool calls), "
+            f"count: {no_tool_count} — nudge will be injected.{Colors.RESET}"
+        )
 
         return "agent"
 

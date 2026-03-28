@@ -338,13 +338,15 @@ Examples:
             return 0
 
         except Exception as e:
+            import traceback
+            tb_str = traceback.format_exc()
             print("\n" + "=" * 70)
             print("❌ EXECUTION FAILED")
             print("=" * 70)
             print(f"\nError: {e}")
-            if args.verbose:
-                import traceback
-                traceback.print_exc()
+            print(tb_str)
+            # Also log to file so run.log always has the traceback
+            logging.error(f"EXECUTION FAILED: {e}\n{tb_str}")
             return 1
 
     except FileNotFoundError as e:
@@ -364,10 +366,10 @@ Examples:
         return 130
 
     except Exception as e:
+        import traceback
+        tb_str = traceback.format_exc()
         print(f"❌ Unexpected error: {e}")
-        if args.verbose:
-            import traceback
-            traceback.print_exc()
+        print(tb_str)
         return 1
 
 

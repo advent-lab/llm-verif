@@ -46,6 +46,27 @@ def read_file(path: str) -> Dict[str, Any]:
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
 
+        # Truncate large files to stay within token budget
+        char_limit = getattr(_config, 'read_file_token_limit', 0)
+        if char_limit > 0 and len(content) > char_limit:
+            truncated = content[:char_limit]
+            original_size = len(content)
+            hint = ""
+            if "coverage" in str(file_path).lower():
+                hint = (
+                    " This is a coverage report — use parse_coverage or "
+                    "parse_functional_coverage tools instead for a compact summary."
+                )
+            return {
+                "success": True,
+                "content": truncated,
+                "truncated": True,
+                "warning": (
+                    f"File truncated: showing {char_limit} of {original_size} chars "
+                    f"({original_size - char_limit} chars omitted).{hint}"
+                )
+            }
+
         return {
             "success": True,
             "content": content
@@ -389,6 +410,108 @@ def _replace_stimulus_section(template: str, new_stimulus: str) -> str:
         logging.error("Stimulus replacement did not modify template - check pattern matching")
     
     return modified
+
+
+@tool
+def request_infra_modification() -> Dict[str, Any]:
+    """
+    Request permission to modify the UVM driver file.
+
+    Call this when you believe the current driver protocol is preventing
+    coverage bins from being hit (e.g., single-cycle cs prevents back-to-back
+    transitions, timing prevents state overlaps).
+
+    Once granted, you can use write_file to save a modified driver to
+    testbenches/<driver_filename>. The modified driver will be used in
+    subsequent compilations. You should also update your sequences to
+    leverage the new driver protocol.
+
+    Returns:
+        Dictionary with success, driver_content (original driver source),
+        driver_filename (where to save modifications), or error if not
+        available.
+    """
+    try:
+        if not getattr(_config, 'uvm_enabled', False):
+            return {
+                "success": False,
+                "error": "Infrastructure modification is only available in UVM mode."
+            }
+
+        driver_file = getattr(_config, 'uvm_driver_file', None)
+        if not driver_file:
+            return {
+                "success": False,
+                "error": "No driver file detected. Cannot enable infrastructure modification."
+            }
+
+        # Read the original driver content
+        driver_content = ""
+        if driver_file.exists():
+            driver_content = driver_file.read_text()
+
+        driver_filename = driver_file.name
+        work_driver = _config.work_dir / "testbenches" / driver_filename
+
+        logging.info(f"Infrastructure modification GRANTED for driver: {driver_filename}")
+
+        return {
+            "success": True,
+            "infra_modification_granted": True,
+            "driver_filename": driver_filename,
+            "driver_path": f"testbenches/{driver_filename}",
+            "driver_content": driver_content,
+            "instructions": (
+                f"You may now modify the driver. Save your changes using:\n"
+                f"  write_file(\"testbenches/{driver_filename}\", <new_content>)\n"
+                f"After modifying the driver, update your sequences to use the "
+                f"new protocol, then compile and simulate as usual.\n"
+                f"You can iterate on the driver across multiple cycles."
+            ),
+        }
+
+    except Exception as e:
+        logging.error(f"Infrastructure modification request error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@tool
+def plan_coverage_strategy(target_bins: str, strategy: str) -> Dict[str, Any]:
+    """
+    Plan your stimulus strategy BEFORE writing sequence/test files.
+
+    Call this tool after analyzing coverage results (parse_coverage /
+    parse_functional_coverage) and BEFORE calling write_file. It forces you
+    to think through which bins to target and how, producing better stimulus.
+
+    Args:
+        target_bins: List the specific uncovered bins or code lines you will
+            target in this iteration. Be concrete — use bin names from the
+            functional coverage report or line numbers from annotated source.
+        strategy: For each target, describe the stimulus approach:
+            - What sequence type (constrained random, directed, mixed)?
+            - What field values / constraints will hit the bin?
+            - Any seq_item constraints to bypass via direct assignment?
+            - How many transactions needed?
+
+    Returns:
+        Your plan echoed back as confirmation. Proceed to write_file next.
+    """
+    if not target_bins.strip() or not strategy.strip():
+        return {
+            "success": False,
+            "error": "Both target_bins and strategy must be non-empty. "
+                     "Analyze the coverage report and identify specific targets."
+        }
+
+    return {
+        "success": True,
+        "plan_accepted": True,
+        "target_bins": target_bins,
+        "strategy": strategy,
+        "next_step": "Now call write_file to generate the sequence and test files "
+                     "implementing this strategy."
+    }
 
 
 @tool

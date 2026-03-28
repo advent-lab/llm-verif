@@ -6,7 +6,7 @@ import os
 TEST_MODE = os.getenv("TEST_MODE", "0") == "1"
 
 # Always import filesystem and workflow tools (no simulator dependency)
-from .filesystem import read_file, write_file, list_directory
+from .filesystem import read_file, write_file, list_directory, request_infra_modification, plan_coverage_strategy
 from .workflow import signal_done
 
 # Conditionally import simulation/analysis tools
@@ -33,7 +33,9 @@ def get_all_tools():
         compile_design,
         run_simulation,
         parse_coverage,
-        signal_done
+        signal_done,
+        request_infra_modification,
+        plan_coverage_strategy,
     ]
     
     # Add functional coverage tool if not in test mode

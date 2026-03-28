@@ -81,6 +81,28 @@ def compile_design(testbench_path: str) -> Dict[str, Any]:
         uvm_mode = getattr(_config, 'uvm_enabled', False)
 
         if uvm_mode:
+            # ── Pre-compile static validation (zero tokens, zero compile cost) ──
+            from ..validators.uvm_validator import validate_uvm_files
+            passed, val_errors = validate_uvm_files(
+                work_dir=_config.work_dir,
+                sequence_file=_config.uvm_sequence_file,
+                test_name=_config.uvm_test_name,
+                interface_name=getattr(_config, 'uvm_interface_name', None),
+                env_class=getattr(_config, 'uvm_env_class', None),
+                top_module=_config.uvm_top_module,
+            )
+            if not passed:
+                fix_instructions = "\n".join(f"- {e}" for e in val_errors)
+                logging.warning(f"UVM pre-compile validation failed:\n{fix_instructions}")
+                return {
+                    "success": False,
+                    "error": "Pre-compile validation failed. Fix these issues before compiling:",
+                    "validation_errors": fix_instructions,
+                    "stdout": f"STATIC VALIDATION FAILED ({len(val_errors)} issues):\n{fix_instructions}",
+                    "iteration": iteration,
+                    "retry": retry_num,
+                }
+
             tb_path = None  # Not used; .f file covers all sources
             design_files = []
         else:
@@ -114,6 +136,27 @@ def compile_design(testbench_path: str) -> Dict[str, Any]:
             f.write(f"STDOUT:\n{result.get('stdout', '(empty)')}\n\n")
             f.write(f"STDERR:\n{result.get('stderr', '(empty)')}\n")
         result["log_path"] = str(log_path)
+
+        # ── Post-compile UVM verification ─────────────────────────────────
+        if uvm_mode and result.get("success", False):
+            from ..validators.uvm_validator import verify_compile_log
+            post_ok, post_warnings = verify_compile_log(
+                stdout=result.get("stdout", ""),
+                stderr=result.get("stderr", ""),
+            )
+            if not post_warnings:
+                logging.info("UVM post-compile verification: PASSED")
+            else:
+                warn_text = "\n".join(f"- {w}" for w in post_warnings)
+                logging.warning(f"UVM post-compile warnings:\n{warn_text}")
+                # These are blocking — dual-UVM or stale binary will crash sim
+                result["success"] = False
+                result["error"] = "Post-compile verification failed"
+                result["stdout"] = (
+                    f"Compilation succeeded but UVM verification failed:\n{warn_text}\n"
+                    f"Full log: {log_name}"
+                )
+                result["stderr"] = ""
 
         # Summarize output for the LLM (full output already saved to log file)
         if result.get("success", False):

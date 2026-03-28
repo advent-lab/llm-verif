@@ -20,6 +20,7 @@ from ..utils.questasim import (
     check_questasim_success,
     build_uvm_vlib_uvm_command,
     build_uvm_vlog_uvm_command,
+    build_uvm_vmap_command,
     build_uvm_vlog_design_command,
     build_uvm_vopt_command,
     build_uvm_vsim_command,
@@ -187,17 +188,17 @@ class QuestasimAdapter(SimulatorAdapter):
         all_stderr = []
 
         try:
-            # ── Step 1: vlib work (clean + create) ────────────────────────
-            # Always recreate the work library to prevent stale incremental
-            # compilation from reusing outdated design units.
+            # ── Step 1: Clean + create libraries ─────────────────────────
             import shutil
-            work_lib = work_dir / "work"
-            if work_lib.exists():
-                shutil.rmtree(work_lib)
-                logging.info("Removed stale QuestaSim work library")
-            uvm_lib = work_dir / "uvm_lib"
-            if uvm_lib.exists():
-                shutil.rmtree(uvm_lib)
+            for lib_name in ("work", "uvm_lib"):
+                lib_path = work_dir / lib_name
+                if lib_path.exists():
+                    shutil.rmtree(lib_path)
+                    logging.info(f"Removed stale QuestaSim {lib_name} library")
+            # Also remove stale local modelsim.ini so vmap creates a fresh one
+            local_ini = work_dir / "modelsim.ini"
+            if local_ini.exists():
+                local_ini.unlink()
 
             vlib_cmd = [str(self.simulator_path / "vlib"), "work"]
             logging.info(f"UVM vlib: {' '.join(vlib_cmd)}")
@@ -213,11 +214,11 @@ class QuestasimAdapter(SimulatorAdapter):
                     "return_code": result.returncode,
                     "stdout": "\n".join(all_stdout),
                     "stderr": "\n".join(all_stderr),
-                    "error": f"vlib failed: {result.stderr}",
+                    "error": f"vlib work failed: {result.stderr}",
                     "log_path": ""
                 }
 
-            # Create dedicated UVM library (mirrors QuestaSim's -L uvm flow)
+            # ── Step 2: vlib uvm_lib ──────────────────────────────────────
             vlib_uvm_cmd = build_uvm_vlib_uvm_command(self.simulator_path)
             logging.info(f"UVM vlib (uvm_lib): {' '.join(vlib_uvm_cmd)}")
             result = subprocess.run(
@@ -236,8 +237,8 @@ class QuestasimAdapter(SimulatorAdapter):
                     "log_path": ""
                 }
 
-            # ── Step 2a: vlog – compile UVM 1.2 into uvm_lib ─────────────
-            uvm_home = cfg.get("uvm_home", "/opt/siemens/questasim/uvm-1.2")
+            # ── Step 3: Compile UVM 1.2 from source into uvm_lib ─────────
+            uvm_home = cfg.get("uvm_home", "/opt/siemens/questasim/verilog_src/uvm-1.2")
             vlog_uvm_cmd = build_uvm_vlog_uvm_command(self.simulator_path, uvm_home)
             logging.info(f"UVM vlog (uvm_pkg): {' '.join(str(c) for c in vlog_uvm_cmd)}")
             result = subprocess.run(
@@ -246,7 +247,6 @@ class QuestasimAdapter(SimulatorAdapter):
             )
             all_stdout.append(f"=== vlog (uvm_pkg) ===\n{result.stdout}")
             all_stderr.append(result.stderr)
-
             if result.returncode != 0:
                 return {
                     "success": False,
@@ -257,7 +257,30 @@ class QuestasimAdapter(SimulatorAdapter):
                     "log_path": ""
                 }
 
-            # ── Step 2b: vlog – compile design + testbench with -mfcu ─────
+            # ── Step 4: vmap mtiUvm → uvm_lib ────────────────────────────
+            # Redirect QuestaSim's default mtiUvm (1.1d) to our freshly
+            # compiled uvm_lib (1.2).  Without this, LibrarySearchPath
+            # auto-loads mtiUvm 1.1d during elaboration, creating a
+            # dual-UVM conflict that breaks factory registration.
+            vmap_cmd = build_uvm_vmap_command(self.simulator_path)
+            logging.info(f"UVM vmap: {' '.join(vmap_cmd)}")
+            result = subprocess.run(
+                vmap_cmd, capture_output=True, text=True,
+                timeout=timeout, cwd=str(work_dir)
+            )
+            all_stdout.append(f"=== vmap (mtiUvm → uvm_lib) ===\n{result.stdout}")
+            all_stderr.append(result.stderr)
+            if result.returncode != 0:
+                return {
+                    "success": False,
+                    "return_code": result.returncode,
+                    "stdout": "\n".join(all_stdout),
+                    "stderr": "\n".join(all_stderr),
+                    "error": f"vmap mtiUvm failed: {result.stderr}",
+                    "log_path": ""
+                }
+
+            # ── Step 5: vlog – compile design + testbench with -mfcu ─────
             vlog_cmd = build_uvm_vlog_design_command(self.simulator_path, filelist, uvm_home)
             logging.info(f"UVM vlog (design): {' '.join(str(c) for c in vlog_cmd)}")
             result = subprocess.run(

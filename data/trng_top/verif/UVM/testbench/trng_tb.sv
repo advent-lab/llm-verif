@@ -1,0 +1,771 @@
+//======================================================================
+// trng_tb.sv
+// Functional coverage testbench for the TRNG design.
+//
+// Coverage philosophy:
+//   - Minimal directed stimulus to bring the DUT up and exercise
+//     a handful of paths. The framework's constrained-random engine
+//     is expected to close the hard bins via coverage feedback.
+//   - Every FSM state, every register address, every API prefix,
+//     and many cross-product combinations are modelled as coverpoints.
+//   - Bins are intentionally narrow / hard to hit so the framework
+//     has clear targets.
+//======================================================================
+module tb_llm (
+            // Clock and reset.
+            input wire           clk,
+            input wire           reset_n,
+
+            input wire           avalanche_noise,
+
+            input wire           cs,
+            input wire           we,
+            input wire  [11 : 0] address,
+            input wire  [31 : 0] write_data,
+            input wire  [31 : 0] read_data,
+            input wire           error,
+
+            input wire  [7 : 0]  debug,
+            input wire           debug_update,
+
+            input wire           security_error
+);
+
+  //--------------------------------------------------------------------
+  // Parameters that mirror the DUT address map
+  //--------------------------------------------------------------------
+  // Top-level prefix (address[11:8])
+  localparam PREFIX_TRNG    = 4'h0;
+  localparam PREFIX_ENT1    = 4'h5;
+  localparam PREFIX_ENT2    = 4'h6;
+  localparam PREFIX_MIXER   = 4'ha;
+  localparam PREFIX_CSPRNG  = 4'hb;
+
+  // TRNG sub-addresses
+  localparam TRNG_NAME0       = 8'h00;
+  localparam TRNG_NAME1       = 8'h01;
+  localparam TRNG_VERSION     = 8'h02;
+  localparam TRNG_CTRL        = 8'h10;
+  localparam TRNG_STATUS      = 8'h11;
+  localparam TRNG_DEBUG_CTRL  = 8'h12;
+  localparam TRNG_DEBUG_DELAY = 8'h13;
+
+  // MIXER sub-addresses
+  localparam MIXER_CTRL    = 8'h10;
+  localparam MIXER_STATUS  = 8'h11;
+  localparam MIXER_TIMEOUT = 8'h20;
+
+  // CSPRNG sub-addresses
+  localparam CSPRNG_CTRL            = 8'h10;
+  localparam CSPRNG_STATUS          = 8'h11;
+  localparam CSPRNG_RND_DATA        = 8'h20;
+  localparam CSPRNG_NUM_ROUNDS      = 8'h40;
+  localparam CSPRNG_NUM_BLOCKS_LOW  = 8'h41;
+  localparam CSPRNG_NUM_BLOCKS_HIGH = 8'h42;
+
+  // Debug mux selections
+  localparam DBG_ENTROPY0 = 3'h0;
+  localparam DBG_ENTROPY1 = 3'h1;
+  localparam DBG_ENTROPY2 = 3'h2;
+  localparam DBG_MIXER    = 3'h3;
+  localparam DBG_CSPRNG   = 3'h4;
+
+  //--------------------------------------------------------------------
+  // Internal state observation signals (for coverpoints)
+  // These tap internal nets – adjust hierarchy path to match
+  // your compilation unit if needed.
+  //--------------------------------------------------------------------
+
+  // Mixer FSM states
+  wire [3:0] mixer_ctrl_state    = dut.mixer_inst.mixer_ctrl_reg;
+  wire [3:0] entropy_coll_state  = dut.mixer_inst.entropy_collect_ctrl_reg;
+  wire [4:0] word_ctr            = dut.mixer_inst.word_ctr_reg;
+  wire       mixer_enable        = dut.mixer_inst.enable_reg;
+  wire       init_done           = dut.mixer_inst.init_done_reg;
+  wire       entropy_timeout_sig = dut.mixer_inst.entropy_timeout;
+
+  // CSPRNG FSM state
+  wire [3:0] csprng_ctrl_state   = dut.csprng_inst.csprng_ctrl_reg;
+  wire [63:0] block_ctr          = dut.csprng_inst.block_ctr_reg;
+  wire        csprng_enable      = dut.csprng_inst.enable_reg;
+  wire        seed_syn_obs       = dut.csprng_inst.seed_syn;
+  wire        more_seed_obs      = dut.csprng_inst.more_seed_reg;
+
+  // CSPRNG FIFO FSM states
+  wire [2:0] fifo_rd_state = dut.csprng_inst.fifo_inst.rd_ctrl_reg;
+  wire [2:0] fifo_wr_state = dut.csprng_inst.fifo_inst.wr_ctrl_reg;
+  wire [1:0] fifo_ctr_obs  = dut.csprng_inst.fifo_inst.fifo_ctr_reg;
+  wire       fifo_empty    = dut.csprng_inst.fifo_inst.fifo_empty;
+  wire       fifo_full     = dut.csprng_inst.fifo_inst.fifo_full;
+
+  // TRNG top-level registers
+  wire       discard_reg   = dut.discard_reg;
+  wire       test_mode_reg = dut.test_mode_reg;
+  wire [2:0] debug_mux_reg = dut.debug_mux_reg;
+
+  // Entropy source enables/syn
+  wire       ent1_enabled  = dut.entropy1_entropy_enabled;
+  wire       ent1_syn      = dut.entropy1_entropy_syn;
+  wire       ent2_enabled  = dut.entropy2_entropy_enabled;
+  wire       ent2_syn      = dut.entropy2_entropy_syn;
+
+  //--------------------------------------------------------------------
+  // Derived / sampled signals for coverpoints
+  //--------------------------------------------------------------------
+  reg [3:0]  sampled_prefix;   // address[11:8] when cs=1
+  reg        sampled_we;
+  reg [7:0]  sampled_subaddr;
+  reg        sampled_error;
+  reg        sampled_sec_err;
+
+  always @(posedge clk) begin
+    if (cs) begin
+      sampled_prefix  <= address[11:8];
+      sampled_we      <= we;
+      sampled_subaddr <= address[7:0];
+    end
+    sampled_error   <= error;
+    sampled_sec_err <= security_error;
+  end
+
+  //====================================================================
+  // C O V E R G R O U P S
+  //====================================================================
+
+  //--------------------------------------------------------------------
+  // 1. API address prefix coverage
+  //--------------------------------------------------------------------
+  covergroup cg_api_prefix @(posedge clk iff cs);
+	option.cross_auto_bin_max = 0;
+    cp_prefix: coverpoint address[11:8] {
+      bins trng_prefix   = {PREFIX_TRNG};
+      bins ent1_prefix   = {PREFIX_ENT1};
+      bins ent2_prefix   = {PREFIX_ENT2};
+      bins mixer_prefix  = {PREFIX_MIXER};
+      bins csprng_prefix = {PREFIX_CSPRNG};
+      bins other[]       = default;
+    }
+
+    cp_rw: coverpoint we {
+      bins read  = {0};
+      bins write = {1};
+    }
+
+    // Hard cross: every prefix × read/write
+    cx_prefix_rw: cross cp_prefix, cp_rw {
+      bins trng_wr   = binsof(cp_prefix.trng_prefix)   && binsof(cp_rw.write);
+      bins trng_rd   = binsof(cp_prefix.trng_prefix)   && binsof(cp_rw.read);
+      bins ent1_wr   = binsof(cp_prefix.ent1_prefix)   && binsof(cp_rw.write);
+      bins ent1_rd   = binsof(cp_prefix.ent1_prefix)   && binsof(cp_rw.read);
+      bins ent2_wr   = binsof(cp_prefix.ent2_prefix)   && binsof(cp_rw.write);
+      bins ent2_rd   = binsof(cp_prefix.ent2_prefix)   && binsof(cp_rw.read);
+      bins mixer_wr  = binsof(cp_prefix.mixer_prefix)  && binsof(cp_rw.write);
+      bins mixer_rd  = binsof(cp_prefix.mixer_prefix)  && binsof(cp_rw.read);
+      bins csprng_wr = binsof(cp_prefix.csprng_prefix) && binsof(cp_rw.write);
+      bins csprng_rd = binsof(cp_prefix.csprng_prefix) && binsof(cp_rw.read);
+    }
+  endgroup
+
+  //--------------------------------------------------------------------
+  // 2. TRNG register address coverage
+  //--------------------------------------------------------------------
+  covergroup cg_trng_regs @(posedge clk iff (cs && address[11:8] == PREFIX_TRNG));
+option.cross_auto_bin_max = 0;
+    cp_addr: coverpoint address[7:0] {
+      bins name0       = {TRNG_NAME0};
+      bins name1       = {TRNG_NAME1};
+      bins version     = {TRNG_VERSION};
+      bins ctrl        = {TRNG_CTRL};
+      bins status      = {TRNG_STATUS};
+      bins debug_ctrl  = {TRNG_DEBUG_CTRL};
+      bins debug_delay = {TRNG_DEBUG_DELAY};
+      bins other[]     = default;
+    }
+
+    cp_we: coverpoint we {
+      bins rd = {0};
+      bins wr = {1};
+    }
+
+    cx_trng_addr_rw: cross cp_addr, cp_we {
+      bins ctrl_wr        = binsof(cp_addr.ctrl)        && binsof(cp_we.wr);
+      bins ctrl_rd        = binsof(cp_addr.ctrl)        && binsof(cp_we.rd);
+      bins debug_ctrl_wr  = binsof(cp_addr.debug_ctrl)  && binsof(cp_we.wr);
+      bins debug_ctrl_rd  = binsof(cp_addr.debug_ctrl)  && binsof(cp_we.rd);
+      bins debug_delay_wr = binsof(cp_addr.debug_delay) && binsof(cp_we.wr);
+      bins debug_delay_rd = binsof(cp_addr.debug_delay) && binsof(cp_we.rd);
+    }
+  endgroup
+
+  //--------------------------------------------------------------------
+  // 3. TRNG control register bit fields
+  //--------------------------------------------------------------------
+  covergroup cg_trng_ctrl_bits @(posedge clk);
+option.cross_auto_bin_max = 0;
+    cp_discard: coverpoint discard_reg {
+      bins inactive = {0};
+      bins active   = {1};
+    }
+    cp_test_mode: coverpoint test_mode_reg {
+      bins normal    = {0};
+      bins test_mode = {1};
+    }
+    cx_discard_testmode: cross cp_discard, cp_test_mode {
+      bins normal_op          = binsof(cp_discard.inactive)  && binsof(cp_test_mode.normal);
+      bins discard_only       = binsof(cp_discard.active)    && binsof(cp_test_mode.normal);
+      bins test_only          = binsof(cp_discard.inactive)  && binsof(cp_test_mode.test_mode);
+      bins discard_and_test   = binsof(cp_discard.active)    && binsof(cp_test_mode.test_mode);
+    }
+  endgroup
+
+  //--------------------------------------------------------------------
+  // 4. Debug mux selection
+  //--------------------------------------------------------------------
+  covergroup cg_debug_mux @(posedge clk);
+option.cross_auto_bin_max = 0;
+    cp_mux: coverpoint debug_mux_reg {
+      bins entropy0 = {DBG_ENTROPY0};
+      bins entropy1 = {DBG_ENTROPY1};
+      bins entropy2 = {DBG_ENTROPY2};
+      bins mixer    = {DBG_MIXER};
+      bins csprng   = {DBG_CSPRNG};
+    }
+    cp_dbg_update: coverpoint debug_update {
+      bins no_update  = {0};
+      bins do_update  = {1};
+    }
+    // Hard cross: every mux selection × debug_update pulse
+    cx_mux_update: cross cp_mux, cp_dbg_update {
+      bins ent1_update   = binsof(cp_mux.entropy1) && binsof(cp_dbg_update.do_update);
+      bins ent2_update   = binsof(cp_mux.entropy2) && binsof(cp_dbg_update.do_update);
+      bins mixer_update  = binsof(cp_mux.mixer)    && binsof(cp_dbg_update.do_update);
+      bins csprng_update = binsof(cp_mux.csprng)   && binsof(cp_dbg_update.do_update);
+    }
+  endgroup
+
+  //--------------------------------------------------------------------
+  // 5. Mixer control FSM states
+  //--------------------------------------------------------------------
+  covergroup cg_mixer_ctrl_fsm @(posedge clk);
+option.cross_auto_bin_max = 0;
+    cp_state: coverpoint mixer_ctrl_state {
+      bins idle    = {4'h0};
+      bins collect = {4'h1};
+      bins mix     = {4'h2};
+      bins syn     = {4'h3};
+      bins ack     = {4'h4};
+      bins next    = {4'h5};
+    }
+
+    cp_discard_m: coverpoint discard_reg {
+      bins no_discard = {0};
+      bins discard    = {1};
+    }
+
+    // Hard cross: discard asserted in each FSM state
+    cx_mixer_state_discard: cross cp_state, cp_discard_m {
+      bins discard_in_collect = binsof(cp_state.collect) && binsof(cp_discard_m.discard);
+      bins discard_in_mix     = binsof(cp_state.mix)     && binsof(cp_discard_m.discard);
+      bins discard_in_syn     = binsof(cp_state.syn)     && binsof(cp_discard_m.discard);
+      bins discard_in_ack     = binsof(cp_state.ack)     && binsof(cp_discard_m.discard);
+      bins discard_in_next    = binsof(cp_state.next)    && binsof(cp_discard_m.discard);
+    }
+
+    cp_init_done: coverpoint init_done {
+      bins not_done = {0};
+      bins done     = {1};
+    }
+
+    // Hard: mixing both init and next blocks
+    cx_mixer_state_initdone: cross cp_state, cp_init_done {
+      bins mix_first_block = binsof(cp_state.mix) && binsof(cp_init_done.not_done);
+      bins mix_next_block  = binsof(cp_state.mix) && binsof(cp_init_done.done);
+    }
+  endgroup
+
+  //--------------------------------------------------------------------
+  // 6. Entropy collection FSM states
+  //--------------------------------------------------------------------
+  covergroup cg_entropy_collect_fsm @(posedge clk);
+option.cross_auto_bin_max = 0;
+    cp_efsm: coverpoint entropy_coll_state {
+      bins idle      = {4'h0};
+      bins src0      = {4'h1};
+      bins src0_ack  = {4'h2};
+      bins src1      = {4'h3};
+      bins src1_ack  = {4'h4};
+      bins src2      = {4'h5};
+      bins src2_ack  = {4'h6};
+    }
+
+    cp_word_ctr_val: coverpoint word_ctr {
+      bins zero      = {5'h00};
+      bins mid_range = {[5'h01:5'h1e]};
+      bins max_val   = {5'h1f};  // block full – hardest to hit
+    }
+
+    // Hard cross: block completion observed from each source
+    cx_source_word_ctr: cross cp_efsm, cp_word_ctr_val {
+      bins src0_ack_full = binsof(cp_efsm.src0_ack) && binsof(cp_word_ctr_val.max_val);
+      bins src1_ack_full = binsof(cp_efsm.src1_ack) && binsof(cp_word_ctr_val.max_val);
+      bins src2_ack_full = binsof(cp_efsm.src2_ack) && binsof(cp_word_ctr_val.max_val);
+    }
+
+    cp_timeout: coverpoint entropy_timeout_sig {
+      bins no_timeout = {0};
+      bins timeout    = {1};
+    }
+
+    // Hard: timeout in each source-wait state
+    cx_efsm_timeout: cross cp_efsm, cp_timeout {
+      bins src0_timeout = binsof(cp_efsm.src0) && binsof(cp_timeout.timeout);
+      bins src1_timeout = binsof(cp_efsm.src1) && binsof(cp_timeout.timeout);
+      bins src2_timeout = binsof(cp_efsm.src2) && binsof(cp_timeout.timeout);
+    }
+  endgroup
+
+  //--------------------------------------------------------------------
+  // 7. CSPRNG FSM states
+  //--------------------------------------------------------------------
+  covergroup cg_csprng_fsm @(posedge clk);
+option.cross_auto_bin_max = 0;
+    cp_cstate: coverpoint csprng_ctrl_state {
+      bins idle   = {4'h0};
+      bins seed0  = {4'h1};
+      bins nsyn   = {4'h2};
+      bins seed1  = {4'h3};
+      bins init0  = {4'h4};
+      bins init1  = {4'h5};
+      bins next0  = {4'h6};
+      bins next1  = {4'h7};
+      bins more   = {4'h8};
+      bins cancel = {4'hf};
+    }
+
+    cp_csprng_enable: coverpoint csprng_enable {
+      bins disabled = {0};
+      bins enabled  = {1};
+    }
+
+    cp_seed_reg: coverpoint dut.csprng_inst.seed_reg {
+      bins no_seed = {0};
+      bins seed    = {1};
+    }
+
+    // Hard: cancel triggered from many states
+    cx_csprng_state_disable: cross cp_cstate, cp_csprng_enable {
+      bins cancel_from_seed0  = binsof(cp_cstate.seed0)  && binsof(cp_csprng_enable.disabled);
+      bins cancel_from_nsyn   = binsof(cp_cstate.nsyn)   && binsof(cp_csprng_enable.disabled);
+      bins cancel_from_seed1  = binsof(cp_cstate.seed1)  && binsof(cp_csprng_enable.disabled);
+      bins cancel_from_init0  = binsof(cp_cstate.init0)  && binsof(cp_csprng_enable.disabled);
+      bins cancel_from_init1  = binsof(cp_cstate.init1)  && binsof(cp_csprng_enable.disabled);
+      bins cancel_from_next0  = binsof(cp_cstate.next0)  && binsof(cp_csprng_enable.disabled);
+      bins cancel_from_next1  = binsof(cp_cstate.next1)  && binsof(cp_csprng_enable.disabled);
+      bins cancel_from_more   = binsof(cp_cstate.more)   && binsof(cp_csprng_enable.disabled);
+    }
+
+    // Hard: seed_reg asserted mid-operation
+    cx_csprng_state_seed_req: cross cp_cstate, cp_seed_reg {
+      bins reseed_from_seed0 = binsof(cp_cstate.seed0) && binsof(cp_seed_reg.seed);
+      bins reseed_from_init0 = binsof(cp_cstate.init0) && binsof(cp_seed_reg.seed);
+      bins reseed_from_next0 = binsof(cp_cstate.next0) && binsof(cp_seed_reg.seed);
+      bins reseed_from_more  = binsof(cp_cstate.more)  && binsof(cp_seed_reg.seed);
+    }
+  endgroup
+
+  //--------------------------------------------------------------------
+  // 8. CSPRNG block counter
+  //--------------------------------------------------------------------
+  covergroup cg_block_ctr @(posedge clk);
+option.cross_auto_bin_max = 0;
+    cp_blk_ctr: coverpoint block_ctr {
+      bins zero      = {64'h0000000000000000};
+      bins low       = {[64'h0000000000000001 : 64'h00000000000000ff]};
+      bins mid       = {[64'h0000000000000100 : 64'hffffffffffffffff]};
+      // 'near_max'/'at_max' removed: DEFAULT_NUM_BLOCKS=0x1000000000000000
+      // requires ~10^18 block operations — unreachable in simulation
+    }
+    cp_blk_max_flag: coverpoint dut.csprng_inst.block_ctr_max {
+      bins not_max = {0};
+      // 'is_max' removed: requires block_ctr to reach DEFAULT_NUM_BLOCKS — unreachable
+    }
+  endgroup
+
+  //--------------------------------------------------------------------
+  // 9. CSPRNG FIFO states
+  //--------------------------------------------------------------------
+  covergroup cg_fifo @(posedge clk);
+    option.cross_auto_bin_max = 0;
+    cp_wr_fsm: coverpoint fifo_wr_state {
+      bins wr_idle    = {3'h0};
+      bins wr_discard = {3'h7};
+    }
+
+    cp_rd_fsm: coverpoint fifo_rd_state {
+      bins rd_idle    = {3'h0};
+      bins rd_ack     = {3'h1};
+      bins rd_discard = {3'h7};
+    }
+
+    cp_fifo_fill: coverpoint fifo_ctr_obs {
+      bins empty     = {2'h0};
+      bins one_entry = {2'h1};
+      bins two_entry = {2'h2};
+      bins full      = {2'h3};  // hardest – requires 4 writes without reads
+    }
+
+    cp_empty_flag: coverpoint fifo_empty {
+      bins not_empty = {0};
+      bins is_empty  = {1};
+    }
+
+    cp_full_flag: coverpoint fifo_full {
+      bins not_full = {0};
+      bins is_full  = {1};  // hard to hit – need 4 consecutive writes
+    }
+
+    // Hard: RD ack state while FIFO also has data
+    cx_rd_fill: cross cp_rd_fsm, cp_fifo_fill {
+      bins ack_when_one  = binsof(cp_rd_fsm.rd_ack) && binsof(cp_fifo_fill.one_entry);
+      bins ack_when_two  = binsof(cp_rd_fsm.rd_ack) && binsof(cp_fifo_fill.two_entry);
+      bins ack_when_full = binsof(cp_rd_fsm.rd_ack) && binsof(cp_fifo_fill.full);
+    }
+
+    // Hard: discard in each FSM state
+    cp_fifo_discard: coverpoint dut.csprng_inst.fifo_discard {
+      bins no_discard  = {0};
+      bins do_discard  = {1};
+    }
+
+    cx_wr_discard: cross cp_wr_fsm, cp_fifo_discard {
+      bins discard_in_idle = binsof(cp_wr_fsm.wr_idle) && binsof(cp_fifo_discard.do_discard);
+    }
+    cx_rd_discard: cross cp_rd_fsm, cp_fifo_discard {
+      bins rd_discard_from_idle = binsof(cp_rd_fsm.rd_idle) && binsof(cp_fifo_discard.do_discard);
+      bins rd_discard_from_ack  = binsof(cp_rd_fsm.rd_ack)  && binsof(cp_fifo_discard.do_discard);
+    }
+  endgroup
+
+  //--------------------------------------------------------------------
+  // 10. CSPRNG register interface
+  //--------------------------------------------------------------------
+  covergroup cg_csprng_regs @(posedge clk iff (cs && address[11:8] == PREFIX_CSPRNG));
+option.cross_auto_bin_max = 0;
+    cp_addr: coverpoint address[7:0] {
+      bins ctrl           = {CSPRNG_CTRL};
+      bins status         = {CSPRNG_STATUS};
+      bins rnd_data       = {CSPRNG_RND_DATA};
+      bins num_rounds     = {CSPRNG_NUM_ROUNDS};
+      bins num_blocks_low = {CSPRNG_NUM_BLOCKS_LOW};
+      bins num_blocks_hi  = {CSPRNG_NUM_BLOCKS_HIGH};
+      bins other[]        = default;
+    }
+    cp_we: coverpoint we {
+      bins rd = {0};
+      bins wr = {1};
+    }
+    cx_csprng_addr_rw: cross cp_addr, cp_we {
+      bins rnd_data_rd       = binsof(cp_addr.rnd_data)       && binsof(cp_we.rd);
+      bins ctrl_wr           = binsof(cp_addr.ctrl)           && binsof(cp_we.wr);
+      bins num_rounds_wr     = binsof(cp_addr.num_rounds)     && binsof(cp_we.wr);
+      bins num_blocks_low_wr = binsof(cp_addr.num_blocks_low) && binsof(cp_we.wr);
+      bins num_blocks_hi_wr  = binsof(cp_addr.num_blocks_hi)  && binsof(cp_we.wr);
+    }
+    // Hard: reading random data when FIFO is non-empty
+    cp_rnd_syn: coverpoint dut.csprng_inst.fifo_inst.rnd_syn_reg {
+      bins no_data = {0};
+      bins has_data = {1};
+    }
+    cx_rnd_data_rd_when_valid: cross cp_addr, cp_we, cp_rnd_syn {
+      bins rnd_rd_when_valid = binsof(cp_addr.rnd_data) &&
+                               binsof(cp_we.rd)         &&
+                               binsof(cp_rnd_syn.has_data);
+    }
+  endgroup
+
+  //--------------------------------------------------------------------
+  // 11. Mixer register interface
+  //--------------------------------------------------------------------
+  covergroup cg_mixer_regs @(posedge clk iff (cs && address[11:8] == PREFIX_MIXER));
+option.cross_auto_bin_max = 0;
+    cp_addr: coverpoint address[7:0] {
+      bins ctrl    = {MIXER_CTRL};
+      bins status  = {MIXER_STATUS};
+      bins timeout = {MIXER_TIMEOUT};
+      bins other[] = default;
+    }
+    cp_we: coverpoint we {
+      bins rd = {0};
+      bins wr = {1};
+    }
+    cx_mixer_addr_rw: cross cp_addr, cp_we {
+      bins ctrl_wr    = binsof(cp_addr.ctrl)    && binsof(cp_we.wr);
+      bins ctrl_rd    = binsof(cp_addr.ctrl)    && binsof(cp_we.rd);
+      bins timeout_wr = binsof(cp_addr.timeout) && binsof(cp_we.wr);
+      bins timeout_rd = binsof(cp_addr.timeout) && binsof(cp_we.rd);
+    }
+    // Hard: write enable/disable to mixer while mixing is active
+    cp_mixer_state: coverpoint mixer_ctrl_state {
+      bins idle_state    = {4'h0};
+      bins active_states = {[4'h1:4'h5]};
+    }
+    cx_ctrl_wr_during_activity: cross cp_addr, cp_we, cp_mixer_state {
+      bins ctrl_wr_while_active = binsof(cp_addr.ctrl)          &&
+                                  binsof(cp_we.wr)               &&
+                                  binsof(cp_mixer_state.active_states);
+    }
+  endgroup
+
+  //--------------------------------------------------------------------
+  // 12. Entropy source handshake
+  //--------------------------------------------------------------------
+  covergroup cg_entropy_handshake @(posedge clk);
+option.cross_auto_bin_max = 0;
+    cp_ent1_enabled: coverpoint ent1_enabled {
+      // 'disabled' removed: avalanche_entropy stub hardcodes entropy_enabled=1
+      bins enabled  = {1};
+    }
+    cp_ent1_syn: coverpoint ent1_syn {
+      // 'no_data' removed: avalanche_entropy stub hardcodes entropy_valid=1
+      bins data    = {1};
+    }
+    cp_ent1_ack: coverpoint dut.entropy1_entropy_ack {
+      bins no_ack = {0};
+      bins ack    = {1};
+    }
+    cp_ent2_enabled: coverpoint ent2_enabled {
+      // 'disabled' removed: rosc_entropy stub hardcodes entropy_enabled=1
+      bins enabled  = {1};
+    }
+    cp_ent2_syn: coverpoint ent2_syn {
+      // 'no_data' removed: rosc_entropy stub hardcodes entropy_valid=1
+      bins data    = {1};
+    }
+    cp_ent2_ack: coverpoint dut.entropy2_entropy_ack {
+      bins no_ack = {0};
+      bins ack    = {1};
+    }
+    // Hard: ack asserted from each enabled source
+    cx_ent1_handshake: cross cp_ent1_enabled, cp_ent1_syn, cp_ent1_ack {
+      bins ent1_full_handshake = binsof(cp_ent1_enabled.enabled) &&
+                                 binsof(cp_ent1_syn.data)        &&
+                                 binsof(cp_ent1_ack.ack);
+    }
+    cx_ent2_handshake: cross cp_ent2_enabled, cp_ent2_syn, cp_ent2_ack {
+      bins ent2_full_handshake = binsof(cp_ent2_enabled.enabled) &&
+                                 binsof(cp_ent2_syn.data)        &&
+                                 binsof(cp_ent2_ack.ack);
+    }
+  endgroup
+
+  //--------------------------------------------------------------------
+  // 13. Error and security error paths
+  //--------------------------------------------------------------------
+  covergroup cg_errors @(posedge clk);
+option.cross_auto_bin_max = 0;
+    cp_api_error: coverpoint error {
+      bins no_error = {0};
+      bins has_error = {1};
+    }
+    cp_security_error: coverpoint security_error {
+      bins no_sec_error  = {0};
+      // 'has_sec_error' removed: entropy stubs hardcode security_error=0
+    }
+    // Hard: error observed on each prefix
+    cp_prefix_err: coverpoint sampled_prefix iff (sampled_error) {
+      bins trng_err   = {PREFIX_TRNG};
+      bins mixer_err  = {PREFIX_MIXER};
+      bins csprng_err = {PREFIX_CSPRNG};
+    }
+    // Hard: error from write to illegal address
+    cp_we_err: coverpoint sampled_we iff (sampled_error) {
+      bins read_error  = {0};
+      bins write_error = {1};
+    }
+  endgroup
+
+  //--------------------------------------------------------------------
+  // 14. Cross between CSPRNG state and Mixer state (global state)
+  //     These are the hardest cross-bins – require both FSMs active together.
+  //--------------------------------------------------------------------
+  covergroup cg_system_state_cross @(posedge clk);
+option.cross_auto_bin_max = 0;
+    cp_csprng_active: coverpoint csprng_ctrl_state {
+      bins csprng_idle   = {4'h0};
+      bins csprng_seeding = {4'h1, 4'h2, 4'h3};
+      bins csprng_init    = {4'h4, 4'h5};
+      bins csprng_running = {4'h6, 4'h7, 4'h8};
+      bins csprng_cancel  = {4'hf};
+    }
+    cp_mixer_active: coverpoint mixer_ctrl_state {
+      bins mixer_idle    = {4'h0};
+      bins mixer_collect = {4'h1};
+      bins mixer_hashing = {4'h2, 4'h3};
+      bins mixer_syncing = {4'h4, 4'h5};
+    }
+    // Hard: many combinations of both FSMs simultaneously active
+    cx_system_state: cross cp_csprng_active, cp_mixer_active {
+      bins running_and_collecting   = binsof(cp_csprng_active.csprng_running) &&
+                                      binsof(cp_mixer_active.mixer_collect);
+      bins seeding_while_hashing    = binsof(cp_csprng_active.csprng_seeding) &&
+                                      binsof(cp_mixer_active.mixer_hashing);
+      bins seeding_while_syncing    = binsof(cp_csprng_active.csprng_seeding) &&
+                                      binsof(cp_mixer_active.mixer_syncing);
+      bins running_while_hashing    = binsof(cp_csprng_active.csprng_running) &&
+                                      binsof(cp_mixer_active.mixer_hashing);
+      bins cancel_while_collecting  = binsof(cp_csprng_active.csprng_cancel)  &&
+                                      binsof(cp_mixer_active.mixer_collect);
+      bins init_while_collecting    = binsof(cp_csprng_active.csprng_init)    &&
+                                      binsof(cp_mixer_active.mixer_collect);
+    }
+  endgroup
+
+  //--------------------------------------------------------------------
+  // 15. Mixer seed handshake with CSPRNG
+  //--------------------------------------------------------------------
+  covergroup cg_seed_handshake @(posedge clk);
+option.cross_auto_bin_max = 0;
+    cp_seed_syn: coverpoint seed_syn_obs {
+      bins no_syn = {0};
+      bins syn    = {1};
+    }
+    cp_seed_ack: coverpoint dut.csprng_inst.seed_ack_reg {
+      bins no_ack = {0};
+      bins ack    = {1};
+    }
+    cp_more_seed: coverpoint more_seed_obs {
+      bins no_request = {0};
+      bins requesting = {1};
+    }
+    // Hard: complete handshake cycle
+    cx_seed_handshake: cross cp_seed_syn, cp_seed_ack, cp_more_seed {
+      bins seed_request_active    = binsof(cp_more_seed.requesting) &&
+                                    binsof(cp_seed_syn.no_syn);
+      bins seed_available         = binsof(cp_seed_syn.syn)         &&
+                                    binsof(cp_seed_ack.no_ack);
+      bins seed_acked             = binsof(cp_seed_syn.syn)         &&
+                                    binsof(cp_seed_ack.ack);
+    }
+  endgroup
+
+  //--------------------------------------------------------------------
+  // 16. debug_delay counter at interesting values
+  //--------------------------------------------------------------------
+  covergroup cg_debug_delay @(posedge clk);
+option.cross_auto_bin_max = 0;
+    cp_delay_ctr: coverpoint dut.debug_delay_ctr_reg {
+      bins zero     = {32'h0};
+      bins mid      = {[32'h1:32'h002625_9f]};
+      bins at_delay = {32'h002625a0};  // DEFAULT_DEBUG_DELAY – triggers debug update
+    }
+    cp_debug_out_we: coverpoint dut.debug_out_we {
+      bins no_update = {0};
+      bins update    = {1};  // hard – only hits once per delay period
+    }
+  endgroup
+
+  //--------------------------------------------------------------------
+  // 17. Mixer enable/restart from API
+  //--------------------------------------------------------------------
+  covergroup cg_mixer_ctrl_write @(posedge clk iff
+                                    (cs && we && address[11:8] == PREFIX_MIXER
+                                          && address[7:0] == MIXER_CTRL));
+option.cross_auto_bin_max = 0;
+    cp_enable_bit: coverpoint write_data[0] {
+      bins mixer_off = {0};
+      bins mixer_on  = {1};
+    }
+    cp_restart_bit: coverpoint write_data[1] {
+      bins no_restart = {0};
+      bins restart    = {1};  // hard
+    }
+    cx_enable_restart: cross cp_enable_bit, cp_restart_bit {
+      bins enable_no_restart  = binsof(cp_enable_bit.mixer_on)  && binsof(cp_restart_bit.no_restart);
+      bins disable_no_restart = binsof(cp_enable_bit.mixer_off) && binsof(cp_restart_bit.no_restart);
+      bins enable_restart     = binsof(cp_enable_bit.mixer_on)  && binsof(cp_restart_bit.restart);
+      bins disable_restart    = binsof(cp_enable_bit.mixer_off) && binsof(cp_restart_bit.restart);
+    }
+  endgroup
+
+  //--------------------------------------------------------------------
+  // 18. CSPRNG num_rounds configuration
+  //--------------------------------------------------------------------
+  covergroup cg_csprng_rounds @(posedge clk);
+option.cross_auto_bin_max = 0;
+    cp_rounds: coverpoint dut.csprng_inst.num_rounds_reg {
+      bins min_rounds  = {5'h08};  // 8 rounds – minimum useful ChaCha
+      bins default_rnd = {5'h18};  // 24 – DEFAULT_NUM_ROUNDS
+      bins max_rounds  = {5'h1f};
+      bins other[]     = default;
+    }
+  endgroup
+
+  //--------------------------------------------------------------------
+  // 19. Avalanche noise toggling during operation
+  //--------------------------------------------------------------------
+  covergroup cg_noise @(posedge clk);
+option.cross_auto_bin_max = 0;
+    cp_noise: coverpoint avalanche_noise {
+      bins low  = {0};
+      bins high = {1};
+    }
+    // Hard: noise changes while entropy collection is active
+    cp_ecoll_active: coverpoint entropy_coll_state {
+      bins collecting = {[4'h1:4'h6]};
+      bins idle       = {4'h0};
+    }
+    cx_noise_during_collect: cross cp_noise, cp_ecoll_active {
+      bins noise_low_during_collect  = binsof(cp_noise.low)  && binsof(cp_ecoll_active.collecting);
+      bins noise_high_during_collect = binsof(cp_noise.high) && binsof(cp_ecoll_active.collecting);
+    }
+  endgroup
+
+  //====================================================================
+  // Covergroup instantiation
+  //====================================================================
+  cg_api_prefix          cov_api_prefix;
+  cg_trng_regs           cov_trng_regs;
+  cg_trng_ctrl_bits      cov_trng_ctrl_bits;
+  cg_debug_mux           cov_debug_mux;
+  cg_mixer_ctrl_fsm      cov_mixer_ctrl_fsm;
+  cg_entropy_collect_fsm cov_entropy_collect_fsm;
+  cg_csprng_fsm          cov_csprng_fsm;
+  cg_block_ctr           cov_block_ctr;
+  cg_fifo                cov_fifo;
+  cg_csprng_regs         cov_csprng_regs;
+  cg_mixer_regs          cov_mixer_regs;
+  cg_entropy_handshake   cov_entropy_handshake;
+  cg_errors              cov_errors;
+  cg_system_state_cross  cov_system_state_cross;
+  cg_seed_handshake      cov_seed_handshake;
+  cg_debug_delay         cov_debug_delay;
+  cg_mixer_ctrl_write    cov_mixer_ctrl_write;
+  cg_csprng_rounds       cov_csprng_rounds;
+  cg_noise               cov_noise;
+
+  initial begin
+    cov_api_prefix          = new();
+    cov_trng_regs           = new();
+    cov_trng_ctrl_bits      = new();
+    cov_debug_mux           = new();
+    cov_mixer_ctrl_fsm      = new();
+    cov_entropy_collect_fsm = new();
+    cov_csprng_fsm          = new();
+    cov_block_ctr           = new();
+    cov_fifo                = new();
+    cov_csprng_regs         = new();
+    cov_mixer_regs          = new();
+    cov_entropy_handshake   = new();
+    cov_errors              = new();
+    cov_system_state_cross  = new();
+    cov_seed_handshake      = new();
+    cov_debug_delay         = new();
+    cov_mixer_ctrl_write    = new();
+    cov_csprng_rounds       = new();
+    cov_noise               = new();
+  end
+
+endmodule // trng_tb
+//======================================================================
+// EOF trng_tb.sv
+//======================================================================
