@@ -165,6 +165,11 @@ graph TD
 **Key Fields**:
 
 ```python
+def _append_token_records(left: List[dict], right: List[dict]) -> List[dict]:
+    """Reducer that appends new token usage records to the list."""
+    return (left or []) + (right or [])
+
+
 class AgentState(TypedDict):
     # Message history (LangGraph managed)
     messages: Annotated[list[BaseMessage], add_messages]
@@ -176,9 +181,9 @@ class AgentState(TypedDict):
     design_name: str
     design_dir: str
     spec_path: str
-    design_files: List[str]      # Main design RTL files (DUT)
+    design_files: List[str]          # Main design RTL files (DUT)
     design_context_files: List[str]  # Supporting files (submodules/dependencies)
-    rtl_dir: str                 # Deprecated - kept for compatibility
+    rtl_dir: str                     # Deprecated - kept for compatibility
     module_header: str
     work_dir: str
 
@@ -188,6 +193,7 @@ class AgentState(TypedDict):
     api_calls: int               # Total LLM API calls - for max_iterations limit
     consecutive_failures: int    # Compile/sim failures in a row - for max_retries limit
     no_progress_count: int       # Consecutive cycles with no coverage improvement
+    no_tool_call_count: int      # Consecutive responses with no tool calls - for max_no_tool_calls limit
 
     # Coverage tracking
     current_coverage: float      # Latest coverage percentage (0-100) - single iteration
@@ -195,9 +201,14 @@ class AgentState(TypedDict):
     cumulative_coverage: float   # Merged coverage across ALL iterations
     cumulative_coverage_db: Optional[str]  # Path to merged coverage database
 
+    # Token usage tracking (per-API-call records, appended via custom reducer)
+    # Each record: {api_call, iteration, input_tokens, output_tokens, total_tokens,
+    #               reasoning_tokens, cached_input_tokens, tool_calls, category, ...}
+    token_usage: Annotated[List[dict], _append_token_records]
+
     # Termination
     is_done: bool
-    done_reason: Optional[str]
+    done_reason: Optional[str]   # "coverage_complete", "no_progress", "no_tool_calls", "max_iterations"
     is_finalizing: bool  # True when framework has triggered termination and agent gets one last turn for report
 ```
 
@@ -222,6 +233,7 @@ class Config:
     model: str
     temperature: float
     max_tokens: int
+    reasoning_effort: str  # 'disabled', 'low', 'medium', or 'high'
 
     # Design settings
     design_name: str
@@ -229,6 +241,7 @@ class Config:
     spec_path: Path
     design_files: List[Path]
     design_context_files: List[Path]
+    compile_deps_files: List[Path]   # Ordered compile-time dependencies
     design_context_enabled: bool
 
     # Paths
@@ -241,12 +254,14 @@ class Config:
     max_iterations: int
     max_retries: int
     max_no_progress: int
+    max_no_tool_calls: int  # Max consecutive responses with no tool calls
     sim_runs: int
     sim_timeout: int
     testplan_enabled: bool
     num_feedback_holes: int  # Priority coverage holes in feedback (0 = unbounded)
-    coverage_hole_radius: int  # Context lines above/below each coverage hole (1-20)
+    coverage_hole_radius: int  # Context lines above/below each coverage hole (0-20)
     context_window: int  # Max tokens before terminating run
+    keep_latest_failures: int  # Failed verification cycles to keep in context
 
     # LangGraph
     recursion_limit: int  # LangGraph graph recursion limit

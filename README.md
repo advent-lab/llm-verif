@@ -36,17 +36,27 @@ Create a `.env` file or use configs from `configs/`. See [docs/CONFIG.md](docs/C
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `MODEL` | `gpt-4o` | LLM model |
+| `TEMPERATURE` | `0.4` | Sampling temperature |
+| `MAX_TOKENS` | `4096` | Max output tokens per LLM response |
+| `REASONING_EFFORT` | `disabled` | O1/O3 extended thinking (`disabled`, `low`, `medium`, `high`) |
+| `DESIGN_CONTEXT` | `1` | Allow agent to read RTL files (`0` = spec only) |
 | `WORK_DIR` | `./work` | Output directory |
 | `RUN_ID` | `default_run` | Run identifier |
-| `MAX_ITERATIONS` | `10` | Max API calls / coverage iterations |
+| `MAX_ITERATIONS` | `10` | Max LLM API calls before stopping |
+| `MAX_RETRIES` | `3` | Max consecutive compile/sim failures before stopping |
 | `MAX_NO_PROGRESS` | `5` | Stop after N iterations without coverage improvement |
+| `MAX_NO_TOOL_CALLS` | `3` | Stop after N consecutive responses with no tool calls |
+| `KEEP_LATEST_FAILURES` | `1` | Failed verification cycles to keep in context for debugging |
+| `TESTPLAN` | `1` | Generate a test plan before writing testbenches (`0` to skip) |
 | `SIM_RUNS` | `5` | Simulation runs per testbench (different seeds) |
 | `SIM_TIMEOUT` | `60` | Per-simulation timeout in seconds |
 | `NUM_FEEDBACK_HOLES` | `0` | Priority coverage holes in feedback (0 = unbounded/all) |
-| `COVERAGE_HOLE_RADIUS` | `5` | Context lines around each coverage hole (1-20) |
+| `COVERAGE_HOLE_RADIUS` | `5` | Context lines around each coverage hole (0-20) |
 | `CONTEXT_WINDOW` | `128000` | Max tokens before terminating run |
 | `RECURSION_LIMIT` | `300` | LangGraph recursion limit |
 | `LOG_LEVEL` | `INFO` | Logging verbosity |
+| `LOG_TRUNCATE` | `1` | Truncate long tool outputs in logs (`0` = show full content) |
+| `TEST_MODE` | `0` | Use mock simulator without a real installation (`1` to enable) |
 
 ## Output
 
@@ -55,6 +65,7 @@ All artifacts are saved to `{WORK_DIR}/{RUN_ID}/`:
 ```
 work/my_run/
 ├── run.log                  # Full agent log
+├── events.jsonl             # Structured event stream (one JSON object per line)
 ├── final_state.json         # Serialized run state
 ├── report.md                # Agent-written run report
 ├── testplan.md              # Generated test plan (optional)
@@ -86,7 +97,7 @@ python scripts/parse_log.py work/my_run/run.log --json
 ## Supported Simulators
 
 - **QuestaSim** -- Full support with UCDB statement coverage
-- **Verilator** -- Line coverage support
+- **Verilator** -- Line coverage (LCOV format); fully tested
 
 ## Documentation
 

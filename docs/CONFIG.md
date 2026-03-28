@@ -13,6 +13,7 @@ See `.env.example` for a complete annotated template.
 | `MODEL` | No | `gpt-4o` | Chat model name passed to the LLM client (e.g., `gpt-4o-mini`). Use a model that supports tool calling well. |
 | `TEMPERATURE` | No | `0.4` | Sampling temperature for the agent LLM; higher values increase randomness and exploration. |
 | `MAX_TOKENS` | No | `4096` | Maximum output tokens for a single LLM response (affects cost and response length). |
+| `REASONING_EFFORT` | No | `disabled` | Extended thinking level for O1/O3 models: `disabled`, `low`, `medium`, or `high`. When `disabled`, the reasoning effort parameter is omitted from the API call entirely; use this for standard GPT models. |
 
 ## Design Selection
 
@@ -45,9 +46,11 @@ You must configure *either* Dashboard mode (recommended) or Direct mode.
 
 | Variable | Required | Default | Description |
 |---|---:|---|---|
-| `MAX_ITERATIONS` | No | `10` | Maximum number of API calls before stopping (caps the agent loop). Also used as max coverage iterations. |
+| `MAX_ITERATIONS` | No | `10` | Maximum number of LLM API calls before stopping (caps the agent loop). |
 | `MAX_RETRIES` | No | `3` | Maximum consecutive failures (compile/sim) before terminating the run. |
 | `MAX_NO_PROGRESS` | No | `5` | Maximum consecutive iterations with no cumulative coverage improvement before routing to finalize (prevents infinite "stuck" loops). |
+| `MAX_NO_TOOL_CALLS` | No | `3` | Maximum consecutive agent responses that include no tool calls before terminating. Prevents the agent from getting stuck in a reasoning-only loop without taking actions. |
+| `KEEP_LATEST_FAILURES` | No | `1` | Number of most-recent failed verification cycle pairs (testbench + error log) to retain in the conversation context for debugging. Set to `0` to remove all failed cycles from context. |
 | `SIM_RUNS` | No | `5` | Number of simulation runs (seeds) per generated testbench; higher values can improve coverage at the cost of runtime. |
 | `SIM_TIMEOUT` | No | `60` | Per-simulation timeout in seconds (used to kill/abort long or stuck simulations). Also used as compilation timeout. |
 | `TESTPLAN` | No | `1` | Enables testplan generation when set to `1`; when `0`, the agent skips writing a testplan and goes directly to testbench generation. |
