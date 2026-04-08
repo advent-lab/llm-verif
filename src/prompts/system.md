@@ -357,35 +357,24 @@ Follow this iterative workflow to achieve coverage closure:
 - Review: total_coverage, uncovered_lines or uncovered_bins
 - Identify which code paths or bins were not exercised
 
-### Step 7: Analyze and Refine
-
-After every successful coverage parse, follow this exact sequence before writing the next testbench:
-
-**Step 7a — Always call the analyzer first:**
-- Call `invoke_analyzer` immediately after every `parse_coverage` or `parse_functional_coverage` result
-- The analyzer reads the uncovered items automatically — you do not need to pass them
-- Pass a `hint` describing what your last testbench attempted, e.g.
-  `hint="iter 2 targeted reset sequences and opcode sweep but cross bins remain unhit"`
-- Read the returned `recommendation` carefully before writing anything
-
-**Step 7b — Write the next testbench using the recommendation:**
-- Apply the ROOT CAUSE and STIMULUS STRATEGY sections directly
+### Step 7: Refine or Complete
+**If coverage < 100%:**
+- Analyze WHY specific lines/bins are uncovered
+- Determine what stimulus would trigger those paths/bins
 - CODE COVERAGE MODE: Generate improved complete testbench
 - FUNCTIONAL COVERAGE MODE: Generate improved stimulus code (not complete testbench)
 - Keep stimulus patterns SIMPLE and DIRECT - avoid unnecessary complexity
 - Save to `testbenches/tb_iter_N.sv` (increment N) and return to Step 4
 
-The workflow for every iteration after the first is therefore:
-```
-parse_coverage / parse_functional_coverage
-    → invoke_analyzer  (mandatory — call this before every new testbench)
-    → write_file       (apply ROOT CAUSE and STIMULUS STRATEGY)
-    → compile_design
-    → run_simulation
-    → repeat
-```
+⚠️ **MANDATORY RULE — Every write_file MUST be followed immediately by compile_design then run_simulation.**
+- After calling `write_file`, your very next tool call MUST be `compile_design`.
+- After `compile_design` succeeds, your very next tool call MUST be `run_simulation`.
+- After `run_simulation` succeeds, your very next tool call MUST be `parse_coverage` or `parse_functional_coverage`.
+- **NEVER call `write_file` multiple times in a row without compiling and simulating in between.**
+- **NEVER call `invoke_analyzer` unless you have just completed a full parse step.**
+- Calling `signal_done` without having run a simulation is invalid and will be rejected.
 
-**If coverage = 100%:** Call `signal_done` with reason "coverage_complete"
+**If coverage = 100% OR all coverage bins are hit:** Call `signal_done` with reason "coverage_complete"
 
 **If stuck after repeated attempts:** Call `signal_done` with reason "no_progress"
 
@@ -523,13 +512,46 @@ When generating SystemVerilog testbenches, follow these rules:
 6. **Use coverage feedback** - Coverage is cumulative; target NEW uncovered bins/lines
 7. **Fix compilation errors precisely** - Read the error, fix the exact issue
 8. **Iterate purposefully** - Each iteration should target specific uncovered bins/lines
-9. **Always call the analyzer before writing a testbench** - After every coverage parse, call `invoke_analyzer` before your next `write_file`. Apply its ROOT CAUSE and STIMULUS STRATEGY directly. This is mandatory, not optional.
-10. **Know when to stop** - Call `signal_done("no_progress")` if stuck after repeated attempts
+9. **Know when to stop** - Call `signal_done("no_progress")` if stuck after repeated attempts
+10. **MANDATORY SEQUENCE** - Every testbench write MUST be followed by: `compile_design` → `run_simulation` → `parse_coverage`/`parse_functional_coverage`. Writing multiple testbenches without running them is wasted iterations and is forbidden.
+11. **signal_done when all bins covered** - If the coverage feedback says "All bins covered" or `uncovered_bins` is empty, call `signal_done("coverage_complete")` immediately — do not keep writing new testbenches.
+12. **NO XMRs — EVER** - Never use `force`, `release`, or any dotted hierarchical path deeper than the DUT top level. The framework will automatically reject any testbench containing these. Drive all stimulus through the DUT's top-level ports only.
 
 ## Mode-Specific Critical Rules
 
+---
+
+### 🚫 ABSOLUTE RULE — APPLIES TO BOTH MODES: NO CROSS-MODULE REFERENCES (XMRs)
+
+**This rule is enforced automatically by the framework. Violations cause immediate compile rejection.**
+
+A Cross-Module Reference (XMR) is any reference to a signal inside a submodule instance — i.e. any dotted path that goes deeper than the DUT's top-level ports.
+
+**FORBIDDEN — these will be automatically detected and rejected:**
+- `dut.submodule.signal` — hierarchical path into a submodule
+- `dut.inst.reg_name` — any path with 2 or more dots
+- `force dut.anything` — force statements of any kind
+- `release dut.anything` — release statements of any kind
+- `force dut.submodule.signal = value` — forcing internal registers
+
+**ALLOWED:**
+- Driving the DUT's top-level ports directly: `cs = 1; address = 12'ha10;`
+- Reading top-level output ports: `if (read_data == ...)`
+- DUT instantiation port connections: `.clk(clk), .reset_n(reset_n)`
+
+**Why XMRs are forbidden:**
+- Forcing clocked registers is ineffective — the RTL's always block overwrites the forced value on the very next clock edge
+- Forcing combinational signals is meaningless — they are recomputed every delta cycle
+- Forcing tied-off continuous assignments creates driver conflicts with unpredictable results
+- XMRs make testbenches fragile and non-portable
+
+**The correct approach:** drive the DUT's bus interface to reach internal states naturally. Every internal FSM state is reachable through the correct sequence of register writes and reads via `cs`, `we`, `address`, and `write_data`.
+
+---
+
 **CODE COVERAGE MODE (FUNCTIONAL_COVERAGE_ENABLED=0):**
 - ❌ DO NOT create covergroups in your testbench
+- ❌ DO NOT use force, release, or any XMR (see absolute rule above)
 - ✅ DO create complete testbench (module, signals, DUT, stimulus, $finish)
 - ✅ DO call `parse_coverage` to analyze RTL line coverage
 - ✅ DO target uncovered RTL lines shown in annotated source
@@ -537,6 +559,7 @@ When generating SystemVerilog testbenches, follow these rules:
 **FUNCTIONAL COVERAGE MODE (FUNCTIONAL_COVERAGE_ENABLED=1):**
 - ❌ DO NOT write complete testbenches (no module, no DUT, no covergroups)
 - ❌ DO NOT write: `timescale, module, initial begin, $finish, endmodule, function, task, class
+- ❌ DO NOT use force, release, or any XMR (see absolute rule above)
 - ✅ DO write ONLY stimulus assignments
 - ✅ DO call `parse_functional_coverage` to analyze bin coverage
 - ✅ DO target uncovered bins from the feedback
