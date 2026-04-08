@@ -23,7 +23,7 @@ module tb_llm;
     
     // Functional Coverage
     covergroup cg_alu_functional;
-        option.cross_auto_bin_max = 0;  // ✅ Disable auto-generated cross bins
+        option.cross_auto_bin_max = 0;
         
         cp_opcode: coverpoint opcode {
             bins add = {4'h0};
@@ -164,7 +164,7 @@ module tb_llm;
     
     // Sign combinations covergroup
     covergroup cg_sign_combinations;
-        option.cross_auto_bin_max = 0;  // ✅ Disable auto-generated cross bins
+        option.cross_auto_bin_max = 0;  
         
         cp_op1_sign: coverpoint operand1[31] {
             bins positive = {1'b0};
