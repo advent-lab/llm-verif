@@ -57,6 +57,7 @@ def build_token_record(
     tool_call_args: list,
     failures: int,
     cumulative_coverage: float,
+    agent: str = "react",
 ) -> dict:
     """Build a standardized token usage record for one API call.
 
@@ -68,6 +69,9 @@ def build_token_record(
         tool_call_args: List of tool call argument dicts.
         failures: Current consecutive failure count.
         cumulative_coverage: Current cumulative coverage percentage.
+        agent: Identity of the agent making the call. One of:
+            "react" (v1 single agent), "orchestrator", "design_expert",
+            "test_generator".
 
     Returns:
         Token record dict (category initially "unclassified").
@@ -75,6 +79,7 @@ def build_token_record(
     return {
         "api_call": api_call_num,
         "iteration": iteration,
+        "agent": agent,
         "input_tokens": usage.get("input_tokens", 0),
         "output_tokens": usage.get("output_tokens", 0),
         "total_tokens": usage.get("total_tokens", 0),

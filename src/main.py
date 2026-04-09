@@ -1,9 +1,9 @@
 import logging
+import os
 import sys
 import time
 from dotenv import load_dotenv
 
-from src.graphs.react import create_react_graph
 from src.config import load_config
 from src.utils.event_log import emit, close_event_log
 
@@ -26,10 +26,28 @@ def main():
     logger.info(f"Starting Spec2Cov for design: {config.design_dir.name}")
     logger.info(f"Work directory: {config.work_dir}")
 
+    # Select architecture
+    architecture = getattr(config, 'architecture', 'v1')
+    if architecture == "v2":
+        from src.graphs.orc_exp_gen import create_multi_agent_graph
+        from src.utils.conversation_logger import init_conversation_logging
+        logger.info("Using v2 multi-agent architecture (Orchestrator-Expert-Generator)")
+        init_conversation_logging(config.work_dir)
+        graph = create_multi_agent_graph()
+    elif architecture == "v2.1":
+        from src.graphs.ag_crt import create_ag_crt_graph
+        from src.utils.conversation_logger import init_conversation_logging
+        logger.info("Using v2.1 multi-agent architecture (Orchestrator → Analyzer-Generator + CRT)")
+        init_conversation_logging(config.work_dir)
+        graph = create_ag_crt_graph()
+    else:
+        from src.graphs.react import create_react_graph
+        logger.info("Using v1 single-agent architecture (ReAct)")
+        graph = create_react_graph()
+
     # Create and run graph
     start_time = time.monotonic()
     try:
-        graph = create_react_graph()
         result = graph.invoke(
             {"messages": []},
             config={"recursion_limit": config.recursion_limit}

@@ -45,6 +45,20 @@ class Config:
     # LangGraph
     recursion_limit: int  # LangGraph graph recursion limit
 
+    # Multi-agent (v2 / v2.1)
+    architecture: str  # "v1", "v2", or "v2.1" — selects which graph to build
+    orchestrator_model: str  # Model for orchestrator agent (both v2 and v2.1)
+    # v2 (expert+generator) models
+    design_expert_model: str  # Model for design expert agent
+    test_generator_model: str  # Model for test generator agent
+    expert_context_limit: int  # Token limit before expert context is considered full
+    # v2.1 (analyzer-generator+crt) models
+    analyzer_generator_model: str  # Model for analyzer-generator agents
+    crt_model: str  # Model for CRT (constrained random test) agents
+    # Shared
+    gen_max_retries: int  # Max compile/sim failures per generator dispatch
+    max_gen_per_iter: int  # Max generators per orchestrator iteration
+
     # Debug
     log_level: str
     log_truncate: bool  # Whether to truncate long content in logs
@@ -166,9 +180,11 @@ def load_config() -> Config:
     # spec_path.parent = docs/, spec_path.parent.parent = design root
     design_dir = design_config.spec_path.parent.parent
 
+    model = os.getenv("MODEL", "gpt-4o")
+
     return Config(
         openai_api_key=api_key,
-        model=os.getenv("MODEL", "gpt-4o"),
+        model=model,
         temperature=float(os.getenv("TEMPERATURE", "0.4")),
         max_tokens=int(os.getenv("MAX_TOKENS", "4096")),
         reasoning_effort=reasoning_effort,
@@ -195,6 +211,15 @@ def load_config() -> Config:
         context_window=int(os.getenv("CONTEXT_WINDOW", "128000")),
         keep_latest_failures=int(os.getenv("KEEP_LATEST_FAILURES", "1")),
         recursion_limit=int(os.getenv("RECURSION_LIMIT", "300")),
+        architecture=os.getenv("ARCHITECTURE", "v1").lower().replace("_", "."),
+        orchestrator_model=os.getenv("ORCHESTRATOR_MODEL", model),
+        design_expert_model=os.getenv("DESIGN_EXPERT_MODEL", model),
+        test_generator_model=os.getenv("TEST_GENERATOR_MODEL", model),
+        expert_context_limit=int(os.getenv("EXPERT_CONTEXT_LIMIT", "100000")),
+        analyzer_generator_model=os.getenv("ANALYZER_GENERATOR_MODEL", os.getenv("DESIGN_EXPERT_MODEL", model)),
+        crt_model=os.getenv("CRT_MODEL", os.getenv("TEST_GENERATOR_MODEL", model)),
+        gen_max_retries=int(os.getenv("GEN_MAX_RETRIES", "3")),
+        max_gen_per_iter=int(os.getenv("MAX_GEN_PER_ITER", "3")),
         log_level=os.getenv("LOG_LEVEL", "INFO"),
         log_truncate=os.getenv("LOG_TRUNCATE", "1") == "1"
     )

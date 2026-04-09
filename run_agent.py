@@ -202,7 +202,6 @@ Environment File Format:
             sys.path.insert(0, str(langgraph_dir))
 
         # Import framework modules
-        from src.graphs.react import create_react_graph
         from src.config import load_config
         import logging
 
@@ -240,7 +239,16 @@ Environment File Format:
         print("=" * 70)
         print("AGENT EXECUTION CONFIGURATION")
         print("=" * 70)
+        print(f"Architecture:     {config.architecture}")
         print(f"LLM:              {config.model}")
+        if config.architecture == "v2":
+            print(f"  Orchestrator:   {config.orchestrator_model}")
+            print(f"  Design Expert:  {config.design_expert_model}")
+            print(f"  Test Generator: {config.test_generator_model}")
+        elif config.architecture == "v2.1":
+            print(f"  Orchestrator:         {config.orchestrator_model}")
+            print(f"  Analyzer-Generator:   {config.analyzer_generator_model}")
+            print(f"  CRT:                  {config.crt_model}")
         print(f"Work directory:   {config.work_dir}")
         print(f"Design:           {config.design_name}")
         print(f"Design dir:       {config.design_dir}")
@@ -285,7 +293,20 @@ Environment File Format:
         try:
             from src.utils.event_log import emit, close_event_log
 
-            graph = create_react_graph()
+            # Select architecture
+            if config.architecture == "v2":
+                from src.graphs.orc_exp_gen import create_multi_agent_graph
+                from src.utils.conversation_logger import init_conversation_logging
+                init_conversation_logging(config.work_dir)
+                graph = create_multi_agent_graph()
+            elif config.architecture == "v2.1":
+                from src.graphs.ag_crt import create_ag_crt_graph
+                from src.utils.conversation_logger import init_conversation_logging
+                init_conversation_logging(config.work_dir)
+                graph = create_ag_crt_graph()
+            else:
+                from src.graphs.react import create_react_graph
+                graph = create_react_graph()
             result = graph.invoke(
                 {"messages": []},
                 config={"recursion_limit": config.recursion_limit}

@@ -74,6 +74,61 @@ def extract_all_module_headers(design_files: List[Path]) -> str:
 
     return "\n\n".join(headers)
 
+def extract_module_headers_per_module(rtl_file: Path) -> Dict[str, str]:
+    """Extract headers for ALL modules in a single RTL file.
+
+    Returns a dict mapping module_name -> header_string for every module
+    definition found in the file. Used to build the module registry for
+    unit-level verification targeting.
+
+    Args:
+        rtl_file: Path to RTL file (.v or .sv)
+
+    Returns:
+        Dict of {module_name: header_string}
+    """
+    try:
+        with open(rtl_file, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+            lines = content.splitlines(keepends=True)
+    except Exception:
+        return {}
+
+    modules = {}
+    i = 0
+    while i < len(lines):
+        # Find module start
+        match = re.match(r"\s*module\s+(\w+)", lines[i])
+        if match:
+            module_name = match.group(1)
+            start_line = i
+            end_line = i
+            inside_module = True
+
+            # Find closing ); of the port list
+            for j in range(i, len(lines)):
+                if re.search(r"\);\s*$", lines[j]):
+                    end_line = j
+                    inside_module = False
+                    # Capture extended port declarations after header
+                    for k in range(j + 1, len(lines)):
+                        if re.match(r"\s*(input|output|inout|parameter)\s+", lines[k]):
+                            end_line = k
+                        else:
+                            break
+                    break
+
+            if not inside_module:
+                header = "".join(lines[start_line:end_line + 1]).strip()
+                modules[module_name] = header
+                i = end_line + 1
+                continue
+
+        i += 1
+
+    return modules
+
+
 def scan_design_directory(design_dir: Path) -> Tuple[Path, Path, List[str]]:
     """
     Scan design directory for specification and RTL files.

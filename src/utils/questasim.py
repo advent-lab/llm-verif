@@ -177,7 +177,7 @@ def parse_coverage_xml(xml_path: Path) -> Tuple[float, Dict[str, float], Dict[st
 
                 total_active += active
                 total_hits += hits
-                module_breakdown[du_name] = percent
+                module_breakdown[file_path] = percent
 
                 # Extract uncovered lines
                 uncovered = []

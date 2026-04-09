@@ -1,4 +1,4 @@
-from typing import TypedDict, Annotated, Optional, List, Any
+from typing import TypedDict, Annotated, Optional, List, Any, Dict
 from langgraph.graph.message import add_messages
 from langchain_core.messages import BaseMessage
 import operator
@@ -57,3 +57,56 @@ class AgentState(TypedDict):
     is_done: bool
     done_reason: Optional[str]  # "coverage_complete", "no_progress", "no_tool_calls", "max_iterations"
     is_finalizing: bool  # True when framework has triggered termination and agent gets one last turn for report
+
+
+class MultiAgentState(TypedDict):
+    """State for the CovAgent v2 multi-agent architecture.
+
+    messages contains only the Orchestrator's conversation.
+    Design Expert state is entirely separate (own checkpointer).
+    Generator internal messages never enter this state.
+    """
+
+    # Orchestrator message history
+    messages: Annotated[list[BaseMessage], add_messages]
+
+    # Configuration (loaded once during initialization)
+    config: Any
+
+    # Design context (immutable after init)
+    design_name: str
+    design_dir: str
+    spec_path: str
+    design_files: List[str]
+    design_context_files: List[str]
+    module_header: str       # Top-level module header
+    module_registry: Dict[str, str]  # {module_name: header_str} for all modules
+    work_dir: str
+
+    # Artifacts
+    testplan_path: Optional[str]
+    coverage_tracking_path: Optional[str]
+
+    # Coverage tracking
+    iteration: int
+    cumulative_coverage: float
+    cumulative_coverage_db: Optional[str]
+    coverage_history: List[dict]  # [{iteration, coverage, delta, generators, strategy}]
+    no_progress_count: int
+
+    # Subagent tracking
+    api_calls: int              # Orchestrator LLM invocations
+    orchestrator_calls: int
+    design_expert_calls: int         # v2 only
+    test_generator_dispatches: int   # v2 only
+    analyzer_generator_dispatches: int  # v2.1 only
+    crt_dispatches: int              # v2.1 only
+    consecutive_gen_failures: int
+
+    # Termination
+    is_done: bool
+    done_reason: Optional[str]
+    is_finalizing: bool
+
+    # Token usage (all agents, single events.jsonl)
+    token_usage: Annotated[List[dict], _append_token_records]

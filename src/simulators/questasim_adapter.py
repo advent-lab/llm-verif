@@ -500,7 +500,7 @@ class QuestasimAdapter(SimulatorAdapter):
 
                     total_active += active
                     total_hits += hits
-                    module_breakdown[du_name] = percent
+                    module_breakdown[file_path] = percent
 
                     # Extract uncovered line numbers. Use a set to deduplicate
                     uncovered = set()
