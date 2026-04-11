@@ -307,6 +307,7 @@ Examples:
                 print(f"  Design:            {final_state.get('design_name', 'N/A')}")
                 print(f"  Iterations:        {final_state.get('iteration', 0)}")
                 print(f"  Max Func Coverage: {final_state.get('max_functional_coverage', 0.0):.1f}%")
+                print(f"  Final Coverage:    {final_state.get('cumulative_coverage', 0.0):.1f}%")
                 print(f"  Termination:       {final_state.get('done_reason', 'N/A')}")
                 print(f"  Work Directory:    {final_state.get('work_dir', 'N/A')}")
 
