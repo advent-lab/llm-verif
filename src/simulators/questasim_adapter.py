@@ -18,7 +18,13 @@ from ..utils.questasim import (
     build_vlog_commands,
     build_vsim_command,
     build_vcover_merge_command,
-    check_questasim_success
+    check_questasim_success,
+    build_uvm_vlib_uvm_command,
+    build_uvm_vlog_uvm_command,
+    build_uvm_vmap_command,
+    build_uvm_vlog_design_command,
+    build_uvm_vopt_command,
+    build_uvm_vsim_command,
 )
 
 
@@ -27,8 +33,22 @@ class QuestasimAdapter(SimulatorAdapter):
 
     Implements the SimulatorAdapter interface for Mentor Graphics QuestaSim.
     Uses vlog for compilation, vsim for simulation, and vcover for coverage
-    database merging.
+    database merging. Supports both standard and UVM compilation flows.
     """
+
+    def __init__(self, simulator_path: Path):
+        super().__init__(simulator_path)
+        self._uvm_config = None  # Set via set_uvm_config() when UVM mode active
+
+    def set_uvm_config(self, uvm_config: dict):
+        """Set UVM-specific configuration for compile/simulate.
+
+        Args:
+            uvm_config: Dict with keys: filelist, top_module, test_name,
+                        dpi_lib, testbench_dir, sequence_file
+        """
+        self._uvm_config = uvm_config
+        logging.info(f"QuestaSim UVM config set: top={uvm_config.get('top_module')}")
 
     # Lines matching these patterns are QuestaSim vlog (compile) boilerplate
     _COMPILE_BOILERPLATE_PATTERNS = [
@@ -106,19 +126,34 @@ class QuestasimAdapter(SimulatorAdapter):
                 work_dir: Path, timeout: int) -> Dict[str, Any]:
         """Compile testbench using QuestaSim's vlog compiler.
 
+        Dispatches to UVM 3-step flow (vlib → vlog → vopt) if UVM config is set,
+        otherwise uses standard single-step vlog compilation.
+
         Args:
             testbench_path: Path to testbench SystemVerilog file
+                (in UVM mode, this is the generated sequence file — unused directly
+                 since the .f file already references it)
             design_files: List of design RTL files
+                (in UVM mode, ignored — the .f file lists everything)
             work_dir: Working directory (must contain 'work' library)
             timeout: Compilation timeout in seconds
 
         Returns:
             Compilation result dictionary with success status and outputs
         """
+        if self._uvm_config:
+            return self._compile_uvm(work_dir, timeout)
+        return self._compile_standard(testbench_path, design_files, work_dir, timeout)
+
+    def _compile_standard(self, testbench_path: Path, design_files: List[Path],
+                          work_dir: Path, timeout: int) -> Dict[str, Any]:
+        """Standard (non-UVM) compilation flow.
+
+        Builds separate vlog commands for .v (Verilog) and .sv (SystemVerilog)
+        files. Legacy .v files may use identifiers like ``return`` that clash
+        with SystemVerilog reserved keywords.
+        """
         try:
-            # Build separate vlog commands for .v (Verilog) and .sv (SystemVerilog)
-            # files.  Legacy .v files may use identifiers like ``return`` that
-            # clash with SystemVerilog reserved keywords.
             commands = build_vlog_commands(self.simulator_path, testbench_path, design_files)
 
             all_stdout = []
@@ -133,7 +168,7 @@ class QuestasimAdapter(SimulatorAdapter):
                     capture_output=True,
                     text=True,
                     timeout=timeout,
-                    cwd=str(work_dir)  # Run in work directory for work library
+                    cwd=str(work_dir)
                 )
 
                 all_stdout.append(result.stdout)
@@ -159,38 +194,190 @@ class QuestasimAdapter(SimulatorAdapter):
                 "return_code": last_returncode,
                 "stdout": combined_stdout,
                 "stderr": combined_stderr,
-                "log_path": ""  # Log saving handled by tool layer
+                "log_path": ""
             }
 
         except subprocess.TimeoutExpired:
-            return {
-                "success": False,
-                "error": f"Compilation timeout after {timeout}s"
-            }
+            return {"success": False, "error": f"Compilation timeout after {timeout}s"}
         except Exception as e:
             logging.error(f"QuestaSim compilation error: {e}")
+            return {"success": False, "error": str(e)}
+
+    def _compile_uvm(self, work_dir: Path, timeout: int) -> Dict[str, Any]:
+        """UVM 3-step compilation flow: vlib → vlog → vopt.
+
+        Uses the .f file from uvm_config (already prepared with absolute paths
+        and pointing to the LLM-generated sequence/test files in the work dir).
+        """
+        cfg = self._uvm_config
+        filelist = Path(cfg["filelist"])
+        top_module = cfg["top_module"]
+        all_stdout = []
+        all_stderr = []
+
+        try:
+            # ── Step 1: Clean + create libraries ─────────────────────────
+            import shutil
+            for lib_name in ("work", "uvm_lib"):
+                lib_path = work_dir / lib_name
+                if lib_path.exists():
+                    shutil.rmtree(lib_path)
+                    logging.info(f"Removed stale QuestaSim {lib_name} library")
+            # Also remove stale local modelsim.ini so vmap creates a fresh one
+            local_ini = work_dir / "modelsim.ini"
+            if local_ini.exists():
+                local_ini.unlink()
+
+            vlib_cmd = [str(self.simulator_path / "vlib"), "work"]
+            logging.info(f"UVM vlib: {' '.join(vlib_cmd)}")
+            result = subprocess.run(
+                vlib_cmd, capture_output=True, text=True,
+                timeout=timeout, cwd=str(work_dir)
+            )
+            all_stdout.append(f"=== vlib (work) ===\n{result.stdout}")
+            all_stderr.append(result.stderr)
+            if result.returncode != 0:
+                return {
+                    "success": False,
+                    "return_code": result.returncode,
+                    "stdout": "\n".join(all_stdout),
+                    "stderr": "\n".join(all_stderr),
+                    "error": f"vlib work failed: {result.stderr}",
+                    "log_path": ""
+                }
+
+            # ── Step 2: vlib uvm_lib ──────────────────────────────────────
+            vlib_uvm_cmd = build_uvm_vlib_uvm_command(self.simulator_path)
+            logging.info(f"UVM vlib (uvm_lib): {' '.join(vlib_uvm_cmd)}")
+            result = subprocess.run(
+                vlib_uvm_cmd, capture_output=True, text=True,
+                timeout=timeout, cwd=str(work_dir)
+            )
+            all_stdout.append(f"=== vlib (uvm_lib) ===\n{result.stdout}")
+            all_stderr.append(result.stderr)
+            if result.returncode != 0:
+                return {
+                    "success": False,
+                    "return_code": result.returncode,
+                    "stdout": "\n".join(all_stdout),
+                    "stderr": "\n".join(all_stderr),
+                    "error": f"vlib uvm_lib failed: {result.stderr}",
+                    "log_path": ""
+                }
+
+            # ── Step 3: Compile UVM 1.2 from source into uvm_lib ─────────
+            uvm_home = cfg.get("uvm_home", "/opt/siemens/questasim/verilog_src/uvm-1.2")
+            vlog_uvm_cmd = build_uvm_vlog_uvm_command(self.simulator_path, uvm_home)
+            logging.info(f"UVM vlog (uvm_pkg): {' '.join(str(c) for c in vlog_uvm_cmd)}")
+            result = subprocess.run(
+                vlog_uvm_cmd, capture_output=True, text=True,
+                timeout=timeout, cwd=str(work_dir)
+            )
+            all_stdout.append(f"=== vlog (uvm_pkg) ===\n{result.stdout}")
+            all_stderr.append(result.stderr)
+            if result.returncode != 0:
+                return {
+                    "success": False,
+                    "return_code": result.returncode,
+                    "stdout": "\n".join(all_stdout),
+                    "stderr": "\n".join(all_stderr),
+                    "error": "vlog UVM compilation failed",
+                    "log_path": ""
+                }
+
+            # ── Step 4: vmap mtiUvm → uvm_lib ────────────────────────────
+            # Redirect QuestaSim's default mtiUvm (1.1d) to our freshly
+            # compiled uvm_lib (1.2).  Without this, LibrarySearchPath
+            # auto-loads mtiUvm 1.1d during elaboration, creating a
+            # dual-UVM conflict that breaks factory registration.
+            vmap_cmd = build_uvm_vmap_command(self.simulator_path)
+            logging.info(f"UVM vmap: {' '.join(vmap_cmd)}")
+            result = subprocess.run(
+                vmap_cmd, capture_output=True, text=True,
+                timeout=timeout, cwd=str(work_dir)
+            )
+            all_stdout.append(f"=== vmap (mtiUvm → uvm_lib) ===\n{result.stdout}")
+            all_stderr.append(result.stderr)
+            if result.returncode != 0:
+                return {
+                    "success": False,
+                    "return_code": result.returncode,
+                    "stdout": "\n".join(all_stdout),
+                    "stderr": "\n".join(all_stderr),
+                    "error": f"vmap mtiUvm failed: {result.stderr}",
+                    "log_path": ""
+                }
+
+            # ── Step 5: vlog – compile design + testbench with -mfcu ─────
+            vlog_cmd = build_uvm_vlog_design_command(self.simulator_path, filelist, uvm_home)
+            logging.info(f"UVM vlog (design): {' '.join(str(c) for c in vlog_cmd)}")
+            result = subprocess.run(
+                vlog_cmd, capture_output=True, text=True,
+                timeout=timeout, cwd=str(work_dir)
+            )
+            all_stdout.append(f"=== vlog (design) ===\n{result.stdout}")
+            all_stderr.append(result.stderr)
+
+            vlog_success = check_questasim_success(result.stdout)
+            if not vlog_success:
+                return {
+                    "success": False,
+                    "return_code": result.returncode,
+                    "stdout": "\n".join(all_stdout),
+                    "stderr": "\n".join(all_stderr),
+                    "error": "vlog design compilation failed",
+                    "log_path": ""
+                }
+
+            # ── Step 3: vopt (optimize with coverage) ─────────────────────
+            vopt_cmd = build_uvm_vopt_command(self.simulator_path, top_module)
+            logging.info(f"UVM vopt: {' '.join(str(c) for c in vopt_cmd)}")
+            result = subprocess.run(
+                vopt_cmd, capture_output=True, text=True,
+                timeout=timeout, cwd=str(work_dir)
+            )
+            all_stdout.append(f"=== vopt ===\n{result.stdout}")
+            all_stderr.append(result.stderr)
+
+            # vopt success: returncode 0 and no "** Error" lines
+            vopt_success = result.returncode == 0
+            if not vopt_success:
+                return {
+                    "success": False,
+                    "return_code": result.returncode,
+                    "stdout": "\n".join(all_stdout),
+                    "stderr": "\n".join(all_stderr),
+                    "error": "vopt optimization failed",
+                    "log_path": ""
+                }
+
             return {
-                "success": False,
-                "error": str(e)
+                "success": True,
+                "return_code": 0,
+                "stdout": "\n".join(all_stdout),
+                "stderr": "\n".join(all_stderr),
+                "log_path": ""
             }
+
+        except subprocess.TimeoutExpired:
+            return {"success": False, "error": f"UVM compilation timeout after {timeout}s"}
+        except Exception as e:
+            logging.error(f"UVM compilation error: {e}")
+            return {"success": False, "error": str(e)}
 
     def simulate(self, testbench_name: str, num_runs: int,
                  work_dir: Path, iteration: int, timeout: int) -> Dict[str, Any]:
         """Run QuestaSim simulation with coverage collection.
 
-        QuestaSim generates separate .ucdb files for each run, which are then
-        merged into a single coverage database.
-
-        Args:
-            testbench_name: Name of testbench module
-            num_runs: Number of simulation runs with different random seeds
-            work_dir: Working directory
-            iteration: Current iteration number
-            timeout: Timeout per simulation run in seconds
-
-        Returns:
-            Simulation result with coverage database path
+        Dispatches to UVM flow if UVM config is set, otherwise standard flow.
         """
+        if self._uvm_config:
+            return self._simulate_uvm(num_runs, work_dir, iteration, timeout)
+        return self._simulate_standard(num_runs, work_dir, iteration, timeout)
+
+    def _simulate_standard(self, num_runs: int, work_dir: Path,
+                           iteration: int, timeout: int) -> Dict[str, Any]:
+        """Standard (non-UVM) simulation with multiple random-seed runs."""
         try:
             coverage_dir = work_dir / "coverage"
             coverage_dir.mkdir(parents=True, exist_ok=True)
@@ -200,25 +387,18 @@ class QuestasimAdapter(SimulatorAdapter):
             all_stderr = []
             timed_out_runs = 0
 
-            # Run multiple simulations with different random seeds
             for run_idx in range(num_runs):
                 ucdb_filename = f"iter_{iteration}_run_{run_idx}.ucdb"
                 ucdb_abs_path = coverage_dir / ucdb_filename
-                # Use relative path from work_dir for command (avoids path confusion)
                 ucdb_rel_path = Path("coverage") / ucdb_filename
 
-                # Build vsim command with relative path
                 command = build_vsim_command(self.simulator_path, ucdb_rel_path)
-
                 logging.info(f"QuestaSim simulation run {run_idx+1}/{num_runs}")
 
                 try:
                     result = subprocess.run(
-                        command,
-                        capture_output=True,
-                        text=True,
-                        timeout=timeout,
-                        cwd=str(work_dir)
+                        command, capture_output=True, text=True,
+                        timeout=timeout, cwd=str(work_dir)
                     )
 
                     run_stdout = result.stdout
@@ -236,12 +416,10 @@ class QuestasimAdapter(SimulatorAdapter):
                     all_stdout.append(f"=== Run {run_idx} ===\n{run_stdout}")
                     all_stderr.append(result.stderr)
 
-                    # Check if this run succeeded and UCDB file was created
                     if check_questasim_success(result.stdout) and ucdb_abs_path.exists():
                         ucdb_files.append(ucdb_abs_path)
                     else:
                         logging.warning(f"QuestaSim run {run_idx} failed")
-
                 except subprocess.TimeoutExpired:
                     timed_out_runs += 1
                     all_stdout.append(f"=== Run {run_idx} ===\nTIMEOUT: Simulation exceeded {timeout}s limit")
@@ -262,22 +440,15 @@ class QuestasimAdapter(SimulatorAdapter):
                     "stderr": all_stderr[0] if all_stderr else "",
                 }
 
-            # Merge coverage databases if multiple runs succeeded
             if len(ucdb_files) > 1:
                 merged_ucdb = coverage_dir / f"iter_{iteration}.ucdb"
                 merge_command = build_vcover_merge_command(
                     self.simulator_path, merged_ucdb, ucdb_files
                 )
-
                 logging.info(f"Merging {len(ucdb_files)} coverage databases")
                 result = subprocess.run(merge_command, capture_output=True, text=True)
-
                 if result.returncode != 0:
-                    return {
-                        "success": False,
-                        "error": f"Coverage merge failed: {result.stderr}"
-                    }
-
+                    return {"success": False, "error": f"Coverage merge failed: {result.stderr}"}
                 coverage_db_path = merged_ucdb
             else:
                 coverage_db_path = ucdb_files[0]
@@ -295,12 +466,97 @@ class QuestasimAdapter(SimulatorAdapter):
 
         except Exception as e:
             logging.error(f"QuestaSim simulation error: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            return {"success": False, "error": str(e)}
 
-    def parse_coverage(self, coverage_db_path: Path) -> CoverageResult:
+    def _simulate_uvm(self, num_runs: int, work_dir: Path,
+                      iteration: int, timeout: int) -> Dict[str, Any]:
+        """UVM simulation using optimized design (opt_top) with UVM flags.
+
+        Runs multiple seeds and merges coverage, same as standard flow but
+        with UVM-specific vsim command (DPI lib, +UVM_TESTNAME, etc.).
+        """
+        cfg = self._uvm_config
+        test_name = cfg["test_name"]
+        dpi_lib = cfg["dpi_lib"]
+
+        try:
+            coverage_dir = work_dir / "coverage"
+            coverage_dir.mkdir(parents=True, exist_ok=True)
+
+            ucdb_files = []
+            all_stdout = []
+            all_stderr = []
+
+            for run_idx in range(num_runs):
+                ucdb_filename = f"iter_{iteration}_run_{run_idx}.ucdb"
+                ucdb_abs_path = coverage_dir / ucdb_filename
+                ucdb_rel_path = Path("coverage") / ucdb_filename
+
+                command = build_uvm_vsim_command(
+                    self.simulator_path, ucdb_rel_path,
+                    test_name=test_name, dpi_lib=dpi_lib,
+                )
+                logging.info(f"UVM simulation run {run_idx+1}/{num_runs}")
+
+                try:
+                    result = subprocess.run(
+                        command, capture_output=True, text=True,
+                        timeout=timeout, cwd=str(work_dir)
+                    )
+                    all_stdout.append(f"=== Run {run_idx} ===\n{result.stdout}")
+                    all_stderr.append(result.stderr)
+
+                    # Check for UVM_FATAL — the simulator may report
+                    # Errors: 0 but the UVM test died at time 0.
+                    # Match actual fatal messages (e.g. "UVM_FATAL .../file.sv(51)")
+                    # but NOT the summary line "UVM_FATAL :    0".
+                    has_uvm_fatal = bool(re.search(
+                        r"UVM_FATAL\s+[^:]", result.stdout
+                    ))
+                    if has_uvm_fatal:
+                        logging.warning(f"UVM run {run_idx}: UVM_FATAL detected in output")
+                    elif ucdb_abs_path.exists():
+                        ucdb_files.append(ucdb_abs_path)
+                    else:
+                        logging.warning(f"UVM run {run_idx} failed or no UCDB produced")
+                except subprocess.TimeoutExpired:
+                    logging.warning(f"UVM run {run_idx} timed out")
+                    continue
+
+            if not ucdb_files:
+                return {
+                    "success": False,
+                    "error": "All UVM simulation runs failed",
+                    "stdout": "\n\n".join(all_stdout),
+                    "stderr": "\n".join(all_stderr),
+                }
+
+            if len(ucdb_files) > 1:
+                merged_ucdb = coverage_dir / f"iter_{iteration}.ucdb"
+                merge_command = build_vcover_merge_command(
+                    self.simulator_path, merged_ucdb, ucdb_files
+                )
+                logging.info(f"Merging {len(ucdb_files)} UVM coverage databases")
+                result = subprocess.run(merge_command, capture_output=True, text=True)
+                if result.returncode != 0:
+                    return {"success": False, "error": f"Coverage merge failed: {result.stderr}"}
+                coverage_db_path = merged_ucdb
+            else:
+                coverage_db_path = ucdb_files[0]
+
+            return {
+                "success": True,
+                "stdout": "\n\n".join(all_stdout),
+                "stderr": "\n".join(all_stderr),
+                "coverage_db_path": str(coverage_db_path),
+                "num_runs_completed": len(ucdb_files)
+            }
+        except Exception as e:
+            logging.error(f"UVM simulation error: {e}")
+            return {"success": False, "error": str(e)}
+
+    def parse_coverage(self, coverage_db_path: Path,
+                       design_files: List[Path] = None) -> CoverageResult:
         """Parse QuestaSim coverage database (.ucdb).
 
         Generates XML report from .ucdb file and parses it to extract
@@ -308,6 +564,10 @@ class QuestasimAdapter(SimulatorAdapter):
 
         Args:
             coverage_db_path: Path to .ucdb coverage database
+            design_files: Optional list of RTL design file paths.  When
+                provided, only design units whose source files overlap with
+                this list are counted.  This filters out UVM testbench
+                infrastructure that would otherwise dilute RTL coverage.
 
         Returns:
             CoverageResult with normalized coverage data
@@ -340,7 +600,9 @@ class QuestasimAdapter(SimulatorAdapter):
             raise RuntimeError(f"Coverage report generation failed: {result.stderr}")
 
         # Parse XML report
-        total_coverage, module_breakdown, uncovered_lines = self._parse_coverage_xml(xml_path)
+        total_coverage, module_breakdown, uncovered_lines = self._parse_coverage_xml(
+            xml_path, design_files=design_files
+        )
 
         return CoverageResult(
             total_coverage=total_coverage,
@@ -348,15 +610,31 @@ class QuestasimAdapter(SimulatorAdapter):
             uncovered_lines=uncovered_lines
         )
 
-    def _parse_coverage_xml(self, xml_path: Path) -> Tuple[float, Dict[str, float], Dict[str, List[int]]]:
+    def _parse_coverage_xml(self, xml_path: Path,
+                            design_files: List[Path] = None,
+                            ) -> Tuple[float, Dict[str, float], Dict[str, List[int]]]:
         """Parse QuestaSim XML coverage report.
 
         Args:
             xml_path: Path to XML coverage report
+            design_files: Optional list of resolved RTL file paths.  When
+                provided, a DU is included only if at least one of its
+                source files matches a design file.
 
         Returns:
             Tuple of (total_coverage, module_breakdown, uncovered_lines)
         """
+        # Build sets of design file paths AND filenames for matching.
+        # We match on both resolved path and basename because UVM flows
+        # often copy RTL into a separate directory (e.g. verif/UVM/rtl/)
+        # so the path in the coverage report differs from config.design_files.
+        if design_files:
+            design_file_set = {str(Path(f).resolve()) for f in design_files}
+            design_file_names = {Path(f).name for f in design_files}
+        else:
+            design_file_set = None
+            design_file_names = None
+
         try:
             tree = ET.parse(xml_path)
             root = tree.getroot()
@@ -370,13 +648,33 @@ class QuestasimAdapter(SimulatorAdapter):
             for du_data in root.findall('.//DuData'):
                 du_name = du_data.get('du')
 
-                # Skip testbench from coverage (focus on DUT)
-                if du_name == 'tb_llm':
-                    continue
+                # Collect all source file paths for this DU
+                du_file_paths = []
+                for fm in du_data.findall('.//fileMap'):
+                    p = fm.get('path')
+                    if p:
+                        du_file_paths.append(str(Path(p).resolve()))
 
-                # Get file path
-                file_map = du_data.find('.//fileMap')
-                file_path = file_map.get('path') if file_map is not None else "unknown"
+                # Filter: only include DUs whose source files are design files
+                if design_file_set is not None:
+                    # Match by full resolved path OR by filename (handles
+                    # UVM copies of RTL into verif/UVM/rtl/ directories)
+                    match = any(
+                        p in design_file_set or Path(p).name in design_file_names
+                        for p in du_file_paths
+                    )
+                    if not match:
+                        logging.debug(
+                            f"Skipping DU '{du_name}' — no source files match design files"
+                        )
+                        continue
+                else:
+                    # Legacy fallback: skip known testbench DU name
+                    if du_name == 'tb_llm':
+                        continue
+
+                # Get primary file path (first fileMap) for uncovered_lines key
+                file_path = du_file_paths[0] if du_file_paths else "unknown"
 
                 # Get statement coverage stats
                 statements = du_data.find('statements')
@@ -454,32 +752,44 @@ class QuestasimAdapter(SimulatorAdapter):
         logging.info(f"Updated cumulative coverage: {cumulative_ucdb}")
 
         return cumulative_ucdb
-
-    @staticmethod
-    def cleanup(work_dir: Path) -> None:
+    
+    def cleanup(self) -> None:
         """Clean up QuestaSim-specific files.
 
-        Removes:
-        - work/ library directory
-        - transcript file
-
-        Args:
-            work_dir: Working directory containing QuestaSim artifacts
+        QuestaSim manages its own work library, so minimal cleanup is needed.
+        This method is required by the SimulatorAdapter base class.
         """
-        import shutil
+        # QuestaSim cleanup is typically not needed as it manages work/ library
+        # This method exists to satisfy the abstract base class requirement
+        pass
 
-        try:
-            # Remove work library
-            work_lib = work_dir / "work"
-            if work_lib.exists():
-                shutil.rmtree(work_lib, ignore_errors=True)
-                logging.info(f"Cleaned up QuestaSim work library: {work_lib}")
 
-            # Remove transcript
-            transcript = work_dir / "transcript"
-            if transcript.exists():
-                transcript.unlink()
-                logging.info(f"Cleaned up QuestaSim transcript: {transcript}")
-
-        except Exception as e:
-            logging.warning(f"QuestaSim cleanup error: {e}")
+# MODULE-LEVEL FUNCTION (outside the class)
+def generate_functional_coverage_report(simulator_path: Path, ucdb_path: Path, 
+                                       output_txt: Path) -> bool:
+    """
+    Generate text-based functional coverage report.
+    
+    Args:
+        simulator_path: Path to simulator binaries
+        ucdb_path: Path to coverage database
+        output_txt: Path to output text file
+    
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        cmd = [
+            str(simulator_path / "vcover"),
+            "report",
+            "-details",
+            "-output", str(output_txt),
+            str(ucdb_path)
+        ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        return result.returncode == 0 and output_txt.exists()
+    
+    except Exception as e:
+        logging.error(f"Functional coverage report generation failed: {e}")
+        return False

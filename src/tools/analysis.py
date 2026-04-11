@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from langchain.tools import tool
 import logging
 import re
@@ -75,9 +75,15 @@ def parse_coverage(coverage_db_path: str) -> Dict[str, Any]:
         if not db_path.exists():
             return {"success": False, "error": f"Coverage database not found: {coverage_db_path}"}
 
+        # Collect RTL design files for DU filtering (excludes testbench infrastructure)
+        design_files = None
+        if _config:
+            design_files = list(getattr(_config, 'design_files', []) or [])
+            design_files += list(getattr(_config, 'design_context_files', []) or [])
+
         # Step 1: Parse iteration coverage (this testbench alone)
         logging.info("Parsing iteration coverage database")
-        iteration_result = _adapter.parse_coverage(db_path)
+        iteration_result = _adapter.parse_coverage(db_path, design_files=design_files)
         iteration_coverage = iteration_result.total_coverage
         logging.info(f"Iteration coverage: {iteration_coverage:.1f}%")
 
@@ -101,7 +107,7 @@ def parse_coverage(coverage_db_path: str) -> Dict[str, Any]:
 
         # Step 4: Parse cumulative coverage (all testbenches combined)
         logging.info("Parsing cumulative coverage database")
-        cumulative_result = _adapter.parse_coverage(cumulative_db_path)
+        cumulative_result = _adapter.parse_coverage(cumulative_db_path, design_files=design_files)
         cumulative_coverage = cumulative_result.total_coverage
         logging.info(f"Cumulative coverage: {cumulative_coverage:.1f}%")
 
@@ -132,6 +138,161 @@ def parse_coverage(coverage_db_path: str) -> Dict[str, Any]:
         import traceback
         logging.error(traceback.format_exc())
         return {"success": False, "error": str(e)}
+
+@tool
+def parse_functional_coverage(coverage_db_path: str) -> Dict[str, Any]:
+    """
+    Parse functional coverage database and generate feedback for uncovered bins.
+
+    This tool is used in FUNCTIONAL COVERAGE MODE to analyze which coverage bins
+    have not been hit and provide actionable feedback to guide stimulus generation.
+
+    Merges coverage across iterations, just like parse_coverage does.
+
+    Args:
+        coverage_db_path: Path to coverage database (.ucdb for QuestaSim)
+            This is the per-iteration coverage database that will be merged
+            with cumulative coverage from all previous iterations.
+
+    Returns:
+        Dictionary with:
+        - success: bool
+        - total_coverage: float (0-100) - Overall cumulative functional coverage
+        - iteration_coverage: float (0-100) - This iteration alone (for debugging)
+        - cumulative_coverage: float (0-100) - Same as total_coverage
+        - covergroups: list of covergroup details with uncovered bins (from cumulative)
+        - feedback: str (human-readable guidance for the LLM)
+        - uncovered_bins: list of all uncovered bins with context (from cumulative)
+        - cumulative_coverage_db: str - path to merged cumulative database
+        - error: str (if failed)
+    """
+    global _cumulative_coverage_db
+
+    try:
+        from ..utils.questasim import parse_functional_coverage_text
+
+        db_path = Path(coverage_db_path).resolve()
+        if not db_path.exists():
+            return {
+                "success": False,
+                "error": f"Coverage database not found: {coverage_db_path}"
+            }
+
+        # Step 1: Determine cumulative coverage database path
+        coverage_dir = db_path.parent
+        cumulative_db_path = coverage_dir / "cumulative_funcov.ucdb"
+
+        # Step 2: Merge this iteration's coverage into cumulative
+        logging.info(f"Merging functional coverage: {db_path} → {cumulative_db_path}")
+        try:
+            _adapter.merge_cumulative_coverage(db_path, cumulative_db_path)
+            _cumulative_coverage_db = cumulative_db_path
+        except Exception as e:
+            logging.error(f"Cumulative functional coverage merge failed: {e}")
+            _cumulative_coverage_db = db_path
+            cumulative_db_path = db_path
+
+        # Step 3: Generate functional coverage report from CUMULATIVE database
+        logging.info("Generating functional coverage report from cumulative database")
+        report_path = coverage_dir / "cumulative_functional_coverage.txt"
+
+        import subprocess
+        vcover_cmd = [
+            str(_adapter.simulator_path / "vcover"),
+            "report",
+            "-details",
+            "-output", str(report_path),
+            str(cumulative_db_path)
+        ]
+
+        try:
+            subprocess.run(vcover_cmd, check=True, capture_output=True, text=True, timeout=30)
+        except subprocess.TimeoutExpired:
+            logging.error("vcover report generation timed out")
+            return {"success": False, "error": "Coverage report generation timed out"}
+        except subprocess.CalledProcessError as e:
+            logging.error(f"vcover report failed: {e.stderr}")
+            return {"success": False, "error": f"Coverage report generation failed: {e.stderr}"}
+
+        # Step 4: Parse the cumulative report
+        logging.info(f"Parsing cumulative functional coverage report: {report_path}")
+        result = parse_functional_coverage_text(report_path)
+
+        if 'error' in result:
+            return {"success": False, "error": result['error']}
+
+        cumulative_coverage = result['total_coverage']
+        covergroups = result['covergroups']
+
+        feedback = _generate_functional_coverage_feedback(cumulative_coverage, covergroups)
+
+        all_uncovered_bins = []
+        for cg in covergroups:
+            for bin_name in cg.get('uncovered_bins', []):
+                all_uncovered_bins.append({
+                    'covergroup': cg['name'],
+                    'bin_name': bin_name
+                })
+
+        logging.info(f"Functional coverage: {cumulative_coverage:.1f}% ({len(all_uncovered_bins)} bins uncovered)")
+
+        return {
+            "success": True,
+            "total_coverage": cumulative_coverage,
+            "iteration_coverage": cumulative_coverage,
+            "cumulative_coverage": cumulative_coverage,
+            "covergroups": covergroups,
+            "feedback": feedback,
+            "uncovered_bins": all_uncovered_bins,
+            "cumulative_coverage_db": str(cumulative_db_path)
+        }
+
+    except Exception as e:
+        logging.error(f"Functional coverage parsing error: {e}")
+        import traceback
+        logging.error(traceback.format_exc())
+        return {"success": False, "error": str(e)}
+
+
+def _generate_functional_coverage_feedback(total_coverage: float,
+                                           covergroups: List[Dict]) -> str:
+    """Generate human-readable feedback about uncovered bins."""
+    if total_coverage >= 99.9:
+        return "✓ Functional coverage complete! All bins have been hit."
+
+    feedback = [f"## Functional Coverage: {total_coverage:.1f}%\n"]
+
+    incomplete_cgs = [cg for cg in covergroups if cg.get('uncovered_bins')]
+
+    if not incomplete_cgs:
+        return "✓ All bins covered (or no functional coverage defined)."
+
+    feedback.append(f"### Uncovered Bins ({len(incomplete_cgs)} covergroups need work)\n")
+
+    for cg in incomplete_cgs[:5]:
+        cg_name = cg['name']
+        cg_coverage = cg['coverage']
+        uncovered = cg['uncovered_bins']
+
+        feedback.append(f"**{cg_name}** ({cg_coverage:.1f}% covered)")
+        feedback.append(f"  Missing {len(uncovered)} bins:")
+
+        for bin_name in uncovered[:10]:
+            feedback.append(f"    - `{bin_name}`")
+
+        if len(uncovered) > 10:
+            feedback.append(f"    ... and {len(uncovered) - 10} more bins")
+
+        feedback.append("")
+
+    feedback.append("\n### Recommended Actions:")
+    feedback.append("1. Analyze uncovered bin names to understand what stimulus patterns are missing")
+    feedback.append("2. Generate stimulus that targets these specific bins")
+    feedback.append("3. Use constrained random or directed tests to hit corner cases")
+    feedback.append("4. Focus on covergroups with lowest coverage first")
+
+    return "\n".join(feedback)
+
 
 def _create_annotated_source(uncovered_lines: Dict[str, list[int]], max_holes: int = 0) -> str:
     """Create annotated source highlighting high-priority uncovered lines,

@@ -5,8 +5,9 @@ import os
 # Check if in test mode
 TEST_MODE = os.getenv("TEST_MODE", "0") == "1"
 
-# Always import filesystem tools (no simulator dependency)
-from .filesystem import read_file, write_file, list_directory
+# Always import filesystem and workflow tools (no simulator dependency)
+from .filesystem import read_file, write_file, list_directory, request_infra_modification, plan_coverage_strategy
+from .workflow import signal_done
 
 # Conditionally import simulation/analysis tools
 if TEST_MODE:
@@ -16,7 +17,7 @@ if TEST_MODE:
     from . import analysis_mock as analysis
 else:
     from .simulation import compile_design, run_simulation
-    from .analysis import parse_coverage
+    from .analysis import parse_coverage, parse_functional_coverage
     from . import simulation
     from . import analysis
 
@@ -25,14 +26,23 @@ from . import filesystem
 
 def get_all_tools():
     """Get all tools for the agent."""
-    return [
+    tools = [
         read_file,
         write_file,
         list_directory,
         compile_design,
         run_simulation,
         parse_coverage,
+        signal_done,
+        request_infra_modification,
+        plan_coverage_strategy,
     ]
+    
+    # Add functional coverage tool if not in test mode
+    if not TEST_MODE:
+        tools.append(parse_functional_coverage)
+    
+    return tools
 
 def set_tool_config(config):
     """Set config for all tools that need it."""

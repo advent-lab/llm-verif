@@ -96,13 +96,19 @@ class SimulatorAdapter(ABC):
         pass
 
     @abstractmethod
-    def parse_coverage(self, coverage_db_path: Path) -> CoverageResult:
+    def parse_coverage(self, coverage_db_path: Path,
+                       design_files: List[Path] = None) -> CoverageResult:
         """Parse coverage database and return structured results.
 
         Args:
             coverage_db_path: Path to coverage database file
                 - QuestaSim: .ucdb file
                 - Verilator: .dat file
+            design_files: Optional list of RTL design file paths.  When
+                provided, only design units whose source files overlap with
+                this list are included in coverage totals.  This filters out
+                testbench/infrastructure code that would otherwise dilute
+                the reported RTL coverage.
 
         Returns:
             CoverageResult object with normalized coverage data
