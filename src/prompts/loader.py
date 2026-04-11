@@ -21,6 +21,7 @@ def load_system_prompt(
     uvm_testbench_files: Optional[List[str]] = None,
     uvm_interface_name: Optional[str] = None,
     uvm_env_class: Optional[str] = None,
+    uvm_coverage_mode: str = "functional",
 ) -> str:
     """
     Load system prompt template and interpolate variables.
@@ -93,6 +94,7 @@ This plan will guide your testbench development and help ensure comprehensive co
             uvm_testbench_files=uvm_testbench_files or [],
             uvm_interface_name=uvm_interface_name or "design_if",
             uvm_env_class=uvm_env_class or "design_env",
+            uvm_coverage_mode=uvm_coverage_mode,
         )
 
     # Interpolate variables
@@ -121,10 +123,77 @@ def _build_uvm_instructions(
     uvm_testbench_files: List[str],
     uvm_interface_name: str = "design_if",
     uvm_env_class: str = "design_env",
+    uvm_coverage_mode: str = "functional",
 ) -> str:
     """Build UVM-specific instructions for the system prompt."""
 
     tb_files_list = "\n".join(f"   - {f}" for f in uvm_testbench_files) if uvm_testbench_files else "   (none listed)"
+
+    # ── Mode-specific text blocks ─────────────────────────────────────────
+    if uvm_coverage_mode == "line":
+        coverage_target_block = (
+            "Coverage is collected from **code coverage** (line/statement coverage of the RTL).\n"
+            "Your goal is to maximize the percentage of RTL lines exercised by your UVM sequences.\n"
+            "Use `parse_coverage` after each simulation to see annotated source showing uncovered\n"
+            "lines (marked with `#####`), then generate targeted stimulus to exercise those paths."
+        )
+        coverage_module_block = f"""### Coverage Module (EXISTS BUT NOT YOUR TARGET)
+
+A passive coverage module is compiled with the testbench but is NOT your target metric.
+Focus on the annotated RTL source from `parse_coverage` to identify and target uncovered lines.
+
+### Sequence Item Definition (FIXED - DO NOT MODIFY)
+
+This is the transaction class your sequences must use:
+
+```systemverilog
+{uvm_seq_item_content}
+```"""
+        workflow_step_2 = "2. **Study** the seq_item fields/constraints and the RTL design files to understand what stimulus is needed"
+        workflow_step_9 = (
+            "9. **Analyze** code coverage:\n"
+            "   - Use `parse_coverage` to see annotated RTL source with uncovered lines\n"
+            "   - Lines marked `#####` are NOT covered — study the surrounding control flow\n"
+            "   - Do NOT call `parse_functional_coverage` — it is not relevant in line coverage mode"
+        )
+        workflow_step_10 = (
+            "10. **Iterate**: Call `plan_coverage_strategy` again listing the uncovered lines\n"
+            "    you will target, then refine sequences to exercise those code paths"
+        )
+        critical_rules_target = "- ✅ DO target specific uncovered RTL lines by studying the annotated source from `parse_coverage`"
+    else:
+        coverage_target_block = (
+            "Coverage is collected from BOTH:\n"
+            "- **Code coverage**: Statement/branch/condition/expression/toggle coverage of the RTL\n"
+            "- **Functional coverage**: Covergroups in the passive coverage module (tb_llm)"
+        )
+        coverage_module_block = f"""### Sequence Item Definition (FIXED - DO NOT MODIFY)
+
+This is the transaction class your sequences must use:
+
+```systemverilog
+{uvm_seq_item_content}
+```
+
+### Coverage Module (FIXED - targeting these bins)
+
+This passive module collects functional coverage. Study the covergroups
+and bins to understand what stimulus patterns are needed:
+
+```systemverilog
+{uvm_coverage_module_content}
+```"""
+        workflow_step_2 = "2. **Study** the seq_item fields/constraints and coverage bins above"
+        workflow_step_9 = (
+            "9. **Analyze** coverage:\n"
+            "   - Use `parse_coverage` for code coverage (annotated RTL lines)\n"
+            "   - Use `parse_functional_coverage` for functional coverage (uncovered bins)"
+        )
+        workflow_step_10 = (
+            "10. **Iterate**: Call `plan_coverage_strategy` again with the NEW uncovered bins,\n"
+            "    then refine sequences to target them"
+        )
+        critical_rules_target = "- ✅ DO target specific coverage bins by studying the coverage module above"
 
     return f"""
 =================================================================================
@@ -138,9 +207,7 @@ You are in **UVM MODE**. Instead of writing complete testbenches, you generate:
 The UVM testbench infrastructure (driver, monitor, agent, env, interface, scoreboard,
 Top module, coverage module) is already provided and fixed. You must NOT modify these.
 
-Coverage is collected from BOTH:
-- **Code coverage**: Statement/branch/condition/expression/toggle coverage of the RTL
-- **Functional coverage**: Covergroups in the passive coverage module (tb_llm)
+{coverage_target_block}
 
 ### What You Generate
 
@@ -182,22 +249,7 @@ A complete SystemVerilog file containing the UVM test class. The test MUST:
   drop objection
 - Import and instantiate the sequences you defined in the sequence file
 
-### Sequence Item Definition (FIXED - DO NOT MODIFY)
-
-This is the transaction class your sequences must use:
-
-```systemverilog
-{uvm_seq_item_content}
-```
-
-### Coverage Module (FIXED - targeting these bins)
-
-This passive module collects functional coverage. Study the covergroups
-and bins to understand what stimulus patterns are needed:
-
-```systemverilog
-{uvm_coverage_module_content}
-```
+{coverage_module_block}
 
 ### UVM Testbench Files (FIXED - DO NOT MODIFY)
 
@@ -207,7 +259,7 @@ These files are already provided and compiled via the .f file:
 ### UVM Mode Workflow
 
 1. **Read** the specification and understand the design
-2. **Study** the seq_item fields/constraints and coverage bins above
+{workflow_step_2}
 3. **Plan** — call `plan_coverage_strategy(target_bins, strategy)` to structure
    your approach before writing any code. List the specific bins/lines you will
    target and how. This is MANDATORY before every `write_file` call.
@@ -219,11 +271,8 @@ These files are already provided and compiled via the .f file:
 7. **Compile** using `compile_design("testbenches/{uvm_sequence_file}")`
    (the argument is just for logging; the .f file handles compilation)
 8. **Simulate** using `run_simulation()`
-9. **Analyze** coverage:
-   - Use `parse_coverage` for code coverage (annotated RTL lines)
-   - Use `parse_functional_coverage` for functional coverage (uncovered bins)
-10. **Iterate**: Call `plan_coverage_strategy` again with the NEW uncovered bins,
-    then refine sequences to target them
+{workflow_step_9}
+{workflow_step_10}
 
 ### UVM Sequence Patterns
 
@@ -255,10 +304,10 @@ start_item(seq_item);
 finish_item(seq_item);
 ```
 
-### Bypassing Seq_Item Constraints for Hard-to-Reach Bins
+### Bypassing Seq_Item Constraints for Hard-to-Reach Lines
 
 The seq_item may have hard constraints that prevent certain value combinations
-via `randomize()`. If a coverage bin requires a combination that conflicts with
+via `randomize()`. If a code path requires a combination that conflicts with
 a seq_item constraint, you have TWO options — use them in this order:
 
 **Option 1 (preferred): Direct field assignment — bypasses ALL constraints:**
@@ -285,7 +334,7 @@ finish_item(seq_item);
 **IMPORTANT**: If a `randomize() with {{...}}` call fails (returns 0), the most
 likely cause is a conflict with an existing seq_item constraint. Do NOT give up —
 switch to direct field assignment to force the values through. Never leave a
-coverage bin unhit because "the constraint prevents it."
+code path unexercised because "the constraint prevents it."
 
 ### CODE STYLE — KEEP IT MINIMAL
 
@@ -295,20 +344,20 @@ Write **compact, minimal code** to preserve context for more iterations:
 - **NO per-line comments** unless the logic is genuinely non-obvious.
 - Use a **single short `//` comment per task/section** at most (e.g., `// directed: div-by-zero`).
 - **NO `$display` / `uvm_info` calls** in sequences unless you are actively debugging a specific failure.
-- **NO explanatory prose** in your response text around the code. Just state which bins you are targeting, then write the files. Skip analysis paragraphs — the coverage report already tells the story.
-- Keep sequences **short and targeted**: only generate stimulus for uncovered bins. Do NOT re-generate stimulus for bins already covered in previous iterations — merged coverage retains them.
+- **NO explanatory prose** in your response text around the code. Just state which lines you are targeting, then write the files. Skip analysis paragraphs — the coverage report already tells the story.
+- Keep sequences **short and targeted**: only generate stimulus for uncovered lines. Do NOT re-generate stimulus for lines already covered in previous iterations — merged coverage retains them.
 
 ### CRITICAL UVM RULES
 
 - ❌ DO NOT modify the seq_item, monitor, agent, env, interface, scoreboard, or Top module
-- ❌ DO NOT modify the driver — UNLESS you have called `request_infra_modification` and it returned success. Call this tool when you believe the driver protocol is blocking coverage bins.
+- ❌ DO NOT modify the driver — UNLESS you have called `request_infra_modification` and it returned success. Call this tool when you believe the driver protocol is blocking coverage.
 - ❌ DO NOT define covergroups in your sequences (coverage is in the passive module)
 - ❌ DO NOT use `$finish` in sequences (UVM handles simulation termination)
 - ❌ DO NOT use `#include` or `` `include `` to include the sequence file in the test file (or vice versa). Both files are compiled separately via the .f file — including one in the other causes "multiply defined" errors.
 - ✅ DO use `import uvm_pkg::*;` and `` `include "uvm_macros.svh" `` at the top of BOTH files
 - ✅ DO use the exact seq_item class name and field names shown above
 - ✅ DO write BOTH the sequence file AND the test file each iteration
-- ✅ DO target specific coverage bins by studying the coverage module above
+{critical_rules_target}
 - ✅ DO use both constrained random AND directed transactions for best coverage
-- ✅ DO use direct field assignment to bypass seq_item constraints for hard-to-reach bins
+- ✅ DO use direct field assignment to bypass seq_item constraints for hard-to-reach lines
 """

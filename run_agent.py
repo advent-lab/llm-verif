@@ -233,6 +233,8 @@ Examples:
             print(f"  Phase 2 testbench:       {func_tb}")
         else:
             print(f"Functional coverage:       {'ENABLED' if config.functional_coverage_enabled else 'DISABLED'}")
+        if config.uvm_enabled:
+            print(f"UVM coverage mode:         {config.uvm_coverage_mode}")
         print("=" * 70)
 
         # ── Verify design structure ─────────────────────────────────────────

@@ -57,6 +57,7 @@ class AgentState(TypedDict):
 
     # UVM mode
     uvm_enabled: bool
+    uvm_coverage_mode: str  # "functional" or "line"
 
     # Agent loop tracking
     consecutive_no_tool_calls: int  # Consecutive LLM responses with no tool calls

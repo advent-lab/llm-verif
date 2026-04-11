@@ -75,9 +75,15 @@ def parse_coverage(coverage_db_path: str) -> Dict[str, Any]:
         if not db_path.exists():
             return {"success": False, "error": f"Coverage database not found: {coverage_db_path}"}
 
+        # Collect RTL design files for DU filtering (excludes testbench infrastructure)
+        design_files = None
+        if _config:
+            design_files = list(getattr(_config, 'design_files', []) or [])
+            design_files += list(getattr(_config, 'design_context_files', []) or [])
+
         # Step 1: Parse iteration coverage (this testbench alone)
         logging.info("Parsing iteration coverage database")
-        iteration_result = _adapter.parse_coverage(db_path)
+        iteration_result = _adapter.parse_coverage(db_path, design_files=design_files)
         iteration_coverage = iteration_result.total_coverage
         logging.info(f"Iteration coverage: {iteration_coverage:.1f}%")
 
@@ -101,7 +107,7 @@ def parse_coverage(coverage_db_path: str) -> Dict[str, Any]:
 
         # Step 4: Parse cumulative coverage (all testbenches combined)
         logging.info("Parsing cumulative coverage database")
-        cumulative_result = _adapter.parse_coverage(cumulative_db_path)
+        cumulative_result = _adapter.parse_coverage(cumulative_db_path, design_files=design_files)
         cumulative_coverage = cumulative_result.total_coverage
         logging.info(f"Cumulative coverage: {cumulative_coverage:.1f}%")
 
