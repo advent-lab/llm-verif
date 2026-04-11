@@ -496,7 +496,8 @@ class QuestasimAdapter(SimulatorAdapter):
             logging.error(f"UVM simulation error: {e}")
             return {"success": False, "error": str(e)}
 
-    def parse_coverage(self, coverage_db_path: Path) -> CoverageResult:
+    def parse_coverage(self, coverage_db_path: Path,
+                       design_files: List[Path] = None) -> CoverageResult:
         """Parse QuestaSim coverage database (.ucdb).
 
         Generates XML report from .ucdb file and parses it to extract
@@ -504,6 +505,10 @@ class QuestasimAdapter(SimulatorAdapter):
 
         Args:
             coverage_db_path: Path to .ucdb coverage database
+            design_files: Optional list of RTL design file paths.  When
+                provided, only design units whose source files overlap with
+                this list are counted.  This filters out UVM testbench
+                infrastructure that would otherwise dilute RTL coverage.
 
         Returns:
             CoverageResult with normalized coverage data
@@ -536,7 +541,9 @@ class QuestasimAdapter(SimulatorAdapter):
             raise RuntimeError(f"Coverage report generation failed: {result.stderr}")
 
         # Parse XML report
-        total_coverage, module_breakdown, uncovered_lines = self._parse_coverage_xml(xml_path)
+        total_coverage, module_breakdown, uncovered_lines = self._parse_coverage_xml(
+            xml_path, design_files=design_files
+        )
 
         return CoverageResult(
             total_coverage=total_coverage,
@@ -544,15 +551,31 @@ class QuestasimAdapter(SimulatorAdapter):
             uncovered_lines=uncovered_lines
         )
 
-    def _parse_coverage_xml(self, xml_path: Path) -> Tuple[float, Dict[str, float], Dict[str, List[int]]]:
+    def _parse_coverage_xml(self, xml_path: Path,
+                            design_files: List[Path] = None,
+                            ) -> Tuple[float, Dict[str, float], Dict[str, List[int]]]:
         """Parse QuestaSim XML coverage report.
 
         Args:
             xml_path: Path to XML coverage report
+            design_files: Optional list of resolved RTL file paths.  When
+                provided, a DU is included only if at least one of its
+                source files matches a design file.
 
         Returns:
             Tuple of (total_coverage, module_breakdown, uncovered_lines)
         """
+        # Build sets of design file paths AND filenames for matching.
+        # We match on both resolved path and basename because UVM flows
+        # often copy RTL into a separate directory (e.g. verif/UVM/rtl/)
+        # so the path in the coverage report differs from config.design_files.
+        if design_files:
+            design_file_set = {str(Path(f).resolve()) for f in design_files}
+            design_file_names = {Path(f).name for f in design_files}
+        else:
+            design_file_set = None
+            design_file_names = None
+
         try:
             tree = ET.parse(xml_path)
             root = tree.getroot()
@@ -566,13 +589,33 @@ class QuestasimAdapter(SimulatorAdapter):
             for du_data in root.findall('.//DuData'):
                 du_name = du_data.get('du')
 
-                # Skip testbench from coverage (focus on DUT)
-                if du_name == 'tb_llm':
-                    continue
+                # Collect all source file paths for this DU
+                du_file_paths = []
+                for fm in du_data.findall('.//fileMap'):
+                    p = fm.get('path')
+                    if p:
+                        du_file_paths.append(str(Path(p).resolve()))
 
-                # Get file path
-                file_map = du_data.find('.//fileMap')
-                file_path = file_map.get('path') if file_map is not None else "unknown"
+                # Filter: only include DUs whose source files are design files
+                if design_file_set is not None:
+                    # Match by full resolved path OR by filename (handles
+                    # UVM copies of RTL into verif/UVM/rtl/ directories)
+                    match = any(
+                        p in design_file_set or Path(p).name in design_file_names
+                        for p in du_file_paths
+                    )
+                    if not match:
+                        logging.debug(
+                            f"Skipping DU '{du_name}' — no source files match design files"
+                        )
+                        continue
+                else:
+                    # Legacy fallback: skip known testbench DU name
+                    if du_name == 'tb_llm':
+                        continue
+
+                # Get primary file path (first fileMap) for uncovered_lines key
+                file_path = du_file_paths[0] if du_file_paths else "unknown"
 
                 # Get statement coverage stats
                 statements = du_data.find('statements')

@@ -78,13 +78,15 @@ def _signal_done_accepted(state: AgentState) -> bool:
     config = state["config"]
     if state.get("cumulative_coverage", 0.0) >= 100.0:
         return True
-    # In UVM mode, functional coverage reaching target is a valid completion
-    # (code coverage is often dragged down by UVM infrastructure lines)
+    # In UVM functional mode, functional coverage reaching target is a valid completion
+    # (code coverage is often dragged down by UVM infrastructure lines).
+    # In UVM line mode, only cumulative_coverage >= 100% matters (already checked above).
     if getattr(config, 'uvm_enabled', False):
-        funcov = _get_functional_coverage(state)
-        target = getattr(config, 'functional_coverage_target', 100.0)
-        if funcov >= target:
-            return True
+        if getattr(config, 'uvm_coverage_mode', 'functional') == "functional":
+            funcov = _get_functional_coverage(state)
+            target = getattr(config, 'functional_coverage_target', 100.0)
+            if funcov >= target:
+                return True
     if state["consecutive_failures"] >= config.max_retries:
         return True
     if state["no_progress_count"] >= config.max_no_progress:
@@ -251,6 +253,7 @@ def _build_uvm_prompt_context(config: Config) -> dict:
         'uvm_testbench_files': uvm_tb_files,
         'uvm_interface_name': uvm_interface_name,
         'uvm_env_class': uvm_env_class,
+        'uvm_coverage_mode': config.uvm_coverage_mode,
     }
 
 
@@ -320,11 +323,18 @@ def initialize_node(state: AgentState) -> AgentState:
 
     # Choose appropriate initial human message
     if config.uvm_enabled:
-        human_msg = (
-            "Begin UVM verification. Start by reading the specification. "
-            "Then generate UVM sequences and a test file to achieve both "
-            "code and functional coverage."
-        )
+        if config.uvm_coverage_mode == "line":
+            human_msg = (
+                "Begin UVM verification. Start by reading the specification. "
+                "Then generate UVM sequences and a test file to achieve "
+                "maximum line/statement coverage of the RTL design."
+            )
+        else:
+            human_msg = (
+                "Begin UVM verification. Start by reading the specification. "
+                "Then generate UVM sequences and a test file to achieve both "
+                "code and functional coverage."
+            )
     else:
         human_msg = "Begin verification. Start by reading the specification."
 
@@ -368,6 +378,7 @@ def initialize_node(state: AgentState) -> AgentState:
         "code_coverage_summary": None,
         # UVM mode
         "uvm_enabled": config.uvm_enabled,
+        "uvm_coverage_mode": config.uvm_coverage_mode,
         # Infrastructure modification pipeline
         "infra_modification_enabled": False,
         "original_driver_path": (
@@ -788,21 +799,30 @@ def update_state_node(state: AgentState) -> AgentState:
     latest_msg = state["messages"][-1] if state["messages"] else None
 
     # Validate correct tool for current mode
-    # In UVM mode, both parse_coverage and parse_functional_coverage are valid
-    # since UVM targets both code and functional coverage simultaneously.
     uvm_mode = getattr(config, 'uvm_enabled', False)
-    if not uvm_mode and latest_msg and hasattr(latest_msg, 'name'):
+    uvm_cov_mode = getattr(config, 'uvm_coverage_mode', 'functional')
+
+    if latest_msg and hasattr(latest_msg, 'name'):
         tool_name = latest_msg.name
 
-        if config.functional_coverage_enabled and tool_name == 'parse_coverage':
-            logging.error(f"{Colors.RED}❌ WRONG TOOL: Agent called parse_coverage in FUNCTIONAL coverage mode!{Colors.RESET}")
-            logging.error(f"{Colors.RED}   Should have called: parse_functional_coverage{Colors.RESET}")
-            return {}
+        if uvm_mode and uvm_cov_mode == "line":
+            # UVM line coverage mode: only parse_coverage is valid
+            if tool_name == 'parse_functional_coverage':
+                logging.error(f"{Colors.RED}❌ WRONG TOOL: Agent called parse_functional_coverage in UVM LINE coverage mode!{Colors.RESET}")
+                logging.error(f"{Colors.RED}   Should have called: parse_coverage{Colors.RESET}")
+                return {}
+        elif not uvm_mode:
+            # Non-UVM mode: existing validation
+            if config.functional_coverage_enabled and tool_name == 'parse_coverage':
+                logging.error(f"{Colors.RED}❌ WRONG TOOL: Agent called parse_coverage in FUNCTIONAL coverage mode!{Colors.RESET}")
+                logging.error(f"{Colors.RED}   Should have called: parse_functional_coverage{Colors.RESET}")
+                return {}
 
-        if not config.functional_coverage_enabled and tool_name == 'parse_functional_coverage':
-            logging.error(f"{Colors.RED}❌ WRONG TOOL: Agent called parse_functional_coverage in CODE coverage mode!{Colors.RESET}")
-            logging.error(f"{Colors.RED}   Should have called: parse_coverage{Colors.RESET}")
-            return {}
+            if not config.functional_coverage_enabled and tool_name == 'parse_functional_coverage':
+                logging.error(f"{Colors.RED}❌ WRONG TOOL: Agent called parse_functional_coverage in CODE coverage mode!{Colors.RESET}")
+                logging.error(f"{Colors.RED}   Should have called: parse_coverage{Colors.RESET}")
+                return {}
+        # else: uvm_mode + functional => both parse_coverage and parse_functional_coverage are valid
 
     if latest_msg and hasattr(latest_msg, 'name') and \
             latest_msg.name in ['parse_coverage', 'parse_functional_coverage']:
@@ -950,10 +970,12 @@ def create_react_graph() -> StateGraph:
                         funcov = _get_functional_coverage(state)
                         funcov_target = getattr(config, 'functional_coverage_target', 100.0)
                         uvm_mode = getattr(config, 'uvm_enabled', False)
-                        # Accept if code coverage is 100%, OR in UVM mode if
+                        uvm_cov_mode = getattr(config, 'uvm_coverage_mode', 'functional')
+                        # Accept if code coverage is 100%, OR in UVM functional mode if
                         # functional coverage meets target (code coverage is
-                        # often dragged down by UVM infrastructure lines)
-                        if cumulative_cov >= 100.0 or (uvm_mode and funcov >= funcov_target):
+                        # often dragged down by UVM infrastructure lines).
+                        # In UVM line mode, only cumulative code coverage matters.
+                        if cumulative_cov >= 100.0 or (uvm_mode and uvm_cov_mode == "functional" and funcov >= funcov_target):
                             logging.info(
                                 f"✓ Accepting signal_done: coverage target met! "
                                 f"(code={cumulative_cov:.1f}%, funcov={funcov:.1f}%)"

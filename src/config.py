@@ -57,8 +57,8 @@ class Config:
     # When True, compilation uses UVM 3-step flow (vlib → vlog → vopt),
     # simulation uses optimized design with UVM flags, and the LLM generates
     # UVM sequence + test files instead of complete testbenches.
-    # Coverage targets both code and functional simultaneously.
     uvm_enabled: bool
+    uvm_coverage_mode: str                # "functional" (default) or "line"
     uvm_testbench_dir: Optional[Path]     # Dir containing UVM TB components
     uvm_filelist: Optional[Path]          # .f file listing all UVM sources
     uvm_sequence_file: Optional[str]      # Filename of sequence file to generate
@@ -253,6 +253,7 @@ def load_config() -> Config:
 
     # ── UVM Mode Configuration ────────────────────────────────────────────
     uvm_enabled = os.getenv("UVM_ENABLED", "0") == "1"
+    uvm_coverage_mode = "functional"  # Default; overridden below if UVM enabled
     uvm_testbench_dir = None
     uvm_filelist = None
     uvm_sequence_file = None
@@ -315,9 +316,22 @@ def load_config() -> Config:
 
         logging.info(f"UVM mode enabled: top={uvm_top_module}, test={uvm_test_name}")
 
-        # UVM mode always targets both code + functional coverage
-        # Override funcov_enabled so coverage parsing handles both
-        funcov_enabled = True
+        # UVM_COVERAGE_MODE: "functional" (default) or "line"
+        #   "functional" — targets both code + functional coverage (original behavior)
+        #   "line"       — targets line/statement coverage only via parse_coverage
+        uvm_coverage_mode = os.getenv("UVM_COVERAGE_MODE", "functional").lower()
+        if uvm_coverage_mode not in ("functional", "line"):
+            raise ValueError(
+                f"Invalid UVM_COVERAGE_MODE: '{uvm_coverage_mode}'. "
+                f"Must be 'functional' or 'line'."
+            )
+        logging.info(f"UVM coverage mode: {uvm_coverage_mode}")
+
+        # In "functional" mode, force funcov_enabled so coverage parsing handles both.
+        # In "line" mode, leave funcov_enabled as-is (False) — the pipeline iterates
+        # on statement/line coverage only.
+        if uvm_coverage_mode == "functional":
+            funcov_enabled = True
     # ────────────────────────────────────────────────────────────────────────
 
     return Config(
@@ -349,6 +363,7 @@ def load_config() -> Config:
         functional_coverage_testbench_path=funcov_testbench_path,
         combined_coverage_enabled=combined_coverage_enabled,
         uvm_enabled=uvm_enabled,
+        uvm_coverage_mode=uvm_coverage_mode,
         uvm_home=uvm_home,
         uvm_testbench_dir=uvm_testbench_dir,
         uvm_filelist=uvm_filelist,
