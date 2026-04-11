@@ -1153,9 +1153,13 @@ def create_react_graph() -> StateGraph:
             logging.info("Finalize turn complete — ending run")
             return END
 
-        # Coverage complete: route to finalize so agent can write report
+        # Coverage complete: route to finalize (or phase_transition in combined Phase 1)
         cumulative = state.get("cumulative_coverage", 0.0)
         if cumulative >= 100.0:
+            if (config.combined_coverage_enabled and
+                    state.get("coverage_phase") == "code"):
+                logging.info(f"Phase 1 coverage complete ({cumulative:.1f}%) — transitioning to Phase 2")
+                return "phase_transition"
             logging.info(f"Coverage complete ({cumulative:.1f}%) — routing to finalize")
             return "finalize"
 
