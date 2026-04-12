@@ -4,15 +4,15 @@
 
 - QuestaSim or Verilator installed
 - Python 3.8+
-- OpenAI API key (or other LLM provider)
+- OpenAI API key (or other compatible LLM provider)
 
 ## Installation
 
-**No package installation required** - the framework uses direct imports via path manipulation.
+**No package installation required** — the framework uses direct imports via path manipulation.
 
 ```bash
 # 1. Create Python environment (skip if exists)
-mamba create -n lg_venv -c conda-forge pip -y # SOL-specific
+mamba create -n lg_venv -c conda-forge pip -y   # SOL-specific
 
 # 2. Activate environment
 module load mamba/latest
@@ -25,21 +25,23 @@ pip install -r requirements.txt
 
 ## Configuration
 
-Create or copy an environment file:
+Copy an example config and fill in your values:
 
 ```bash
-# Use example config
 cp .env.example .env
 ```
 
 Required environment variables:
-- `COMPILER` - Path to simulator binaries
-- `SIMULATOR` - Simulator type (questasim or verilator)
-- `DESIGN_NAME` - Design to verify (must match directory in data/)
-- `OPENAI_API_KEY` - Your API key
-- `DASHBOARD_PATH` - Absolute path to dashboard.json
 
-See existing configs in `configs/` for examples.
+| Variable | Description |
+|----------|-------------|
+| `COMPILER` | Path to simulator binaries directory (e.g. contains `vlog`, `vsim`) |
+| `SIMULATOR` | `questasim` or `verilator` |
+| `DESIGN_NAME` | Design to verify (must match an entry in `DASHBOARD_PATH`) |
+| `OPENAI_API_KEY` | Your API key |
+| `DASHBOARD_PATH` | Absolute path to `dashboard.json` |
+
+See `configs/` for working examples and [docs/CONFIG.md](docs/CONFIG.md) for the full variable reference.
 
 ## Running the Agent
 
@@ -58,6 +60,174 @@ python run_agent.py --validate-only
 python run_agent.py --help
 ```
 
+---
+
+## Mode Setup
+
+### Code Coverage (Default)
+
+No extra configuration needed. The LLM generates complete SystemVerilog testbenches and coverage is measured at the RTL line/branch level.
+
+```env
+FUNCTIONAL_COVERAGE_ENABLED=0   # Default — can be omitted
+```
+
+---
+
+### Functional Coverage
+
+Provide a testbench template with stimulus markers. The LLM fills only the stimulus section — it does not modify the module, signals, DUT, or covergroups.
+
+**Template format** (`your_tb.sv`):
+
+```systemverilog
+module tb_template;
+    // signals, DUT instantiation, covergroups, clock gen here...
+
+    initial begin
+        // BEGIN_STIMULUS
+        // END_STIMULUS
+        $finish;
+    end
+endmodule
+```
+
+**Config:**
+
+```env
+FUNCTIONAL_COVERAGE_ENABLED=1
+FUNCTIONAL_COVERAGE_TESTBENCH=/absolute/path/to/your_tb.sv
+FUNCTIONAL_COVERAGE_TARGET=100.0   # Optional, default 100
+```
+
+---
+
+### Combined Coverage (Two-Phase)
+
+Runs code coverage first, then automatically transitions to functional coverage using the same run directory. Requires the functional coverage testbench template to be set upfront (validated at startup even though Phase 2 hasn't started).
+
+```env
+COMBINED_COVERAGE_ENABLED=1
+FUNCTIONAL_COVERAGE_TESTBENCH=/absolute/path/to/your_tb.sv
+```
+
+Output is split into two subdirectories:
+
+```
+work/<RUN_ID>/
+├── code_cov/   # Phase 1: full testbenches
+└── func_cov/   # Phase 2: stimulus-only
+```
+
+---
+
+### UVM Mode
+
+UVM mode targets functional coverage using a full UVM testbench infrastructure. The user provides all fixed UVM components (driver, monitor, agent, env, interface, passive coverage module). The LLM generates only the sequence file and test file each iteration.
+
+#### Required UVM Variables
+
+```env
+UVM_ENABLED=1
+UVM_FILELIST=/path/to/sim/filelist.f        # Lists all UVM source files
+UVM_SEQUENCE_FILE=my_design_seq.sv          # Filename the LLM will generate
+UVM_TOP_MODULE=my_design_Top                # Top-level test module name
+UVM_TEST_NAME=my_design_test               # UVM test class name (extends uvm_test)
+```
+
+#### Recommended UVM Variables
+
+```env
+UVM_HOME=/opt/siemens/questasim/uvm-1.2            # UVM install root
+UVM_TESTBENCH_DIR=/path/to/sim/                    # Dir containing UVM components
+UVM_SEQ_ITEM_FILE=/path/to/my_seq_item.sv          # Injected into LLM prompt
+UVM_COVERAGE_MODULE_FILE=/path/to/tb_llm.sv        # Injected into LLM prompt (covergroups)
+UVM_DPI_LIB=/opt/siemens/questasim/uvm-1.2/linux_x86_64/uvm_dpi
+```
+
+#### UVM Coverage Mode
+
+By default, UVM mode collects functional coverage via the passive coverage module. To also collect and report line/statement coverage:
+
+```env
+UVM_COVERAGE_MODE=line        # Enables statement/line coverage reporting
+UVM_COVERAGE_MODE=functional  # Default — functional coverage only
+```
+
+#### UVM Filelist Format (`.f` file)
+
+The filelist should list all UVM source files. Relative paths are resolved relative to the filelist's directory at startup. The framework automatically redirects the sequence file and test file entries to the working directory where the LLM generates them.
+
+```
+# filelist.f
+../rtl/my_design.sv
+my_design_if.sv
+my_design_driver.sv
+my_design_monitor.sv
+my_design_agent.sv
+my_design_env.sv
+my_design_scoreboard.sv
+my_design_seq_item.sv
+my_design_Top.sv
+tb_llm.sv              # Passive coverage module
+my_design_seq.sv       # Generated by LLM (redirected to work_dir/testbenches/)
+my_design_test.sv      # Generated by LLM (redirected to work_dir/testbenches/)
+```
+
+#### What the LLM Generates (UVM)
+
+Each iteration the LLM writes two files:
+
+1. **Sequence file** — One or more `uvm_sequence` classes using `start_item`/`finish_item` to drive transactions
+2. **Test file** — A `uvm_test` class that creates the environment, retrieves the virtual interface from `config_db`, and starts sequences in the `run_phase`
+
+Everything else (driver, monitor, agent, env, interface, scoreboard, top module) is untouched. The LLM may only modify the driver if it explicitly calls `request_infra_modification` and is approved.
+
+#### UVM Example Designs
+
+Several complete UVM example designs with working filelists and testbench infrastructure are included in `data/`:
+
+```
+data/cvdp_agentic_alu/verif/UVM/
+data/cvdp_agentic_memory_scheduler/verif/UVM/
+data/cvdp_agentic_rgb_color_space_conversion/verif/UVM/
+data/sha1_top/verif/UVM/
+data/trng_top/verif/UVM/
+```
+
+Each contains `sim/` (testbench infrastructure) and `rtl/` (design files) subdirectories.
+
+---
+
 ## Troubleshooting
 
+### Compilation Fails Immediately
 
+- Check `work/<RUN_ID>/logs/compile_iter_1.log` for the error
+- Verify `COMPILER` points to the directory containing `vlog`/`vsim` (not the binary itself)
+- For UVM: confirm `UVM_HOME` is set and the path contains `src/uvm_pkg.sv`
+
+### UVM Test Not Found
+
+- Confirm `UVM_TEST_NAME` matches the class name in the generated test file exactly
+- The LLM generates the class name — check `work/<RUN_ID>/testbenches/<UVM_TEST_NAME>.sv`
+
+### Coverage Never Improves
+
+- Increase `SIM_RUNS` (more seeds = better random coverage)
+- Increase `NUM_FEEDBACK_HOLES` to give the LLM more uncovered bin context
+- Check that the passive coverage module (`tb_llm.sv`) is being compiled (look for it in the filelist)
+
+### Context Window Exceeded
+
+- Reduce `NUM_FEEDBACK_HOLES` to cut feedback size
+- Lower `READ_FILE_TOKEN_LIMIT` to truncate large file reads
+- Use a model with a larger context window and update `CONTEXT_WINDOW` accordingly
+
+### License Errors (QuestaSim)
+
+Set the license file path:
+
+```env
+LM_LICENSE_FILE=1234@license-server.example.com
+```

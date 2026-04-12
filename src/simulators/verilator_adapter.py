@@ -264,7 +264,8 @@ module list 2>&1 | grep -E "(gcc|ccache)" || echo "WARNING: Required modules may
                 "error": str(e)
             }
 
-    def parse_coverage(self, coverage_db_path: Path) -> CoverageResult:
+    def parse_coverage(self, coverage_db_path: Path,
+                       design_files: List[Path] = None) -> CoverageResult:
         """Parse Verilator coverage database (.dat).
 
         Converts binary .dat file to LCOV .info format, then parses to extract
