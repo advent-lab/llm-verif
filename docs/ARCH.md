@@ -1599,9 +1599,248 @@ print(f"Messages: {len(state['messages'])}")
 
 ---
 
+## v2 Multi-Agent Architecture (Orchestrator-Expert-Generator)
+
+### Overview
+
+The v2 architecture splits the single ReAct agent into three specialist agents to address context bloat, reasoning mode mismatch, error recovery pollution, and top-level-only verification limitations of v1.
+
+Set `ARCHITECTURE=v2` to enable.
+
+### Agent Topology
+
+```mermaid
+graph TD
+    subgraph ParentGraph["Parent Graph — graphs/orc_exp_gen.py"]
+        Init[Initialize] --> OrcAgent[Orchestrator Agent]
+        OrcAgent -->|tool calls| OrcTools[ToolNode]
+        OrcTools --> UpdateState[Update State]
+        UpdateState --> PruneCtx[Prune Context]
+        PruneCtx -->|continue| OrcAgent
+        PruneCtx -->|coverage complete / no progress| Finalize[Finalize]
+        Finalize --> OrcAgent
+        OrcAgent -->|done| END
+    end
+
+    subgraph ExpertGraph["Design Expert — agents/design_expert.py"]
+        DE[Persistent Agent<br/>MemorySaver checkpointer]
+        DE -->|read_file, list_directory,<br/>get_coverage_status| DETools[Expert Tools]
+    end
+
+    subgraph GenGraph["Test Generator — agents/test_generator.py"]
+        TG[Ephemeral Agent<br/>Fresh per dispatch]
+        TG -->|write_file, compile_design,<br/>run_simulation| TGTools[Gen-Specific Tools]
+    end
+
+    OrcTools -->|query_design_expert| DE
+    OrcTools -->|dispatch_test_generator| TG
+```
+
+### Agent Responsibilities
+
+| Agent | Role | Persistence | Model Config |
+|---|---|---|---|
+| **Orchestrator** | Strategic verification engineer. Creates testplans, dispatches generators, tracks coverage, decides strategy. Never reads raw RTL/spec directly. | Message history in parent graph state | `ORCHESTRATOR_MODEL` |
+| **Design Expert** | Design knowledge oracle. Reads specs, RTL, coverage reports. Classifies coverage holes, provides stimulus recipes. | Persistent via `MemorySaver` checkpointer (accumulates knowledge across the entire run) | `DESIGN_EXPERT_MODEL` |
+| **Test Generator** | Writes, compiles, simulates testbenches. Fresh agent per dispatch — no cross-dispatch memory. Handles internal retries. | Stateless (created fresh each dispatch) | `TEST_GENERATOR_MODEL` |
+
+### Tool Organization
+
+**Orchestrator tools** (`graphs/agents/orchestrator.py`):
+- `query_design_expert(query)` — invokes persistent expert
+- `dispatch_test_generator(task_description, module_header, target_module, design_context, testplan_section)` — spawns fresh generator
+- `get_coverage_status(detail_level)` — shared coverage tool ("summary" tier)
+- `write_file(path, content)` — for testplans, reports, notes
+- `read_file(path)` — for reading artifacts
+
+**Design Expert tools** (`graphs/agents/design_expert.py`):
+- `read_file(path)` — reads spec, RTL, coverage reports
+- `list_directory(path)` — explores design structure
+- `get_coverage_status(detail_level)` — shared coverage tool ("detailed" tier)
+
+**Test Generator tools** (`graphs/agents/test_generator.py`):
+- `write_file(path, content)` — writes testbench (gen-specific closure)
+- `compile_design(testbench_path)` — compiles in gen-specific work library
+- `run_simulation(testbench_name, num_runs)` — simulates with gen-specific coverage DB
+
+### Tool Isolation for Parallel Generators
+
+Each generator gets its own tool instances via closures that capture generator-specific parameters:
+
+```python
+def make_generator_tools(config, iteration, gen_id) -> list:
+    gen_sim_dir = config.work_dir / "sim_work" / f"gen_{gen_id}"
+    adapter = QuestasimAdapter(config.simulator_path)  # Own instance
+
+    @tool
+    def compile_design(testbench_path: str) -> Dict:
+        # Uses gen_sim_dir, adapter — no shared mutable state
+        ...
+
+    @tool
+    def run_simulation(testbench_name: str, num_runs: int) -> Dict:
+        # Coverage DB: coverage/cov_iter_{iteration}_gen_{gen_id}.ucdb
+        ...
+
+    return [write_file, compile_design, run_simulation]
+```
+
+This enables concurrent generators without filesystem conflicts or shared mutable state.
+
+### Coverage Feedback System
+
+The shared `get_coverage_status` tool (`tools/coverage.py`) provides tiered coverage information:
+
+| Detail Level | Consumer | Content |
+|---|---|---|
+| `"summary"` | Orchestrator | Coverage %, hole counts per module, recent generator results |
+| `"detailed"` | Design Expert | Full annotated source with uncovered lines marked |
+| `"module"` | Either | Per-module breakdown with uncovered line ranges |
+
+A module-level cache is updated by `update_state_node` after each coverage merge via `update_coverage_cache()`.
+
+### State Schema (`MultiAgentState`)
+
+```python
+class MultiAgentState(TypedDict):
+    messages: Annotated[list[BaseMessage], add_messages]  # Orchestrator only
+    config: Any
+
+    # Design context (immutable after init)
+    design_name: str
+    module_header: str
+    module_registry: Dict[str, str]  # {module_name: header} for unit-level
+
+    # Coverage tracking
+    iteration: int
+    cumulative_coverage: float
+    coverage_history: List[dict]
+    no_progress_count: int
+
+    # Subagent tracking
+    api_calls: int
+    orchestrator_calls: int
+    design_expert_calls: int
+    test_generator_dispatches: int
+    consecutive_gen_failures: int
+
+    # Termination
+    is_done: bool
+    done_reason: Optional[str]
+    is_finalizing: bool
+
+    # Token usage (all agents)
+    token_usage: Annotated[List[dict], _append_token_records]
+```
+
+Key differences from v1 `AgentState`:
+- No `attempt`, `compile_attempts_this_iter`, `consecutive_failures`, `no_tool_call_count` (internal to generators)
+- Added `module_registry` for unit-level verification
+- Added per-agent call counters
+- `consecutive_gen_failures` tracks generator-level failures (not compile/sim)
+
+### Module Registry & Unit-Level Verification
+
+During initialization, a module registry is built from all design files:
+
+```python
+from src.utils.design_loader import extract_module_headers_per_module
+
+module_registry = {}
+for rtl_file in config.design_files + config.design_context_files:
+    headers = extract_module_headers_per_module(rtl_file)
+    module_registry.update(headers)
+```
+
+The orchestrator can dispatch generators targeting any module (not just top-level). When `target_module != "top"`, the generator instantiates that submodule as the DUT, with the module header provided from the registry.
+
+### Parent Graph Flow (`graphs/orc_exp_gen.py`)
+
+**Pre-initialization** (in `create_multi_agent_graph()`):
+1. Load config, create simulator adapter
+2. Create Design Expert (persistent graph + thread_id)
+3. Create orchestrator tools (closures capturing expert graph, gen_context)
+4. Build and compile StateGraph
+
+**Nodes:**
+
+| Node | Purpose |
+|---|---|
+| `initialize_node` | Build system prompt, init state, emit session_start |
+| `agent_node` | Invoke orchestrator LLM with bound tools |
+| `ToolNode` | Execute tool calls (expert queries, generator dispatches run here) |
+| `update_state_node` | Parse generator results, merge coverage DBs, update cache, inject feedback |
+| `prune_context` | Remove old coverage update messages |
+| `finalize_node` | Inject report-writing prompt on termination |
+
+**Coverage merge flow** (in `update_state_node`):
+1. Scan ToolMessages for `dispatch_test_generator` results
+2. For each successful generator: merge its UCDB into cumulative via adapter
+3. Parse cumulative coverage
+4. Update `_coverage_cache` for the shared `get_coverage_status` tool
+5. Write `coverage_tracking.md` artifact
+6. Inject brief `HumanMessage` feedback: "Coverage merged. Cumulative: X% (+Y%)"
+
+### Naming Conventions
+
+| Artifact | Pattern |
+|---|---|
+| Testbench | `testbenches/tb_iter_{N}_gen_{id}.sv` |
+| Compile log | `logs/compile_iter_{N}_gen_{id}.log` |
+| Sim log | `logs/sim_iter_{N}_gen_{id}.log` |
+| Coverage DB | `coverage/cov_iter_{N}_gen_{id}.ucdb` |
+| Generator work | `sim_work/gen_{id}/` |
+
+### v2 Work Directory Structure
+
+```
+work/{RUN_ID}/
+├── run.log
+├── events.jsonl
+├── final_state.json
+├── report.md
+├── testplan.md
+├── coverage_tracking.md
+├── testbenches/
+│   ├── tb_iter_1_gen_0.sv
+│   ├── tb_iter_1_gen_1.sv
+│   └── tb_iter_2_gen_0.sv
+├── logs/
+│   ├── compile_iter_1_gen_0.log
+│   ├── sim_iter_1_gen_0.log
+│   └── ...
+├── coverage/
+│   ├── cov_iter_1_gen_0.ucdb
+│   ├── cov_iter_1_gen_1.ucdb
+│   ├── cumulative.ucdb
+│   └── ...
+└── sim_work/
+    ├── gen_0/
+    │   └── work/    # QuestaSim work library
+    ├── gen_1/
+    │   └── work/
+    └── ...
+```
+
+### Token Tracking
+
+Token records in v2 include an `agent` field:
+- `"orchestrator"` — orchestrator LLM calls
+- `"design_expert"` — expert LLM calls
+- `"test_generator"` — generator LLM calls
+
+This enables per-agent token analysis in `events.jsonl` and `final_state.json`.
+
+---
+
 ## Summary
 
-CovAgent implements a ReAct agent using LangGraph with:
+CovAgent implements hardware verification automation using LangGraph with two architecture options:
+
+- **v1 (ReAct)**: Single agent with all tools. Simple, effective for smaller designs.
+- **v2 (Orchestrator-Expert-Generator)**: Three specialist agents with isolated contexts, persistent expert memory, parallel generator dispatch, and unit-level verification support.
+
+Both architectures share:
 
 1. **Modular Architecture**: Clear separation of state, config, utils, tools, prompts, and graph
 2. **Tool-Based Abstraction**: Well-defined tools with structured I/O contracts
@@ -1609,10 +1848,6 @@ CovAgent implements a ReAct agent using LangGraph with:
 4. **Configurable Behavior**: Environment-driven configuration for flexibility
 5. **Extensible Design**: Clear extension points for new features
 
-The architecture prioritizes:
-- **Reliability**: Explicit state transitions, validation, error handling
-- **Debuggability**: Comprehensive logging, file-based artifacts
-- **Maintainability**: Pure functions, clear responsibilities
-- **Extensibility**: Plugin-style tool system, configurable behavior
+The architecture prioritizes reliability (explicit state transitions), debuggability (comprehensive logging, file-based artifacts), maintainability (pure functions, clear responsibilities), and extensibility (plugin-style tool system).
 
 This document serves as the technical reference for understanding, debugging, and extending the CovAgent framework.

@@ -59,6 +59,22 @@ You must configure *either* Dashboard mode (recommended) or Direct mode.
 | `CONTEXT_WINDOW` | No | `128000` | Maximum token count before the agent terminates the run. Should match or stay below the model's actual context window to prevent API errors. |
 | `RECURSION_LIMIT` | No | `300` | LangGraph graph recursion limit. Each node visit counts as one step. Increase for runs with many iterations. |
 
+## Multi-Agent Architecture (v2)
+
+These options are only relevant when `ARCHITECTURE=v2`. See [ARCH.md](ARCH.md) for architecture details.
+
+| Variable | Required | Default | Description |
+|---|---:|---|---|
+| `ARCHITECTURE` | No | `v1` | Architecture selector: `v1` (single ReAct agent) or `v2` (orchestrator-expert-generator multi-agent). |
+| `ORCHESTRATOR_MODEL` | No | `MODEL` | LLM model for the orchestrator agent. Falls back to `MODEL` if not set. |
+| `DESIGN_EXPERT_MODEL` | No | `MODEL` | LLM model for the design expert agent. Falls back to `MODEL` if not set. |
+| `TEST_GENERATOR_MODEL` | No | `MODEL` | LLM model for test generator agents. Falls back to `MODEL` if not set. A cheaper/faster model (e.g., `gpt-4o-mini`) can be used here since generators have focused tasks. |
+| `GEN_MAX_RETRIES` | No | `3` | Maximum compile/simulation failures allowed per generator dispatch before the generator gives up. |
+| `MAX_GEN_PER_ITER` | No | `3` | Maximum number of test generators the orchestrator can dispatch per iteration. Multiple generators can run in parallel via ToolNode. |
+| `EXPERT_CONTEXT_LIMIT` | No | `100000` | Token limit for the design expert's accumulated context. When approaching this limit, the expert returns a warning to the orchestrator. |
+
+**Per-agent model selection**: In v2, different agents can use different models. A common pattern is to use a capable model (e.g., `gpt-4o`) for the orchestrator and expert, and a faster/cheaper model (e.g., `gpt-4o-mini`) for generators. All agents inherit `TEMPERATURE` and `MAX_TOKENS` from the global settings.
+
 ## Logging / Debug
 
 | Variable | Required | Default | Description |
