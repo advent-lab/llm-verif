@@ -102,7 +102,8 @@ class QuestasimAdapter(SimulatorAdapter):
         return self._filter_by_patterns(output, self._BOILERPLATE_PATTERNS)
 
     def compile(self, testbench_path: Path, design_files: List[Path],
-                work_dir: Path, timeout: int) -> Dict[str, Any]:
+                work_dir: Path, timeout: int,
+                functional_coverage: bool = False) -> Dict[str, Any]:
         """Compile testbench using QuestaSim's vlog compiler.
 
         Args:
@@ -115,8 +116,9 @@ class QuestasimAdapter(SimulatorAdapter):
             Compilation result dictionary with success status and outputs
         """
         try:
-            # Build vlog command with statement coverage enabled
-            command = build_vlog_command(self.simulator_path, testbench_path, design_files)
+            # Build vlog command — functional_coverage=True adds +cover=sbfec
+            command = build_vlog_command(self.simulator_path, testbench_path, design_files,
+                                               functional_coverage=functional_coverage)
 
             logging.info(f"QuestaSim compile: {' '.join(str(c) for c in command)}")
 

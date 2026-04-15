@@ -36,7 +36,7 @@ def compile_design(testbench_path: str) -> Dict[str, Any]:
     Compile the testbench with all design files.
 
     Supports both QuestaSim and Verilator based on configuration.
-    Automatically enables functional coverage flags if FUNCTIONAL_COVERAGE_ENABLED=1.
+    Automatically enables functional coverage flags during Phase 2 (functional coverage mode).
 
     Args:
         testbench_path: Path to testbench file (relative to work directory)
@@ -70,12 +70,17 @@ def compile_design(testbench_path: str) -> Dict[str, Any]:
         # Get design files from config (includes both main design and context files)
         design_files = _config.design_files + _config.design_context_files
 
-        # Delegate to adapter (adapter checks FUNCTIONAL_COVERAGE_ENABLED env var)
+        # Determine whether to compile with functional coverage flags.
+        # Use the config attribute set by the framework when Phase 2 starts;
+        # fall back to False (statement coverage only) for Phase 1.
+        funcov_enabled = getattr(_config, 'functional_coverage_enabled', False)
+
         result = _adapter.compile(
             testbench_path=tb_path,
             design_files=design_files,
             work_dir=_config.work_dir,
-            timeout=_config.sim_timeout
+            timeout=_config.sim_timeout,
+            functional_coverage=funcov_enabled
         )
 
         # Build log filename: compile_iter_N.log or compile_iter_N_retry_M.log

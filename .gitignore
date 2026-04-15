@@ -183,3 +183,4 @@ cython_debug/
 #.idea/
 scripts/setup_env.sh
 sol.env
+sol.env

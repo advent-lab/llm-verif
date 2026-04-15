@@ -61,42 +61,6 @@ def _signal_done_accepted(state: AgentState) -> bool:
     return False
 
 
-def _should_generate_hole_report(state: AgentState) -> bool:
-    # Current phase coverage below 100%
-    if state.get("cumulative_coverage", 0.0) < 100.0:
-        return True
-    # In combined mode, check if Phase 1 code coverage was below 100%
-    config = state.get("config")
-    if config and getattr(config, "combined_coverage_enabled", False):
-        code_summary = state.get("code_coverage_summary") or {}
-        if code_summary.get("cumulative_coverage", 0.0) < 100.0:
-            return True
-    return False
-
-
-def _maybe_generate_hole_report(state: AgentState) -> None:
-    """
-    Generate a coverage hole report if at least one stage is below 100%.
-
-    Delegates to ``generate_coverage_hole_report`` in
-    ``src.utils.questasim``.  All errors are caught and logged so that a
-    report-generation failure never prevents the agent from terminating
-    cleanly.
-    """
-    try:
-        from ..utils.questasim import generate_coverage_hole_report
-        config      = state["config"]
-        report_path = generate_coverage_hole_report(state, config.simulator_path)
-        if report_path:
-            logging.info(
-                f"{Colors.GREEN}Coverage hole report generated: {report_path}{Colors.RESET}"
-            )
-        else:
-            logging.warning("Coverage hole report generation returned None – check logs")
-    except Exception as e:
-        logging.error(f"_maybe_generate_hole_report failed: {e}")
-
-
 # ── Graph nodes ───────────────────────────────────────────────────────────────
 
 def initialize_node(state: AgentState) -> AgentState:
@@ -290,10 +254,6 @@ def phase_transition_node(state: AgentState) -> AgentState:
     )
 
     # ── Patch orphaned tool calls ───────────────────────────────────────────
-    # OpenAI requires every AIMessage tool_call to be followed by a matching
-    # ToolMessage. The signal_done call that triggered this transition has no
-    # response yet. Inject a synthetic ToolMessage for each unanswered call
-    # so the message history is valid when sent to the Phase 2 LLM.
     from langchain_core.messages import ToolMessage
     closing_tool_messages = []
     last_ai = None
@@ -302,7 +262,6 @@ def phase_transition_node(state: AgentState) -> AgentState:
             last_ai = msg
             break
     if last_ai and hasattr(last_ai, "tool_calls") and last_ai.tool_calls:
-        # Collect tool_call_ids that already have a response
         answered_ids = {
             msg.tool_call_id
             for msg in state["messages"]
@@ -317,29 +276,6 @@ def phase_transition_node(state: AgentState) -> AgentState:
                         name=tc["name"],
                     )
                 )
-
-    # ── 6. Return updated state (reset messages to clean slate) ────────────
-    # We do NOT use add_messages here — we return the full replacement list
-    # by replacing the key directly. LangGraph merges via add_messages for
-    # "messages" keys, so to truly replace we emit a brand-new list.
-    # The trick: return messages as a plain replacement by using the special
-    # RemoveMessage pattern isn't needed here — we just return the new list
-    # and LangGraph's add_messages will append. Instead we clear first by
-    # returning a state update that replaces messages entirely.
-    #
-    # LangGraph's add_messages reducer APPENDS. To replace the entire history
-    # we must clear existing messages first. We do this by returning a list
-    # that starts with the special sentinel understood by add_messages: an
-    # empty list clears nothing, but wrapping in a RemoveMessage would need
-    # langgraph >=0.1. The safest cross-version approach: store messages as
-    # the new list. Since AgentState uses add_messages we instead return the
-    # key as a *replace* by using a trick: return all existing IDs as removes
-    # then add new ones.
-    #
-    # Simplest compatible approach: just return the two new messages.
-    # The Phase 2 agent will have the Phase 1 history but the new system
-    # prompt at the top will reorient it. This is the lowest-risk option.
-    # If context pressure becomes an issue the caller can trim old messages.
 
     return {
         "messages": (
@@ -696,9 +632,6 @@ def create_react_graph() -> StateGraph:
                                 state.get("coverage_phase") == "code"):
                             logging.info("Combined mode: transitioning to Phase 2")
                             return "phase_transition"
-                        # Generate hole report before ending if coverage < 100%
-                        if _should_generate_hole_report(state):
-                            _maybe_generate_hole_report(state)
                         return END
                     else:
                         logging.warning(
@@ -714,10 +647,6 @@ def create_react_graph() -> StateGraph:
         # ── Check hard termination conditions ──────────────────────────────
         route = _termination_route(state)
         if route is not None:
-            # Generate hole report before a hard END (not before phase_transition,
-            # as Phase 2 may still recover coverage)
-            if route == END and _should_generate_hole_report(state):
-                _maybe_generate_hole_report(state)
             return route
 
         # ── Route to tools if tool calls present ───────────────────────────
@@ -741,9 +670,6 @@ def create_react_graph() -> StateGraph:
     def route_after_update(state: AgentState) -> Literal["agent", "phase_transition", "__end__"]:
         route = _termination_route(state)
         if route is not None:
-            # Generate hole report before a hard END (not before phase_transition)
-            if route == END and _should_generate_hole_report(state):
-                _maybe_generate_hole_report(state)
             return route
         return "agent"
 
