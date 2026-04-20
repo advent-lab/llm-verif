@@ -134,6 +134,15 @@ The more context you provide, the better the agent's stimulus quality:
 - Good: "Ports: clk (clock), rst (active-high sync reset), addr[7:0] (register address), data_in[31:0] (write data), we (write enable), re (read enable), data_out[31:0] (read data), busy (status). Registers: 0x00=control, 0x04=status, 0x08-0x0F=data buffer. Protocol: assert we/re for one cycle, wait for busy to deassert before next access."
 - Bad: "" (empty — agent must guess port semantics and will likely produce invalid stimulus)
 
+## Functional Coverage Mode
+
+When `FUNCTIONAL_COVERAGE_ENABLED=1`, the run targets covergroup bin closure rather than line coverage:
+- Your coverage updates will show **functional coverage %** and **uncovered bins** instead of uncovered lines
+- CRT and AG agents write **stimulus body lines only** — no `initial begin`, no `$finish;`, no module wrapper
+- The framework injects each agent's body lines into the user-provided testbench template (which contains all covergroups, DUT instantiation, and clock gen) before compiling
+- Use `get_coverage_status("summary")` to see functional coverage progress
+- Target the bins with lowest covergroup coverage first
+
 ## Workflow
 
 ### Phase 1: Comprehension and Planning

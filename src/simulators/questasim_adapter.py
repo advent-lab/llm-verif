@@ -172,7 +172,8 @@ class QuestasimAdapter(SimulatorAdapter):
 
     def compile(self, testbench_path: Path, design_files: List[Path],
                 work_dir: Path, timeout: int,
-                compile_deps_files: List[Path] = None) -> Dict[str, Any]:
+                compile_deps_files: List[Path] = None,
+                functional_coverage: bool = False) -> Dict[str, Any]:
         """Compile testbench using QuestaSim's vlog compiler.
 
         Args:
@@ -229,7 +230,8 @@ class QuestasimAdapter(SimulatorAdapter):
             pass2_stdout = []
             pass2_stderr = []
             commands = build_vlog_commands(self.simulator_path, testbench_path, design_files,
-                                          incdir_files=compile_deps_files)
+                                          incdir_files=compile_deps_files,
+                                          functional_coverage=functional_coverage)
 
             for command in commands:
                 # logging.info(f"QuestaSim compile: {' '.join(str(c) for c in command)}")
@@ -519,6 +521,36 @@ class QuestasimAdapter(SimulatorAdapter):
         except (ET.ParseError, FileNotFoundError) as e:
             logging.error(f"QuestaSim coverage XML parsing failed: {e}")
             return 0.0, {}, {}
+
+    def parse_functional_coverage(self, coverage_db_path: Path) -> Dict:
+        """Parse functional (covergroup) coverage from a QuestaSim UCDB.
+
+        Generates a text report using vcover and parses it with the state
+        machine parser to extract covergroup/coverpoint/bin-level data.
+
+        Args:
+            coverage_db_path: Path to .ucdb coverage database
+
+        Returns:
+            Dict with 'total_coverage' and 'covergroups' list (see
+            parse_functional_coverage_text for full schema).
+        """
+        from ..utils.questasim import (
+            build_functional_coverage_report_command,
+            parse_functional_coverage_text,
+        )
+
+        report_path = coverage_db_path.parent / f"{coverage_db_path.stem}_funcov_report.txt"
+        command = build_functional_coverage_report_command(
+            self.simulator_path, coverage_db_path, report_path
+        )
+
+        logging.info("Generating QuestaSim functional coverage report")
+        result = subprocess.run(command, capture_output=True, text=True)
+        if result.returncode != 0:
+            logging.warning(f"vcover report returned non-zero ({result.returncode}): {result.stderr[:200]}")
+
+        return parse_functional_coverage_text(report_path)
 
     def merge_cumulative_coverage(self, new_ucdb: Path, cumulative_ucdb: Path) -> Path:
         """Merge new iteration coverage with cumulative coverage database.

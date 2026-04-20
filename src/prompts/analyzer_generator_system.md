@@ -76,6 +76,18 @@ Compile the testbench with all design files. Pass the testbench path.
 ### run_simulation
 Run simulation with coverage collection. Use `testbench_name="tb_llm"`.
 
+## Functional Coverage Mode
+
+When your task specifies functional coverage (stimulus-only mode):
+- A testbench template with covergroups, DUT instantiation, and clock gen exists — read it first
+- The framework **injects your stimulus body into the template** at the marked region before compiling
+- Write ONLY the body lines of the initial block — no `initial begin`, no `$finish;`, no `end`, no module wrapper
+- The framework adds `initial begin` / `$finish;` / `end` automatically
+- Target the specific uncovered bins listed in your task message
+- Compile and simulate as normal — the framework handles the injection before compile
+- **CRITICAL — NO tasks or functions:** `task`/`endtask` and `function`/`endfunction` are **illegal inside an `initial begin...end` block** — inline all sequences directly as plain statements
+- **Variable declarations must come first:** if you need local variables (e.g. `int i;`), declare them at the very top of the body before any procedural statement; declarations after statements are a compile error
+
 ## Workflow
 
 ### Phase 1: Analyze (before writing any code)

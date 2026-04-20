@@ -67,6 +67,10 @@ def _load_dotenv_local(env_path: Path, override: bool = True) -> None:
                 value.startswith("'") and value.endswith("'")
             ):
                 value = value[1:-1]
+            else:
+                # Strip inline comments (e.g. VALUE=foo  # comment → foo)
+                if " #" in value:
+                    value = value.split(" #", 1)[0].strip()
 
             if not override and key in os.environ:
                 continue

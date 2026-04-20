@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 import os
 import logging
 from dotenv import load_dotenv
@@ -22,6 +22,11 @@ class Config:
     design_context_files: List[Path]
     compile_deps_files: List[Path]
     design_context_enabled: bool
+
+    # Functional coverage
+    functional_coverage_enabled: bool       # FUNCTIONAL_COVERAGE_ENABLED
+    functional_coverage_target: float       # FUNCTIONAL_COVERAGE_TARGET (default: 100.0)
+    functional_coverage_testbench_path: Optional[Path]  # FUNCTIONAL_COVERAGE_TESTBENCH
 
     # Paths
     work_dir: Path  # Includes RUN_ID
@@ -182,6 +187,24 @@ def load_config() -> Config:
 
     model = os.getenv("MODEL", "gpt-4o")
 
+    # Functional coverage configuration
+    func_cov_enabled = os.getenv("FUNCTIONAL_COVERAGE_ENABLED", "0") == "1"
+    func_cov_target = float(os.getenv("FUNCTIONAL_COVERAGE_TARGET", "100.0"))
+    func_cov_tb_env = os.getenv("FUNCTIONAL_COVERAGE_TESTBENCH")
+    func_cov_tb_path: Optional[Path] = None
+    if func_cov_tb_env:
+        func_cov_tb_path = Path(func_cov_tb_env)
+    elif hasattr(design_config, 'functional_coverage_testbench_path') and design_config.functional_coverage_testbench_path:
+        func_cov_tb_path = design_config.functional_coverage_testbench_path
+    if func_cov_enabled and not test_mode:
+        if func_cov_tb_path is None:
+            raise ValueError(
+                "FUNCTIONAL_COVERAGE_ENABLED=1 requires a testbench template. "
+                "Set FUNCTIONAL_COVERAGE_TESTBENCH or add 'verif' key in dashboard."
+            )
+        if not func_cov_tb_path.exists():
+            raise ValueError(f"Functional coverage testbench not found: {func_cov_tb_path}")
+
     return Config(
         openai_api_key=api_key,
         model=model,
@@ -195,6 +218,9 @@ def load_config() -> Config:
         design_context_files=design_config.design_context_files,
         compile_deps_files=design_config.compile_deps_files,
         design_context_enabled=os.getenv("DESIGN_CONTEXT", "1") == "1",
+        functional_coverage_enabled=func_cov_enabled,
+        functional_coverage_target=func_cov_target,
+        functional_coverage_testbench_path=func_cov_tb_path,
         work_dir=work_dir,
         simulator_path=Path(compiler),
         simulator_type=simulator,

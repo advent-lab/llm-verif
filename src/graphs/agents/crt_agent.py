@@ -89,6 +89,9 @@ def make_crt_tools(
     # Mutable retry counter for this generator
     retry_state = {"compile_attempts": 0, "sim_attempts": 0}
 
+    # --- Tool: read_file (shared, read-only) ---
+    from ...tools.filesystem import read_file, list_directory
+
     # --- Tool: write_file ---
     @tool
     def write_file(path: str, content: str) -> Dict[str, Any]:
@@ -142,12 +145,27 @@ def make_crt_tools(
             design_files = config.design_context_files + config.design_files
             compile_deps_files = getattr(config, 'compile_deps_files', [])
 
+            # Functional coverage: inject stimulus body into the user's template.
+            # The patched file is compiled as the testbench; template is NOT
+            # prepended to design_files — it is baked into the injected file.
+            func_cov_enabled = getattr(config, 'functional_coverage_enabled', False)
+            if func_cov_enabled:
+                func_cov_tb = getattr(config, 'functional_coverage_testbench_path', None)
+                if func_cov_tb:
+                    from ...utils.questasim import inject_stimulus_into_template
+                    injected_path = tb_path.parent / f"{tb_path.stem}_injected.sv"
+                    try:
+                        tb_path = inject_stimulus_into_template(func_cov_tb, tb_path, injected_path)
+                    except ValueError as e:
+                        return {"success": False, "error": str(e)}
+
             result = adapter.compile(
                 testbench_path=tb_path,
                 design_files=design_files,
                 work_dir=gen_sim_dir,
                 timeout=config.sim_timeout,
                 compile_deps_files=compile_deps_files,
+                functional_coverage=func_cov_enabled,
             )
 
             if retry_num == 1:
@@ -271,7 +289,7 @@ def make_crt_tools(
             logging.error(f"CRT {gen_id} simulation error: {e}")
             return {"success": False, "error": str(e)}
 
-    return [write_file, compile_design, run_simulation]
+    return [read_file, list_directory, write_file, compile_design, run_simulation]
 
 
 def dispatch_crt_agent(
@@ -282,6 +300,8 @@ def dispatch_crt_agent(
     design_context: str,
     iteration: int,
     gen_id: int,
+    testplan_path: Optional[str] = None,
+    uncovered_bins: Optional[List[dict]] = None,
 ) -> dict:
     """Create and run a fresh CRT agent.
 
@@ -342,6 +362,9 @@ def dispatch_crt_agent(
         tb_path = f"testbenches/{tb_filename}"
 
         # Build task message — all context the agent needs is here
+        func_cov_enabled = getattr(config, 'functional_coverage_enabled', False)
+        func_cov_tb = getattr(config, 'functional_coverage_testbench_path', None)
+
         task_parts = [
             f"## Task\n{task_description}",
             f"\n## Target Module: {target_module}",
@@ -349,16 +372,57 @@ def dispatch_crt_agent(
         ]
         if design_context:
             task_parts.append(f"\n## Design Context\n{design_context}")
-        task_parts.append(
-            f"\n## Instructions\n"
-            f"- Write a randomized testbench to `{tb_path}` on your FIRST turn\n"
-            f"- The testbench module MUST be named `tb_llm`\n"
-            f"- Instantiate `{target_module}` as the DUT\n"
-            f"- Use broad randomized stimulus: $urandom, varied timing, multiple scenarios\n"
-            f"- Compile with `compile_design(\"{tb_path}\")`, then simulate with `run_simulation()`\n"
-            f"- If compile or simulation fails, read the error, fix the testbench, and retry (max {config.gen_max_retries} retries)\n"
-            f"- On success, report the coverage database path from the simulation result"
-        )
+
+        if testplan_path:
+            task_parts.append(
+                f"\n## Testplan\nRead the testplan at `{testplan_path}` first to understand "
+                f"which areas to target."
+            )
+
+        if func_cov_enabled and func_cov_tb:
+            # Stimulus-only mode for functional coverage
+            if uncovered_bins:
+                bins_summary = "\n".join(
+                    f"  - {b.get('covergroup','?')}.{b.get('coverpoint','?')}: `{b.get('bin_name','?')}`"
+                    for b in uncovered_bins[:15]
+                )
+            else:
+                bins_summary = "  (no specific bins — sweep all coverpoints)"
+            task_parts.append(
+                f"\n## Functional Coverage Mode — STIMULUS BODY ONLY\n"
+                f"Testbench template with covergroups: `{func_cov_tb}`. "
+                f"Read it to understand the covergroup structure, port names, and sample event.\n"
+                f"The framework injects your stimulus into the template automatically.\n\n"
+                f"**Write ONLY the body lines** of the initial block to `{tb_path}` — "
+                f"do NOT include `initial begin`, `$finish;`, `end`, or any module wrapper. "
+                f"The framework adds these automatically.\n\n"
+                f"Uncovered bins to target:\n{bins_summary}"
+            )
+            task_parts.append(
+                f"\n## Instructions\n"
+                f"1. Read the testplan at `{testplan_path or 'testplan.md'}` and the "
+                f"testbench template at `{func_cov_tb}`\n"
+                f"2. Write ONLY the stimulus body lines to `{tb_path}` "
+                f"(no `initial begin`, no `$finish;`, no `end`, no module)\n"
+                f"3. Compile with `compile_design(\"{tb_path}\")`\n"
+                f"4. Simulate with `run_simulation(testbench_name=\"tb_llm\")`\n"
+                f"5. If compile or simulation fails, fix and retry (max {config.gen_max_retries} retries)\n"
+                f"6. On success, report the coverage database path"
+            )
+        else:
+            task_parts.append(
+                f"\n## Instructions\n"
+                f"1. Read the testplan at `{testplan_path or 'testplan.md'}` and relevant "
+                f"RTL files to understand the design\n"
+                f"2. Write a randomized testbench to `{tb_path}`\n"
+                f"   - Module MUST be named `tb_llm`\n"
+                f"   - Instantiate `{target_module}` as the DUT\n"
+                f"   - Use broad randomized stimulus: $urandom, varied timing, multiple scenarios\n"
+                f"3. Compile with `compile_design(\"{tb_path}\")`\n"
+                f"4. Simulate with `run_simulation(testbench_name=\"tb_llm\")`\n"
+                f"5. If compile or simulation fails, fix and retry (max {config.gen_max_retries} retries)\n"
+                f"6. On success, report the coverage database path from the simulation result"
+            )
         task_message = "\n".join(task_parts)
 
         # Recursion limit: write + (compile+fix)*retries + sim + margin

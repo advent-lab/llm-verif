@@ -47,6 +47,12 @@ class AgentState(TypedDict):
     cumulative_coverage: float  # Merged coverage across ALL iterations
     cumulative_coverage_db: Optional[str]  # Path to merged coverage database file
 
+    # Functional coverage tracking (only used when functional_coverage_enabled=True)
+    functional_coverage_enabled: bool
+    current_functional_coverage: float  # Latest functional coverage % (0-100)
+    max_functional_coverage: float  # Best functional coverage achieved
+    uncovered_bins: List[dict]  # List of uncovered bin descriptors from last parse
+
     # Token usage tracking (per-API-call records, appended via reducer)
     # Each record: {api_call, iteration, input_tokens, output_tokens, total_tokens,
     #               reasoning_tokens, cached_input_tokens,
@@ -93,6 +99,12 @@ class MultiAgentState(TypedDict):
     cumulative_coverage_db: Optional[str]
     coverage_history: List[dict]  # [{iteration, coverage, delta, generators, strategy}]
     no_progress_count: int
+
+    # Functional coverage tracking (only used when functional_coverage_enabled=True)
+    functional_coverage_enabled: bool
+    current_functional_coverage: float
+    max_functional_coverage: float
+    uncovered_bins: List[dict]  # List of uncovered bin descriptors from last parse
 
     # Subagent tracking
     api_calls: int              # Orchestrator LLM invocations

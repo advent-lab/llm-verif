@@ -112,6 +112,15 @@ Write files in your work directory. Use for:
 - `notes.md` — your verification notebook (strategy reasoning, what worked/failed)
 - `report.md` — final run report (written on termination)
 
+## Functional Coverage Mode
+
+When `FUNCTIONAL_COVERAGE_ENABLED=1`:
+- Coverage updates show **functional coverage %** and **uncovered bins** rather than uncovered lines
+- Test generators write **stimulus body lines only** — no `initial begin`, no `$finish;`, no module wrapper
+- The framework injects the agent's body lines into the user-provided testbench template (which contains all covergroups, DUT instantiation, and clock gen) before compiling
+- The Design Expert can still read RTL and the testbench template to help plan stimulus
+- Use `get_coverage_status("summary")` to see bin-level progress
+
 ## Workflow
 
 ### Phase 1: Comprehension

@@ -22,13 +22,15 @@ class DesignConfig:
         spec_path: Path,
         design_files: List[Path],
         design_context_files: List[Path],
-        compile_deps_files: List[Path] = None
+        compile_deps_files: List[Path] = None,
+        functional_coverage_testbench_path: Optional[Path] = None
     ):
         self.design_name = design_name
         self.spec_path = spec_path
         self.design_files = design_files
         self.design_context_files = design_context_files
         self.compile_deps_files = compile_deps_files or []
+        self.functional_coverage_testbench_path = functional_coverage_testbench_path
 
     def __repr__(self):
         return (
@@ -227,6 +229,21 @@ def get_design_from_dashboard(
     if compile_deps_files:
         logger.info(f"  Compile deps: {len(compile_deps_files)} file(s)")
 
+    # Extract optional functional coverage testbench (verif key)
+    verif_raw = design_entry.get("verif")
+    func_cov_tb_path: Optional[Path] = None
+    if verif_raw:
+        if isinstance(verif_raw, list):
+            verif_raw = verif_raw[0] if verif_raw else None
+        if verif_raw:
+            verif_path_str = _resolve_variables(verif_raw, variables)
+            verif_path = Path(verif_path_str)
+            if verif_path.exists():
+                func_cov_tb_path = verif_path
+                logger.info(f"  Func cov testbench: {verif_path.name}")
+            else:
+                logger.warning(f"Functional coverage testbench not found (skipping): {verif_path}")
+
     # Log summary
     logger.info(
         f"Loaded {design_name}: "
@@ -240,7 +257,8 @@ def get_design_from_dashboard(
         spec_path=spec_path,
         design_files=design_files,
         design_context_files=design_context_files,
-        compile_deps_files=compile_deps_files
+        compile_deps_files=compile_deps_files,
+        functional_coverage_testbench_path=func_cov_tb_path
     )
 
 

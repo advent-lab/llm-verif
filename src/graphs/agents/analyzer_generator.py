@@ -144,12 +144,27 @@ def make_analyzer_generator_tools(
             design_files = config.design_context_files + config.design_files
             compile_deps_files = getattr(config, 'compile_deps_files', [])
 
+            # Functional coverage: inject stimulus body into the user's template.
+            # The patched file is compiled as the testbench; template is NOT
+            # prepended to design_files — it is baked into the injected file.
+            func_cov_enabled = getattr(config, 'functional_coverage_enabled', False)
+            if func_cov_enabled:
+                func_cov_tb = getattr(config, 'functional_coverage_testbench_path', None)
+                if func_cov_tb:
+                    from ...utils.questasim import inject_stimulus_into_template
+                    injected_path = tb_path.parent / f"{tb_path.stem}_injected.sv"
+                    try:
+                        tb_path = inject_stimulus_into_template(func_cov_tb, tb_path, injected_path)
+                    except ValueError as e:
+                        return {"success": False, "error": str(e)}
+
             result = adapter.compile(
                 testbench_path=tb_path,
                 design_files=design_files,
                 work_dir=gen_sim_dir,
                 timeout=config.sim_timeout,
                 compile_deps_files=compile_deps_files,
+                functional_coverage=func_cov_enabled,
             )
 
             if retry_num == 1:
@@ -286,6 +301,7 @@ def dispatch_analyzer_generator(
     testplan_section: str,
     iteration: int,
     gen_id: int,
+    uncovered_bins: Optional[List[dict]] = None,
 ) -> dict:
     """Create and run a fresh Analyzer-Generator agent.
 
@@ -350,7 +366,10 @@ def dispatch_analyzer_generator(
         tb_filename = f"tb_iter_{iteration}_gen_{gen_id}.sv"
         tb_path = f"testbenches/{tb_filename}"
 
-        # Build task message
+        # Build task message (mode-aware)
+        func_cov_enabled = getattr(config, 'functional_coverage_enabled', False)
+        func_cov_tb = getattr(config, 'functional_coverage_testbench_path', None)
+
         task_parts = [
             f"## Task\n{task_description}",
             f"\n## Target Module: {target_module}",
@@ -360,20 +379,51 @@ def dispatch_analyzer_generator(
             task_parts.append(f"\n## Current Coverage Context\n{coverage_context}")
         if testplan_section:
             task_parts.append(f"\n## Testplan Section\n{testplan_section}")
-        task_parts.append(
-            f"\n## Instructions\n"
-            f"1. Read the relevant RTL source file(s) for `{target_module}` to understand the implementation\n"
-            f"2. Check coverage with `get_coverage_status(\"detailed\")` to identify uncovered lines\n"
-            f"3. Analyze: trace backward from uncovered lines to determine activation paths\n"
-            f"4. Design a stimulus recipe targeting the uncovered code paths\n"
-            f"5. Write your testbench to `{tb_path}`\n"
-            f"6. The testbench module MUST be named `tb_llm`\n"
-            f"7. Instantiate `{target_module}` as the DUT\n"
-            f"8. Compile with `compile_design`, then simulate with `run_simulation`\n"
-            f"9. If compile or simulation fails, fix and retry (max {config.gen_max_retries} total failures)\n"
-            f"10. On success, summarize your analysis, the stimulus strategy, any M1-M3 holes found, "
-            f"and report the coverage database path"
-        )
+
+        if func_cov_enabled and func_cov_tb:
+            if uncovered_bins:
+                bins_summary = "\n".join(
+                    f"  - {b.get('covergroup','?')}.{b.get('coverpoint','?')}: `{b.get('bin_name','?')}`"
+                    for b in uncovered_bins[:20]
+                )
+            else:
+                bins_summary = "  (none listed — sweep all coverpoints)"
+            task_parts.append(
+                f"\n## Functional Coverage Mode — STIMULUS BODY ONLY\n"
+                f"Testbench template: `{func_cov_tb}` — read it to understand covergroups, bins, and the sample event.\n"
+                f"The framework injects your stimulus into the template automatically.\n\n"
+                f"**Write ONLY the body lines** of the initial block to `{tb_path}` — "
+                f"do NOT include `initial begin`, `$finish;`, `end`, or any module wrapper. "
+                f"The framework adds these automatically.\n\n"
+                f"Uncovered bins to target:\n{bins_summary}"
+            )
+            task_parts.append(
+                f"\n## Instructions\n"
+                f"1. Read the testbench template at `{func_cov_tb}` to understand covergroup structure and port names\n"
+                f"2. Read RTL file(s) for `{target_module}` to understand signal semantics\n"
+                f"3. Analyze each uncovered bin: what signal value / sequence is needed?\n"
+                f"4. Write ONLY the stimulus body lines to `{tb_path}` "
+                f"(no `initial begin`, no `$finish;`, no `end`, no module)\n"
+                f"5. Compile with `compile_design(\"{tb_path}\")`\n"
+                f"6. Simulate with `run_simulation(testbench_name=\"tb_llm\")`\n"
+                f"7. Fix and retry on failures (max {config.gen_max_retries} retries)\n"
+                f"8. On success, report the coverage database path"
+            )
+        else:
+            task_parts.append(
+                f"\n## Instructions\n"
+                f"1. Read the relevant RTL source file(s) for `{target_module}` to understand the implementation\n"
+                f"2. Check coverage with `get_coverage_status(\"detailed\")` to identify uncovered lines\n"
+                f"3. Analyze: trace backward from uncovered lines to determine activation paths\n"
+                f"4. Design a stimulus recipe targeting the uncovered code paths\n"
+                f"5. Write your testbench to `{tb_path}`\n"
+                f"6. The testbench module MUST be named `tb_llm`\n"
+                f"7. Instantiate `{target_module}` as the DUT\n"
+                f"8. Compile with `compile_design`, then simulate with `run_simulation`\n"
+                f"9. If compile or simulation fails, fix and retry (max {config.gen_max_retries} total failures)\n"
+                f"10. On success, summarize your analysis, the stimulus strategy, any M1-M3 holes found, "
+                f"and report the coverage database path"
+            )
         task_message = "\n".join(task_parts)
 
         # Recursion limit: generous to allow analysis + retries

@@ -132,12 +132,27 @@ def make_generator_tools(
             design_files = config.design_context_files + config.design_files
             compile_deps_files = getattr(config, 'compile_deps_files', [])
 
+            # Functional coverage: inject stimulus body into the user's template.
+            # The patched file is compiled as the testbench; template is NOT
+            # prepended to design_files — it is baked into the injected file.
+            func_cov_enabled = getattr(config, 'functional_coverage_enabled', False)
+            if func_cov_enabled:
+                func_cov_tb = getattr(config, 'functional_coverage_testbench_path', None)
+                if func_cov_tb:
+                    from ...utils.questasim import inject_stimulus_into_template
+                    injected_path = tb_path.parent / f"{tb_path.stem}_injected.sv"
+                    try:
+                        tb_path = inject_stimulus_into_template(func_cov_tb, tb_path, injected_path)
+                    except ValueError as e:
+                        return {"success": False, "error": str(e)}
+
             result = adapter.compile(
                 testbench_path=tb_path,
                 design_files=design_files,
                 work_dir=gen_sim_dir,
                 timeout=config.sim_timeout,
                 compile_deps_files=compile_deps_files,
+                functional_coverage=func_cov_enabled,
             )
 
             # Log naming: compile_iter_{N}_gen_{id}.log or _retry_{M}
@@ -332,16 +347,41 @@ def dispatch_generator(
             task_parts.append(f"\n## Design Expert Analysis\n{design_context}")
         if testplan_section:
             task_parts.append(f"\n## Testplan Section\n{testplan_section}")
-        task_parts.append(
-            f"\n## Instructions\n"
-            f"- Write your testbench to `{tb_path}`\n"
-            f"- The testbench module MUST be named `tb_llm`\n"
-            f"- Instantiate `{target_module}` as the DUT\n"
-            f"- After writing, compile with `compile_design`, then simulate with `run_simulation`\n"
-            f"- If compile or simulation fails, fix and retry (max {config.gen_max_retries} total failures)\n"
-            f"- On success, report the coverage database path from the simulation result\n"
-            f"- Do NOT call parse_coverage — the framework handles coverage analysis"
-        )
+        func_cov_enabled = getattr(config, 'functional_coverage_enabled', False)
+        func_cov_tb = getattr(config, 'functional_coverage_testbench_path', None)
+
+        if func_cov_enabled and func_cov_tb:
+            task_parts.append(
+                f"\n## Functional Coverage Mode — STIMULUS BODY ONLY\n"
+                f"Testbench template with covergroups: `{func_cov_tb}`. "
+                f"Read it to understand the covergroup structure, port names, and sample event.\n"
+                f"The framework injects your stimulus into the template automatically.\n\n"
+                f"**Write ONLY the body lines** of the initial block to `{tb_path}` — "
+                f"do NOT include `initial begin`, `$finish;`, `end`, or any module wrapper. "
+                f"The framework adds these automatically."
+            )
+            task_parts.append(
+                f"\n## Instructions\n"
+                f"- Read the testbench template at `{func_cov_tb}` first\n"
+                f"- Write ONLY the stimulus body lines to `{tb_path}` "
+                f"(no `initial begin`, no `$finish;`, no `end`, no module)\n"
+                f"- Compile with `compile_design(\"{tb_path}\")`\n"
+                f"- Simulate with `run_simulation(testbench_name=\"tb_llm\")`\n"
+                f"- If compile or simulation fails, fix and retry (max {config.gen_max_retries} total failures)\n"
+                f"- On success, report the coverage database path from the simulation result\n"
+                f"- Do NOT call parse_coverage — the framework handles coverage analysis"
+            )
+        else:
+            task_parts.append(
+                f"\n## Instructions\n"
+                f"- Write your testbench to `{tb_path}`\n"
+                f"- The testbench module MUST be named `tb_llm`\n"
+                f"- Instantiate `{target_module}` as the DUT\n"
+                f"- After writing, compile with `compile_design`, then simulate with `run_simulation`\n"
+                f"- If compile or simulation fails, fix and retry (max {config.gen_max_retries} total failures)\n"
+                f"- On success, report the coverage database path from the simulation result\n"
+                f"- Do NOT call parse_coverage — the framework handles coverage analysis"
+            )
         task_message = "\n".join(task_parts)
 
         # Invoke the generator agent

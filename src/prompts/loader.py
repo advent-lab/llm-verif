@@ -92,6 +92,65 @@ This plan is your roadmap to 100% coverage — be specific about how you will re
     return prompt
 
 
+def load_functional_system_prompt(
+    design_name: str,
+    design_dir: Path,
+    spec_path: Path,
+    design_files: List[Path],
+    design_context_files: List[Path],
+    module_header: str,
+    design_context_enabled: bool,
+    testbench_template_path: Optional[Path],
+    coverage_target: float,
+    max_iterations: int,
+    sim_runs: int,
+    sim_timeout: int = 60
+) -> str:
+    """Load and interpolate the functional coverage system prompt."""
+    template_path = Path(__file__).parent / "system_functional.md"
+
+    with open(template_path, 'r', encoding='utf-8') as f:
+        full_content = f.read()
+
+    start_marker = "## System Prompt Template\n\n```"
+    start_idx = full_content.find(start_marker)
+    if start_idx == -1:
+        raise ValueError("Could not find template start marker in system_functional.md")
+    start_idx += len(start_marker) + 1
+
+    end_marker = "```\n\n---"
+    end_idx = full_content.find(end_marker, start_idx)
+    if end_idx == -1:
+        end_idx = full_content.rfind("```")
+    template = full_content[start_idx:end_idx]
+
+    if design_context_enabled:
+        design_files_str = "\n".join([f"   - {f}" for f in design_files]) or "   (none)"
+        design_context_files_str = "\n".join([f"   - {f}" for f in design_context_files]) or "   (none)"
+        file_access_note = "You can read all design and design context files listed above using `read_file`."
+    else:
+        design_files_str = "   (not accessible - design context disabled)"
+        design_context_files_str = "   (not accessible - design context disabled)"
+        file_access_note = "You can only read the specification and testbench template. Design files are not accessible."
+
+    tb_template_str = str(testbench_template_path) if testbench_template_path else "(not provided)"
+
+    return template.format(
+        design_name=design_name,
+        design_dir=str(design_dir),
+        spec_path=str(spec_path),
+        design_files=design_files_str,
+        design_context_files=design_context_files_str,
+        file_access_note=file_access_note,
+        module_header=module_header,
+        testbench_template_path=tb_template_str,
+        coverage_target=coverage_target,
+        max_iterations=max_iterations,
+        sim_runs=sim_runs,
+        sim_timeout=sim_timeout
+    )
+
+
 def _extract_template(file_path: Path) -> str:
     """Extract template content from a prompt markdown file.
 

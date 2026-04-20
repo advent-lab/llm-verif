@@ -114,7 +114,7 @@ def run_verification_cycle(
         logging.warning(f"[verification_cycle] Simulation failed at iter {sim_result.get('iteration', '?')}")
         return result
 
-    # Stage 4: Parse coverage
+    # Stage 4: Parse coverage (mode-aware)
     coverage_db = sim_result.get("coverage_db_path")
     if not coverage_db:
         result["error_stage"] = "coverage"
@@ -122,22 +122,35 @@ def run_verification_cycle(
         logging.warning("[verification_cycle] No coverage_db_path in simulation result")
         return result
 
-    logging.info(f"[verification_cycle] Stage 4/4: Parsing coverage from {coverage_db}")
-    coverage_result = _ensure_dict(_coverage.invoke({"coverage_db_path": coverage_db}))
+    func_cov_enabled = getattr(_config, 'functional_coverage_enabled', False) if _config else False
+
+    if func_cov_enabled:
+        from .analysis import parse_functional_coverage as _func_coverage
+        logging.info(f"[verification_cycle] Stage 4/4: Parsing functional coverage from {coverage_db}")
+        coverage_result = _ensure_dict(_func_coverage.invoke({"coverage_db_path": coverage_db}))
+    else:
+        logging.info(f"[verification_cycle] Stage 4/4: Parsing coverage from {coverage_db}")
+        coverage_result = _ensure_dict(_coverage.invoke({"coverage_db_path": coverage_db}))
+
     result["coverage_result"] = coverage_result
     result["stopped_at"] = "coverage"
     if not coverage_result.get("success"):
         result["error_stage"] = "coverage"
         result["error_summary"] = f"Coverage parsing failed: {coverage_result.get('error', 'unknown')}"
-        logging.warning(f"[verification_cycle] Coverage parsing failed")
+        logging.warning("[verification_cycle] Coverage parsing failed")
         return result
 
     # All stages succeeded
     result["success"] = True
     cumulative = coverage_result.get("cumulative_coverage", coverage_result.get("total_coverage", 0))
-    iteration = coverage_result.get("iteration_coverage", coverage_result.get("total_coverage", 0))
-    logging.info(
-        f"[verification_cycle] Complete — iteration coverage: {iteration:.2f}%, "
-        f"cumulative coverage: {cumulative:.2f}%"
-    )
+    if func_cov_enabled:
+        logging.info(
+            f"[verification_cycle] Complete — functional coverage: {cumulative:.2f}%"
+        )
+    else:
+        iteration = coverage_result.get("iteration_coverage", coverage_result.get("total_coverage", 0))
+        logging.info(
+            f"[verification_cycle] Complete — iteration coverage: {iteration:.2f}%, "
+            f"cumulative coverage: {cumulative:.2f}%"
+        )
     return result

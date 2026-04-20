@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 from langchain.tools import tool
 import logging
 import re
@@ -132,6 +132,181 @@ def parse_coverage(coverage_db_path: str) -> Dict[str, Any]:
         import traceback
         logging.error(traceback.format_exc())
         return {"success": False, "error": str(e)}
+
+@tool
+def parse_functional_coverage(coverage_db_path: str) -> Dict[str, Any]:
+    """
+    Parse functional coverage database and generate feedback for uncovered bins.
+
+    Merges the iteration UCDB into a cumulative functional coverage database
+    (cumulative_funcov.ucdb), then generates and parses a vcover text report
+    to extract covergroup/coverpoint/bin-level data.
+
+    Args:
+        coverage_db_path: Path to coverage database (.ucdb)
+
+    Returns:
+        Dictionary with:
+        - success: bool
+        - total_coverage: float (cumulative functional coverage %)
+        - cumulative_coverage: float (same as total_coverage)
+        - covergroups: list of covergroup dicts with uncovered_bins
+        - feedback: formatted string summarising what to target next
+        - uncovered_bins: flat list of all uncovered bin descriptors
+        - cumulative_coverage_db: str path to merged functional UCDB
+        - error: str (only on failure)
+    """
+    global _cumulative_coverage_db
+
+    try:
+        db_path = Path(coverage_db_path).resolve()
+        if not db_path.exists():
+            return {"success": False, "error": f"Coverage database not found: {coverage_db_path}"}
+
+        coverage_dir = db_path.parent
+        cumulative_db_path = coverage_dir / "cumulative_funcov.ucdb"
+
+        logging.info(f"Merging functional coverage: {db_path} → {cumulative_db_path}")
+        try:
+            _adapter.merge_cumulative_coverage(db_path, cumulative_db_path)
+            _cumulative_coverage_db = cumulative_db_path
+        except Exception as e:
+            logging.error(f"Cumulative functional coverage merge failed: {e}")
+            _cumulative_coverage_db = db_path
+            cumulative_db_path = db_path
+
+        logging.info("Parsing functional coverage from cumulative database")
+        result = _adapter.parse_functional_coverage(cumulative_db_path)
+
+        if 'error' in result:
+            return {"success": False, "error": result['error']}
+
+        cumulative_coverage = result['total_coverage']
+        covergroups = result['covergroups']
+
+        feedback = _generate_functional_coverage_feedback(cumulative_coverage, covergroups)
+
+        # Flatten uncovered bins with enriched fields
+        all_uncovered_bins = []
+        for cg in covergroups:
+            for bin_entry in cg.get('uncovered_bins', []):
+                if isinstance(bin_entry, dict):
+                    all_uncovered_bins.append({
+                        'covergroup':          cg['name'],
+                        'instance_path':       cg.get('instance_path', ''),
+                        'coverpoint':          bin_entry.get('coverpoint', ''),
+                        'coverpoint_kind':     bin_entry.get('coverpoint_kind', 'Coverpoint'),
+                        'bin_name':            bin_entry.get('bin_name', ''),
+                        'covergroup_coverage': cg.get('coverage', 0.0),
+                        'sample_event':        cg.get('sample_event'),
+                    })
+                else:
+                    all_uncovered_bins.append({
+                        'covergroup': cg['name'],
+                        'bin_name':   bin_entry,
+                    })
+
+        logging.info(
+            f"Functional coverage: {cumulative_coverage:.1f}% "
+            f"({len(all_uncovered_bins)} bins uncovered)"
+        )
+
+        return {
+            "success": True,
+            "total_coverage": cumulative_coverage,
+            "iteration_coverage": cumulative_coverage,
+            "cumulative_coverage": cumulative_coverage,
+            "covergroups": covergroups,
+            "feedback": feedback,
+            "uncovered_bins": all_uncovered_bins,
+            "cumulative_coverage_db": str(cumulative_db_path)
+        }
+
+    except Exception as e:
+        logging.error(f"Functional coverage parsing error: {e}")
+        import traceback
+        logging.error(traceback.format_exc())
+        return {"success": False, "error": str(e)}
+
+
+def _generate_functional_coverage_feedback(
+    total_coverage: float,
+    covergroups: List[Dict]
+) -> str:
+    """Generate human-readable feedback about uncovered bins for the LLM."""
+    if total_coverage >= 99.9:
+        return "Functional coverage complete! All bins have been hit."
+
+    feedback = [f"## Functional Coverage: {total_coverage:.1f}%\n"]
+
+    incomplete_cgs = [cg for cg in covergroups if cg.get('uncovered_bins')]
+    if not incomplete_cgs:
+        return "All bins covered (or no functional coverage defined)."
+
+    total_uncovered = sum(len(cg['uncovered_bins']) for cg in incomplete_cgs)
+    feedback.append(
+        f"### Uncovered Bins ({total_uncovered} bins across "
+        f"{len(incomplete_cgs)} covergroup(s))\n"
+    )
+
+    for cg in incomplete_cgs:
+        cg_name       = cg['name']
+        instance_path = cg.get('instance_path', '')
+        cg_coverage   = cg.get('coverage', 0.0)
+        sample_event  = cg.get('sample_event')
+        uncovered     = cg.get('uncovered_bins', [])
+
+        feedback.append(f"**Covergroup: `{cg_name}`** ({cg_coverage:.1f}% covered)")
+        if instance_path:
+            feedback.append(f"  Instance: `{instance_path}`")
+        if sample_event:
+            feedback.append(
+                f"  Sampled: `{sample_event}`  "
+                f"*(coverage is only recorded when this event fires)*"
+            )
+        else:
+            feedback.append("  Sampled: implicit (called via .sample() in testbench)")
+
+        feedback.append(f"  Missing {len(uncovered)} bin(s):\n")
+
+        by_coverpoint: Dict[str, Dict] = {}
+        for entry in uncovered:
+            if isinstance(entry, dict):
+                cp_key  = entry.get('coverpoint', 'unknown')
+                cp_kind = entry.get('coverpoint_kind', 'Coverpoint')
+                bin_nm  = entry.get('bin_name', str(entry))
+            else:
+                cp_key, cp_kind, bin_nm = 'bins', 'Coverpoint', str(entry)
+
+            if cp_key not in by_coverpoint:
+                by_coverpoint[cp_key] = {'kind': cp_kind, 'bins': []}
+            by_coverpoint[cp_key]['bins'].append(bin_nm)
+
+        for cp_name, cp_data in by_coverpoint.items():
+            feedback.append(f"  {cp_data['kind']}: `{cp_name}`")
+            for bin_nm in cp_data['bins']:
+                feedback.append(f"    - `{bin_nm}`")
+            feedback.append("")
+
+    feedback.append("\n### What to do next:")
+    feedback.append(
+        "1. Check the sample event — if coverage uses `@(posedge clk)`, "
+        "stimulus must allow the clock to tick with the right signal values BEFORE the edge."
+    )
+    feedback.append(
+        "2. Target the coverpoint — understand what signal each coverpoint measures, "
+        "then drive that signal to the bin's required value."
+    )
+    feedback.append(
+        "3. Use the bin name to infer the condition needed "
+        "(e.g. `neg_one` → set operand to -1, `invalid[8]` → set opcode to 4'h8)."
+    )
+    feedback.append(
+        "4. Focus on lowest coverage covergroups first."
+    )
+
+    return "\n".join(feedback)
+
 
 def _create_annotated_source(uncovered_lines: Dict[str, list[int]], max_holes: int = 0) -> str:
     """Create annotated source highlighting high-priority uncovered lines,

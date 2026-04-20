@@ -161,6 +161,10 @@ def initialize_node(state: MultiAgentState) -> MultiAgentState:
         "design_expert_calls": 0,
         "test_generator_dispatches": 0,
         "consecutive_gen_failures": 0,
+        "functional_coverage_enabled": config.functional_coverage_enabled,
+        "current_functional_coverage": 0.0,
+        "max_functional_coverage": 0.0,
+        "uncovered_bins": [],
         "is_done": False,
         "done_reason": None,
         "is_finalizing": False,
@@ -358,63 +362,117 @@ def update_state_node(state: MultiAgentState) -> MultiAgentState:
         return delta
 
     # Merge all successful coverage DBs into cumulative
+    func_cov_enabled = getattr(config, 'functional_coverage_enabled', False)
     cumulative_db_path = Path(config.work_dir) / "coverage" / "cumulative.ucdb"
+    prev_coverage = state.get("cumulative_coverage", 0.0)
+    delta_pct = 0.0  # defined here so it's always in scope after the if/else
     for db_path in successful_dbs:
         try:
             _adapter.merge_cumulative_coverage(db_path, cumulative_db_path)
         except Exception as e:
             logging.error(f"Coverage merge failed for {db_path}: {e}")
 
-    # Parse cumulative coverage
-    try:
-        cumulative_result = _adapter.parse_coverage(cumulative_db_path)
-        new_coverage = cumulative_result.total_coverage
-    except Exception as e:
-        logging.error(f"Cumulative coverage parse failed: {e}")
-        new_coverage = state.get("cumulative_coverage", 0.0)
-        cumulative_result = None
+    if func_cov_enabled:
+        # Functional coverage mode: parse funcov only
+        new_coverage = prev_coverage
+        new_func_coverage = state.get("current_functional_coverage", 0.0)
+        new_uncovered_bins = state.get("uncovered_bins", [])
+        try:
+            func_result = _adapter.parse_functional_coverage(cumulative_db_path)
+            new_func_coverage = func_result.get("total_coverage", 0.0)
+            new_uncovered_bins = []
+            for cg in func_result.get("covergroups", []):
+                for bin_entry in cg.get("uncovered_bins", []):
+                    if isinstance(bin_entry, dict):
+                        new_uncovered_bins.append({
+                            "covergroup": cg["name"],
+                            "instance_path": cg.get("instance_path", ""),
+                            "coverpoint": bin_entry.get("coverpoint", ""),
+                            "coverpoint_kind": bin_entry.get("coverpoint_kind", "Coverpoint"),
+                            "bin_name": bin_entry.get("bin_name", ""),
+                            "covergroup_coverage": cg.get("coverage", 0.0),
+                            "sample_event": cg.get("sample_event"),
+                        })
+            logging.info(f"Functional coverage: {new_func_coverage:.2f}% ({len(new_uncovered_bins)} bins uncovered)")
+        except Exception as e:
+            logging.error(f"Functional coverage parse failed: {e}")
 
-    prev_coverage = state.get("cumulative_coverage", 0.0)
-
-    # Generate feedback
-    if cumulative_result:
-        # Generate annotated source (Tier 2)
-        max_holes = getattr(config, 'num_feedback_holes', 0)
-        annotated_source = _create_annotated_source(
-            cumulative_result.uncovered_lines, max_holes
-        )
-
-        # Update the shared coverage cache
         update_coverage_cache(
-            cumulative_coverage=new_coverage,
+            cumulative_coverage=0.0,
             iteration=state.get("iteration", 1),
-            breakdown=cumulative_result.breakdown,
-            uncovered_lines=cumulative_result.uncovered_lines,
-            annotated_source=annotated_source,
+            breakdown={},
+            uncovered_lines={},
+            annotated_source="",
             gen_results=gen_results,
-            prev_coverage=prev_coverage,
+            prev_coverage=0.0,
+            functional_coverage_enabled=True,
+            functional_coverage=new_func_coverage,
+            uncovered_bins=new_uncovered_bins,
         )
-
-        # Write coverage_tracking.md artifact
-        tracking_content = _build_coverage_tracking(
-            new_coverage, cumulative_result.breakdown,
-            cumulative_result.uncovered_lines, state.get("iteration", 1),
+        tracking_content = _build_funcov_tracking(
+            new_func_coverage, new_uncovered_bins,
+            state.get("iteration", 1), config.functional_coverage_target,
         )
         tracking_path = Path(config.work_dir) / "coverage_tracking.md"
         tracking_path.write_text(tracking_content, encoding='utf-8')
-    else:
-        tracking_path = state.get("coverage_tracking_path")
 
-    # Build coverage update message for orchestrator
-    delta_pct = new_coverage - prev_coverage
-    feedback_msg = HumanMessage(content=(
-        f"[COVERAGE UPDATE] Iteration {state.get('iteration', 1)} complete.\n"
-        f"Cumulative coverage: {new_coverage:.2f}% "
-        f"(was {prev_coverage:.2f}%, {'+' if delta_pct >= 0 else ''}{delta_pct:.2f}%).\n"
-        f"Generators dispatched: {len(gen_results)} "
-        f"({len(successful_dbs)} succeeded, {failed_count} failed).\n"
-        f"Use `get_coverage_status` for detailed breakdown."
-    ))
+        prev_func = state.get("current_functional_coverage", 0.0)
+        func_delta = new_func_coverage - prev_func
+        feedback_msg = HumanMessage(content=(
+            f"[COVERAGE UPDATE] Iteration {state.get('iteration', 1)} complete.\n"
+            f"Functional coverage: {new_func_coverage:.2f}% "
+            f"(was {prev_func:.2f}%, {'+' if func_delta >= 0 else ''}{func_delta:.2f}%). "
+            f"Uncovered bins: {len(new_uncovered_bins)}.\n"
+            f"Generators: {len(gen_results)} ({len(successful_dbs)} succeeded, {failed_count} failed).\n"
+            f"Use `get_coverage_status` for detailed bin breakdown."
+        ))
+    else:
+        # Code coverage mode: parse code coverage only
+        new_func_coverage = 0.0
+        new_uncovered_bins = []
+        cumulative_result = None
+        try:
+            cumulative_result = _adapter.parse_coverage(cumulative_db_path)
+            new_coverage = cumulative_result.total_coverage
+        except Exception as e:
+            logging.error(f"Cumulative coverage parse failed: {e}")
+            new_coverage = prev_coverage
+
+        if cumulative_result:
+            max_holes = getattr(config, 'num_feedback_holes', 0)
+            annotated_source = _create_annotated_source(
+                cumulative_result.uncovered_lines, max_holes
+            )
+            update_coverage_cache(
+                cumulative_coverage=new_coverage,
+                iteration=state.get("iteration", 1),
+                breakdown=cumulative_result.breakdown,
+                uncovered_lines=cumulative_result.uncovered_lines,
+                annotated_source=annotated_source,
+                gen_results=gen_results,
+                prev_coverage=prev_coverage,
+                functional_coverage_enabled=False,
+                functional_coverage=0.0,
+                uncovered_bins=[],
+            )
+            tracking_content = _build_coverage_tracking(
+                new_coverage, cumulative_result.breakdown,
+                cumulative_result.uncovered_lines, state.get("iteration", 1),
+            )
+            tracking_path = Path(config.work_dir) / "coverage_tracking.md"
+            tracking_path.write_text(tracking_content, encoding='utf-8')
+        else:
+            tracking_path = state.get("coverage_tracking_path")
+
+        delta_pct = new_coverage - prev_coverage
+        feedback_msg = HumanMessage(content=(
+            f"[COVERAGE UPDATE] Iteration {state.get('iteration', 1)} complete.\n"
+            f"Cumulative coverage: {new_coverage:.2f}% "
+            f"(was {prev_coverage:.2f}%, {'+' if delta_pct >= 0 else ''}{delta_pct:.2f}%).\n"
+            f"Generators dispatched: {len(gen_results)} "
+            f"({len(successful_dbs)} succeeded, {failed_count} failed).\n"
+            f"Use `get_coverage_status` for detailed breakdown."
+        ))
 
     emit("coverage_merge", {
         "iteration": state.get("iteration", 1),
@@ -428,21 +486,27 @@ def update_state_node(state: MultiAgentState) -> MultiAgentState:
     _gen_context["iteration"] = next_iteration
     _gen_context["next_gen_id"] = 0
 
-    if new_coverage > prev_coverage:
+    progress_cov = new_func_coverage if func_cov_enabled else new_coverage
+    prev_progress = state.get("current_functional_coverage", 0.0) if func_cov_enabled else prev_coverage
+    if progress_cov > prev_progress:
         no_progress = 0
-        logging.info(f"Coverage improved: {prev_coverage:.2f}% → {new_coverage:.2f}%")
+        logging.info(f"{'Functional c' if func_cov_enabled else 'C'}overage improved: {prev_progress:.2f}% → {progress_cov:.2f}%")
     else:
         no_progress = state.get("no_progress_count", 0) + 1
-        logging.warning(f"No coverage improvement: {new_coverage:.2f}%")
+        logging.warning(f"No {'functional ' if func_cov_enabled else ''}coverage improvement: {progress_cov:.2f}%")
 
     delta = {
         "messages": [feedback_msg],
         "iteration": next_iteration,
         "cumulative_coverage": new_coverage,
         "cumulative_coverage_db": str(cumulative_db_path),
+        "current_functional_coverage": new_func_coverage,
+        "max_functional_coverage": max(state.get("max_functional_coverage", 0.0), new_func_coverage),
+        "uncovered_bins": new_uncovered_bins,
         "coverage_history": state.get("coverage_history", []) + [{
             "iteration": state.get("iteration", 1),
             "coverage": new_coverage,
+            "functional_coverage": new_func_coverage,
             "delta": delta_pct,
             "generators": len(gen_results),
         }],
@@ -475,7 +539,15 @@ def finalize_node(state: MultiAgentState) -> MultiAgentState:
     token_count = count_message_tokens(state["messages"], config.orchestrator_model)
 
     # Determine termination reason
-    if cumulative_coverage >= 100.0:
+    func_cov_enabled = getattr(config, 'functional_coverage_enabled', False)
+    func_cov_target = getattr(config, 'functional_coverage_target', 100.0)
+    if func_cov_enabled:
+        effective_coverage = state.get("current_functional_coverage", 0.0)
+        coverage_complete = effective_coverage >= func_cov_target
+    else:
+        effective_coverage = cumulative_coverage
+        coverage_complete = effective_coverage >= 100.0
+    if coverage_complete:
         reason = "coverage_complete"
     elif token_count >= config.context_window:
         reason = "context_window_limit"
@@ -488,9 +560,22 @@ def finalize_node(state: MultiAgentState) -> MultiAgentState:
     else:
         reason = "unknown"
 
+    if func_cov_enabled:
+        cov_line = f"Final functional coverage: {effective_coverage:.2f}%."
+        report_coverage = (
+            "- Final functional coverage and remaining uncovered bins\n"
+            "- Which bins could not be covered and why\n"
+        )
+    else:
+        cov_line = f"Final cumulative coverage: {cumulative_coverage:.2f}%."
+        report_coverage = (
+            "- Classification of ALL remaining uncovered lines "
+            "(unreachable, excludable, potential bugs, needs more effort)\n"
+        )
+
     finalize_message = (
         f"FRAMEWORK NOTICE: Verification terminated (reason: {reason}). "
-        f"Final cumulative coverage: {cumulative_coverage:.2f}%. "
+        f"{cov_line} "
         f"Iterations completed: {iteration - 1}. "
         f"Expert queries: {state.get('design_expert_calls', 0)}. "
         f"Generator dispatches: {state.get('test_generator_dispatches', 0)}.\n\n"
@@ -498,8 +583,7 @@ def finalize_node(state: MultiAgentState) -> MultiAgentState:
         f"This is your LAST turn — only `write_file` tool calls will be executed.\n\n"
         f"The report MUST include:\n"
         f"- Final coverage and iteration count\n"
-        f"- Classification of ALL remaining uncovered lines "
-        f"(unreachable, excludable, potential bugs, needs more effort)\n"
+        f"{report_coverage}"
         f"- Summary of strategies used (top-level vs unit-level, what worked)\n"
         f"- Recommendations for future work"
     )
@@ -507,7 +591,7 @@ def finalize_node(state: MultiAgentState) -> MultiAgentState:
     logging.info(f"{Colors.MAGENTA}{Colors.BOLD}{'='*80}{Colors.RESET}")
     logging.info(f"{Colors.MAGENTA}{Colors.BOLD}FINALIZE ({reason}): "
                  f"Giving orchestrator one last turn to write report.md{Colors.RESET}")
-    logging.info(f"{Colors.MAGENTA}Coverage: {cumulative_coverage:.2f}% | "
+    logging.info(f"{Colors.MAGENTA}Coverage: {effective_coverage:.2f}% | "
                  f"No-progress: {no_progress} | "
                  f"Expert calls: {state.get('design_expert_calls', 0)} | "
                  f"Gen dispatches: {state.get('test_generator_dispatches', 0)}"
@@ -516,7 +600,7 @@ def finalize_node(state: MultiAgentState) -> MultiAgentState:
 
     emit("finalize", {
         "reason": reason,
-        "cumulative_coverage": cumulative_coverage,
+        "cumulative_coverage": effective_coverage,
         "iterations_completed": iteration - 1,
     })
 
@@ -634,8 +718,15 @@ def route_after_update(state: MultiAgentState) -> Literal["agent", "finalize", "
     if state.get("is_finalizing", False):
         return _route(END, "finalize_turn_complete")
 
-    cumulative = state.get("cumulative_coverage", 0.0)
-    if cumulative >= 100.0:
+    func_cov_enabled = getattr(config, 'functional_coverage_enabled', False)
+    func_cov_target = getattr(config, 'functional_coverage_target', 100.0)
+    if func_cov_enabled:
+        cumulative = state.get("current_functional_coverage", 0.0)
+        target = func_cov_target
+    else:
+        cumulative = state.get("cumulative_coverage", 0.0)
+        target = 100.0
+    if cumulative >= target:
         return _route("finalize", f"coverage_complete ({cumulative:.2f}%)")
 
     if state["api_calls"] >= config.max_iterations:
@@ -727,6 +818,37 @@ def _build_coverage_tracking(
 
         for r in ranges:
             parts.append(f"- Lines {r}")
+        parts.append("")
+
+    return "\n".join(parts)
+
+
+def _build_funcov_tracking(
+    func_coverage: float,
+    uncovered_bins: list,
+    iteration: int,
+    target: float,
+) -> str:
+    """Build the coverage_tracking.md artifact for functional coverage mode."""
+    by_cg: dict = {}
+    for b in uncovered_bins:
+        cg = b.get("covergroup", "unknown")
+        by_cg.setdefault(cg, []).append(b)
+
+    parts = [
+        f"# Remaining Coverage Bins — Iteration {iteration}",
+        "",
+        f"## Functional Coverage: {func_coverage:.2f}% (target: {target:.0f}%)",
+        "",
+        f"Total uncovered bins: {len(uncovered_bins)}",
+        "",
+    ]
+    for cg_name, bins in sorted(by_cg.items()):
+        parts.append(f"### {cg_name} ({len(bins)} uncovered bins)")
+        for b in bins:
+            cp = b.get("coverpoint", "?")
+            bn = b.get("bin_name", "?")
+            parts.append(f"- {cp}: `{bn}`")
         parts.append("")
 
     return "\n".join(parts)

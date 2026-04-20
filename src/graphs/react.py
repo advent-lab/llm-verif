@@ -16,7 +16,7 @@ from ..utils.agent_logging import log_agent_request, log_agent_response, Colors
 from ..utils.event_log import (
     init_event_log, emit, serialize_message, serialize_config, get_git_info,
 )
-from ..prompts.loader import load_system_prompt
+from ..prompts.loader import load_system_prompt, load_functional_system_prompt
 from ..tools import get_all_tools, set_tool_config
 from ..tools.analysis import get_cumulative_coverage_db, _create_annotated_source
 
@@ -50,20 +50,36 @@ def initialize_node(state: AgentState) -> AgentState:
     # Extract module headers from all design files
     module_header = extract_all_module_headers(config.design_files)
 
-    # Construct system prompt
-    system_prompt = load_system_prompt(
-        design_name=config.design_name,
-        design_dir=config.design_dir,
-        spec_path=config.spec_path,
-        design_files=config.design_files,
-        design_context_files=config.design_context_files,
-        module_header=module_header,
-        design_context_enabled=config.design_context_enabled,
-        testplan_enabled=config.testplan_enabled,
-        max_iterations=config.max_iterations,
-        sim_runs=config.sim_runs,
-        sim_timeout=config.sim_timeout
-    )
+    # Construct system prompt (mode-aware)
+    if config.functional_coverage_enabled:
+        system_prompt = load_functional_system_prompt(
+            design_name=config.design_name,
+            design_dir=config.design_dir,
+            spec_path=config.spec_path,
+            design_files=config.design_files,
+            design_context_files=config.design_context_files,
+            module_header=module_header,
+            design_context_enabled=config.design_context_enabled,
+            testbench_template_path=config.functional_coverage_testbench_path,
+            coverage_target=config.functional_coverage_target,
+            max_iterations=config.max_iterations,
+            sim_runs=config.sim_runs,
+            sim_timeout=config.sim_timeout
+        )
+    else:
+        system_prompt = load_system_prompt(
+            design_name=config.design_name,
+            design_dir=config.design_dir,
+            spec_path=config.spec_path,
+            design_files=config.design_files,
+            design_context_files=config.design_context_files,
+            module_header=module_header,
+            design_context_enabled=config.design_context_enabled,
+            testplan_enabled=config.testplan_enabled,
+            max_iterations=config.max_iterations,
+            sim_runs=config.sim_runs,
+            sim_timeout=config.sim_timeout
+        )
 
     # Set config for tools
     config.current_iteration = 1  # Start at iteration 1
@@ -115,6 +131,10 @@ def initialize_node(state: AgentState) -> AgentState:
         "max_coverage": 0.0,
         "cumulative_coverage": 0.0,
         "cumulative_coverage_db": None,
+        "functional_coverage_enabled": config.functional_coverage_enabled,
+        "current_functional_coverage": 0.0,
+        "max_functional_coverage": 0.0,
+        "uncovered_bins": [],
         "is_done": False,
         "done_reason": None,
         "is_finalizing": False,
@@ -153,8 +173,9 @@ def agent_node(state: AgentState) -> AgentState:
         llm_kwargs["reasoning_effort"] = config.reasoning_effort
     llm = ChatOpenAI(**llm_kwargs)
 
-    # Bind tools
-    tools = get_all_tools()
+    # Bind tools (mode-aware)
+    func_cov = getattr(config, 'functional_coverage_enabled', False)
+    tools = get_all_tools(functional_coverage=func_cov)
     llm_with_tools = llm.bind_tools(tools)
 
     # Increment API call counter before logging so REQUEST and RESPONSE show the same number
@@ -371,11 +392,9 @@ def update_state_node(state: AgentState) -> AgentState:
             logging.warning(f"Verification cycle failed at {stopped_at} stage")
             return _emit_and_return(f"verification_cycle_{stopped_at}_fail", {})
         else:
-            # Full success — mirror parse_coverage success logic
+            # Full success — mirror parse_coverage / parse_functional_coverage success logic
             coverage_result = result.get("coverage_result", {})
-            iteration_coverage = coverage_result.get(
-                "iteration_coverage", coverage_result.get("total_coverage", 0.0)
-            )
+            func_cov_enabled = getattr(config, 'functional_coverage_enabled', False)
             cumulative_coverage = coverage_result.get(
                 "cumulative_coverage", coverage_result.get("total_coverage", 0.0)
             )
@@ -383,35 +402,56 @@ def update_state_node(state: AgentState) -> AgentState:
             next_iteration = state["iteration"] + 1
 
             config.current_iteration = next_iteration
-            prev_cumulative = state.get("cumulative_coverage", 0.0)
+
+            if func_cov_enabled:
+                prev_cumulative = state.get("current_functional_coverage", 0.0)
+                uncovered_bins = coverage_result.get("uncovered_bins", [])
+            else:
+                prev_cumulative = state.get("cumulative_coverage", 0.0)
+                iteration_coverage = coverage_result.get(
+                    "iteration_coverage", coverage_result.get("total_coverage", 0.0)
+                )
 
             if cumulative_coverage > prev_cumulative:
                 logging.info(
-                    f"Cumulative coverage improved: {prev_cumulative:.2f}% → "
-                    f"{cumulative_coverage:.2f}% (this iteration: {iteration_coverage:.2f}%)"
+                    f"{'Functional c' if func_cov_enabled else 'C'}overage improved: "
+                    f"{prev_cumulative:.2f}% → {cumulative_coverage:.2f}%"
                 )
-                return _emit_and_return("verification_cycle_coverage_improved", {
-                    "current_coverage": iteration_coverage,
-                    "max_coverage": max(state["max_coverage"], iteration_coverage),
+                delta = {
+                    "current_coverage": cumulative_coverage,
+                    "max_coverage": max(state.get("max_coverage", 0.0), cumulative_coverage),
                     "cumulative_coverage": cumulative_coverage,
                     "cumulative_coverage_db": cumulative_db,
                     "iteration": next_iteration,
                     "consecutive_failures": 0,
                     "no_progress_count": 0,
-                })
+                }
+                if func_cov_enabled:
+                    delta["current_functional_coverage"] = cumulative_coverage
+                    delta["max_functional_coverage"] = max(state.get("max_functional_coverage", 0.0), cumulative_coverage)
+                    delta["uncovered_bins"] = uncovered_bins
+                else:
+                    delta["current_coverage"] = iteration_coverage
+                    delta["max_coverage"] = max(state.get("max_coverage", 0.0), iteration_coverage)
+                return _emit_and_return("verification_cycle_coverage_improved", delta)
             else:
                 logging.warning(
-                    f"No cumulative coverage improvement: {cumulative_coverage:.2f}% "
-                    f"(this iteration: {iteration_coverage:.2f}%)"
+                    f"No {'functional ' if func_cov_enabled else ''}coverage improvement: {cumulative_coverage:.2f}%"
                 )
-                return _emit_and_return("verification_cycle_no_improvement", {
-                    "current_coverage": iteration_coverage,
+                delta = {
                     "cumulative_coverage": cumulative_coverage,
                     "cumulative_coverage_db": cumulative_db,
                     "iteration": next_iteration,
                     "consecutive_failures": 0,
                     "no_progress_count": state["no_progress_count"] + 1,
-                })
+                }
+                if func_cov_enabled:
+                    delta["current_functional_coverage"] = cumulative_coverage
+                    delta["uncovered_bins"] = coverage_result.get("uncovered_bins", [])
+                    delta["current_coverage"] = cumulative_coverage
+                else:
+                    delta["current_coverage"] = iteration_coverage
+                return _emit_and_return("verification_cycle_no_improvement", delta)
 
     # Priority 1: Check for compile_design failures
     for msg in reversed(state["messages"][-5:]):
@@ -447,7 +487,48 @@ def update_state_node(state: AgentState) -> AgentState:
                 })
             break  # Found sim result, move to next check
 
-    # Priority 3: Check for parse_coverage results (coverage improvement tracking)
+    # Priority 3a: Check for parse_functional_coverage results
+    latest_msg = state["messages"][-1] if state["messages"] else None
+    if latest_msg and hasattr(latest_msg, 'name') and latest_msg.name == 'parse_functional_coverage':
+        result = parse_tool_result(latest_msg.content)
+
+        if result.get('success'):
+            cumulative_coverage = result.get('cumulative_coverage', result.get('total_coverage', 0.0))
+            cumulative_db = result.get('cumulative_coverage_db')
+            uncovered_bins = result.get('uncovered_bins', [])
+            next_iteration = state["iteration"] + 1
+
+            config.current_iteration = next_iteration
+            prev_cumulative = state.get("current_functional_coverage", 0.0)
+
+            if cumulative_coverage > prev_cumulative:
+                logging.info(f"Functional coverage improved: {prev_cumulative:.2f}% → {cumulative_coverage:.2f}%")
+                return _emit_and_return("func_coverage_improved", {
+                    "current_coverage": cumulative_coverage,
+                    "max_coverage": max(state.get("max_coverage", 0.0), cumulative_coverage),
+                    "cumulative_coverage": cumulative_coverage,
+                    "cumulative_coverage_db": cumulative_db,
+                    "current_functional_coverage": cumulative_coverage,
+                    "max_functional_coverage": max(state.get("max_functional_coverage", 0.0), cumulative_coverage),
+                    "uncovered_bins": uncovered_bins,
+                    "iteration": next_iteration,
+                    "consecutive_failures": 0,
+                    "no_progress_count": 0,
+                })
+            else:
+                logging.warning(f"No functional coverage improvement: {cumulative_coverage:.2f}%")
+                return _emit_and_return("func_no_improvement", {
+                    "current_coverage": cumulative_coverage,
+                    "cumulative_coverage": cumulative_coverage,
+                    "cumulative_coverage_db": cumulative_db,
+                    "current_functional_coverage": cumulative_coverage,
+                    "uncovered_bins": uncovered_bins,
+                    "iteration": next_iteration,
+                    "consecutive_failures": 0,
+                    "no_progress_count": state["no_progress_count"] + 1,
+                })
+
+    # Priority 3b: Check for parse_coverage results (coverage improvement tracking)
     # IMPORTANT: Only check the LATEST message to avoid re-processing old parse_coverage results
     # which would cause false no_progress_count increments after every tool call
     latest_msg = state["messages"][-1] if state["messages"] else None
@@ -514,7 +595,15 @@ def finalize_node(state: AgentState) -> AgentState:
     consecutive_failures = state.get("consecutive_failures", 0)
     token_count = count_message_tokens(state["messages"], config.model)
 
-    if cumulative_coverage >= 100.0:
+    func_cov_enabled = getattr(config, 'functional_coverage_enabled', False)
+    func_cov_target = getattr(config, 'functional_coverage_target', 100.0)
+    if func_cov_enabled:
+        effective_coverage = state.get("current_functional_coverage", 0.0)
+        coverage_complete = effective_coverage >= func_cov_target
+    else:
+        effective_coverage = cumulative_coverage
+        coverage_complete = effective_coverage >= 100.0
+    if coverage_complete:
         reason = "coverage_complete"
     elif token_count >= config.context_window:
         reason = "context_window_limit"
@@ -531,32 +620,51 @@ def finalize_node(state: AgentState) -> AgentState:
     else:
         reason = "unknown"
 
-    # Parse latest cumulative coverage for the report
+    # Parse latest coverage data for the report
     missed_coverage_info = ""
-    cumulative_db = get_cumulative_coverage_db()
-    if cumulative_db and Path(cumulative_db).exists():
-        try:
-            from ..tools.analysis import _adapter as coverage_adapter
-            if coverage_adapter is not None:
-                cumulative_result = coverage_adapter.parse_coverage(Path(cumulative_db))
-                annotated = _create_annotated_source(cumulative_result.uncovered_lines)
-                if annotated:
-                    missed_coverage_info = f"\n\n## Latest Missed Coverage\n\n{annotated}"
-        except Exception as e:
-            logging.warning(f"Failed to parse coverage in finalize: {e}")
+    if func_cov_enabled:
+        uncovered_bins = state.get("uncovered_bins", [])
+        if uncovered_bins:
+            bin_lines = [f"- {b.get('covergroup', '?')}.{b.get('coverpoint', '?')}: `{b.get('bin_name', '?')}`"
+                         for b in uncovered_bins[:20]]
+            missed_coverage_info = f"\n\n## Still Uncovered Bins\n\n" + "\n".join(bin_lines)
+    else:
+        cumulative_db = get_cumulative_coverage_db()
+        if cumulative_db and Path(cumulative_db).exists():
+            try:
+                from ..tools.analysis import _adapter as coverage_adapter
+                if coverage_adapter is not None:
+                    cumulative_result = coverage_adapter.parse_coverage(Path(cumulative_db))
+                    annotated = _create_annotated_source(cumulative_result.uncovered_lines)
+                    if annotated:
+                        missed_coverage_info = f"\n\n## Latest Missed Coverage\n\n{annotated}"
+            except Exception as e:
+                logging.warning(f"Failed to parse coverage in finalize: {e}")
+
+    if func_cov_enabled:
+        cov_line = f"Final functional coverage: {effective_coverage:.2f}%."
+        report_note = (
+            "The report MUST list all remaining uncovered bins and explain what stimulus "
+            "would be needed to close each one."
+        )
+    else:
+        cov_line = f"Final cumulative coverage: {cumulative_coverage:.2f}%."
+        report_note = (
+            "The report MUST classify ALL remaining uncovered lines by category "
+            "(unreachable, excludable, potential bugs, needs more effort). "
+            "Follow the report requirements from your instructions (Step 7)."
+        )
 
     finalize_message = (
         f"FRAMEWORK NOTICE: Verification terminated (reason: {reason}). "
-        f"Final cumulative coverage: {cumulative_coverage:.2f}%. "
+        f"{cov_line} "
         f"Iterations completed: {iteration - 1}.\n\n"
         f"You MUST now write your final run report to `report.md` using `write_file`. "
         f"This is your LAST turn — only `write_file` tool calls will be executed. "
-        f"Do NOT call `parse_coverage`, `read_file`, or any other tool. "
+        f"Do NOT call any analysis tools, `read_file`, or other tools. "
         f"If you need additional context you haven't already gathered, note it under "
         f"'Next Steps' in your report.\n\n"
-        f"The report MUST classify ALL remaining uncovered lines by category "
-        f"(unreachable, excludable, potential bugs, needs more effort). "
-        f"Follow the report requirements from your instructions (Step 7)."
+        f"{report_note}"
         f"{missed_coverage_info}"
     )
 
@@ -676,10 +784,15 @@ def create_react_graph() -> StateGraph:
     # Create graph
     graph = StateGraph(AgentState)
 
+    # Build a combined tool list that supports both coverage modes
+    # (the agent only binds the relevant subset, but ToolNode must know all tools)
+    from ..tools.analysis import parse_functional_coverage as _pfc
+    _all_tools = get_all_tools(functional_coverage=False) + ([_pfc] if _pfc is not None else [])
+
     # Add nodes
     graph.add_node("initialize", initialize_node)
     graph.add_node("agent", agent_node)
-    graph.add_node("tools", ToolNode(get_all_tools()))
+    graph.add_node("tools", ToolNode(_all_tools))
     graph.add_node("update_state", update_state_node)
 
     # Add edges
@@ -790,8 +903,14 @@ def create_react_graph() -> StateGraph:
 
         # Coverage complete: route to finalize so agent can write report
         cumulative = state.get("cumulative_coverage", 0.0)
-        if cumulative >= 100.0:
-            logging.info(f"Coverage complete ({cumulative:.2f}%) — routing to finalize")
+        func_cov_enabled = getattr(config, 'functional_coverage_enabled', False)
+        if func_cov_enabled:
+            cumulative = state.get("current_functional_coverage", 0.0)
+            target = getattr(config, 'functional_coverage_target', 100.0)
+        else:
+            target = 100.0
+        if cumulative >= target:
+            logging.info(f"{'Functional c' if func_cov_enabled else 'C'}overage complete ({cumulative:.2f}% >= {target:.1f}%) — routing to finalize")
             return _route("finalize", f"coverage_complete ({cumulative:.2f}%)")
 
         # Check termination conditions with UPDATED state — route to finalize so agent writes report.md
