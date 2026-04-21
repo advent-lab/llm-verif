@@ -40,6 +40,7 @@ from ..tools.analysis import _create_annotated_source
 from ..tools import set_tool_config
 
 from .agents.ag_crt_orchestrator import make_ag_crt_orchestrator_tools as _make_ag_crt_orchestrator_tools
+from ._uvm_helpers import prepare_uvm_workdir, build_uvm_prompt_context
 
 
 # ── Module-level state (non-serializable, set during graph creation) ──────
@@ -76,6 +77,17 @@ def initialize_node(state: MultiAgentState) -> MultiAgentState:
     module_registry = _build_module_registry(config)
     registry_summary = _format_module_registry(module_registry)
 
+    # ── UVM setup ─────────────────────────────────────────────────────────
+    uvm_prompt_kwargs = {}
+    if config.uvm_enabled:
+        prepare_uvm_workdir(config)
+        uvm_prompt_kwargs = build_uvm_prompt_context(config)
+        if uvm_prompt_kwargs.get('uvm_interface_name'):
+            config.uvm_interface_name = uvm_prompt_kwargs['uvm_interface_name']
+        if uvm_prompt_kwargs.get('uvm_env_class'):
+            config.uvm_env_class = uvm_prompt_kwargs['uvm_env_class']
+        (config.work_dir / "iterations").mkdir(parents=True, exist_ok=True)
+
     orchestrator_prompt = load_ag_crt_orchestrator_prompt(
         design_name=config.design_name,
         module_header=module_header,
@@ -87,6 +99,7 @@ def initialize_node(state: MultiAgentState) -> MultiAgentState:
         spec_path=str(config.spec_path),
         design_files=config.design_files,
         design_context_files=config.design_context_files,
+        **uvm_prompt_kwargs,
     )
 
     set_tool_config(config)
@@ -150,6 +163,14 @@ def initialize_node(state: MultiAgentState) -> MultiAgentState:
         "current_functional_coverage": 0.0,
         "max_functional_coverage": 0.0,
         "uncovered_bins": [],
+        # UVM mode
+        "uvm_enabled": config.uvm_enabled,
+        "uvm_coverage_mode": config.uvm_coverage_mode,
+        # Infrastructure modification
+        "infra_modification_enabled": False,
+        "original_driver_path": (
+            str(config.uvm_driver_file) if getattr(config, 'uvm_driver_file', None) else None
+        ),
         "is_done": False,
         "done_reason": None,
         "is_finalizing": False,

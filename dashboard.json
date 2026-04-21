@@ -3972,5 +3972,98 @@
     "spec": [
       "$(BASE_DIR)/jpegencode/spec/spec.md"
     ]
+  },
+  "cvdp_agentic_alu_uvm": {
+    "design": [
+      "$(BASE_DIR)/cvdp_agentic_alu/rtl/alu_core.sv"
+    ],
+    "design_context": [],
+    "spec": "$(BASE_DIR)/cvdp_agentic_alu/docs/alu_core_specification.md",
+    "uvm_testbench_dir": "$(BASE_DIR)/cvdp_agentic_alu/verif/UVM",
+    "uvm_filelist": "$(BASE_DIR)/cvdp_agentic_alu/verif/UVM/alu_core_list.f",
+    "uvm_sequence_file": "alu_core_seq.sv",
+    "uvm_top_module": "alu_core_Top",
+    "uvm_test_name": "alu_core_test",
+    "uvm_seq_item_file": "$(BASE_DIR)/cvdp_agentic_alu/verif/UVM/alu_core_seq_item.sv",
+    "uvm_coverage_module_file": "$(BASE_DIR)/cvdp_agentic_alu/verif/UVM/tb_alu_core.sv"
+  },
+  "cvdp_agentic_memory_scheduler_uvm": {
+    "design": [
+      "$(BASE_DIR)/cvdp_agentic_memory_scheduler/rtl/memory_scheduler.sv"
+    ],
+    "design_context": [],
+    "spec": "$(BASE_DIR)/cvdp_agentic_memory_scheduler/docs/specs.md",
+    "uvm_testbench_dir": "$(BASE_DIR)/cvdp_agentic_memory_scheduler/verif/UVM",
+    "uvm_filelist": "$(BASE_DIR)/cvdp_agentic_memory_scheduler/verif/UVM/memory_scheduler_list.f",
+    "uvm_sequence_file": "memory_scheduler_seq.sv",
+    "uvm_top_module": "memory_scheduler_Top",
+    "uvm_test_name": "memory_scheduler_test",
+    "uvm_seq_item_file": "$(BASE_DIR)/cvdp_agentic_memory_scheduler/verif/UVM/memory_scheduler_seq_item.sv",
+    "uvm_coverage_module_file": "$(BASE_DIR)/cvdp_agentic_memory_scheduler/verif/UVM/tb_memory_scheduler.sv"
+  },
+  "cvdp_agentic_rgb_color_space_conversion_uvm": {
+    "design": [
+      "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/rtl/rgb_color_space_hsv.sv"
+    ],
+    "design_context": [],
+    "spec": "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/docs/specification.md",
+    "uvm_testbench_dir": "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/verif/UVM",
+    "uvm_filelist": "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/verif/UVM/rgb_color_space_hsv_list.f",
+    "uvm_sequence_file": "rgb_color_space_hsv_seq.sv",
+    "uvm_top_module": "rgb_color_space_hsv_Top",
+    "uvm_test_name": "rgb_color_space_hsv_test",
+    "uvm_seq_item_file": "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/verif/UVM/rgb_color_space_hsv_seq_item.sv",
+    "uvm_coverage_module_file": "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/verif/UVM/tb_rgb_color_space_hsv.sv"
+  },
+  "sha1_top_uvm": {
+    "design": [
+      "$(BASE_DIR)/sha1_top/design/sha1.v"
+    ],
+    "design_context": [
+      "$(BASE_DIR)/sha1_top/design_context/sha1_w_mem.v",
+      "$(BASE_DIR)/sha1_top/design_context/sha1_core.v"
+    ],
+    "spec": [
+      "$(BASE_DIR)/sha1_top/spec/spec.md"
+    ],
+    "uvm_testbench_dir": "$(BASE_DIR)/sha1_top/verif/UVM",
+    "uvm_filelist": "$(BASE_DIR)/sha1_top/verif/UVM/sha1_list.f",
+    "uvm_sequence_file": "sha1_seq.sv",
+    "uvm_top_module": "sha1_Top",
+    "uvm_test_name": "sha1_test",
+    "uvm_seq_item_file": "$(BASE_DIR)/sha1_top/verif/UVM/sha1_seq_item.sv",
+    "uvm_coverage_module_file": "$(BASE_DIR)/sha1_top/verif/UVM/tb_sha1.sv"
+  },
+  "trng_top_uvm": {
+    "design": [
+      "$(BASE_DIR)/trng_top/design/trng.v"
+    ],
+    "design_context": [
+      "$(BASE_DIR)/trng_top/design_context/trng_csprng.v",
+      "$(BASE_DIR)/trng_top/design_context/trng_csprng_fifo.v",
+      "$(BASE_DIR)/trng_top/design_context/trng_mixer.v",
+      "$(BASE_DIR)/trng_top/design_context/chacha_qr.v",
+      "$(BASE_DIR)/trng_top/design_context/chacha_core.v",
+      "$(BASE_DIR)/trng_top/design_context/chacha.v",
+      "$(BASE_DIR)/trng_top/design_context/rosc_entropy.v",
+      "$(BASE_DIR)/trng_top/design_context/avalanche_entropy.v",
+      "$(BASE_DIR)/trng_top/design_context/trng_avalanche_entropy.v",
+      "$(BASE_DIR)/trng_top/design_context/pseudo_entropy.v",
+      "$(BASE_DIR)/trng_top/design_context/sha512.v",
+      "$(BASE_DIR)/trng_top/design_context/sha512_core.v",
+      "$(BASE_DIR)/trng_top/design_context/sha512_h_constants.v",
+      "$(BASE_DIR)/trng_top/design_context/sha512_k_constants.v",
+      "$(BASE_DIR)/trng_top/design_context/sha512_w_mem.v"
+    ],
+    "spec": [
+      "$(BASE_DIR)/trng_top/spec/spec.md"
+    ],
+    "uvm_testbench_dir": "$(BASE_DIR)/trng_top/verif/UVM",
+    "uvm_filelist": "$(BASE_DIR)/trng_top/verif/UVM/trng_list.f",
+    "uvm_sequence_file": "trng_seq.sv",
+    "uvm_top_module": "trng_Top",
+    "uvm_test_name": "trng_test",
+    "uvm_seq_item_file": "$(BASE_DIR)/trng_top/verif/UVM/trng_seq_item.sv",
+    "uvm_coverage_module_file": "$(BASE_DIR)/trng_top/verif/UVM/trng_tb.sv"
   }
 }

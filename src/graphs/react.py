@@ -5,6 +5,8 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, RemoveMessage
 import logging
 import json as _json
+import shutil
+import re as _re
 from pathlib import Path
 
 from ..state.schemas import AgentState
@@ -19,6 +21,53 @@ from ..utils.event_log import (
 from ..prompts.loader import load_system_prompt, load_functional_system_prompt
 from ..tools import get_all_tools, set_tool_config
 from ..tools.analysis import get_cumulative_coverage_db, _create_annotated_source
+from ._uvm_helpers import prepare_uvm_workdir, build_uvm_prompt_context
+
+
+# ── Helpers ────────────────────────────────────────────────────────────────────
+
+def _get_functional_coverage(state: AgentState) -> float:
+    """Get the current functional coverage from state or cumulative report on disk."""
+    funcov = state.get("current_functional_coverage", 0.0)
+    if funcov > 0.0:
+        return funcov
+
+    config = state["config"]
+    if not getattr(config, 'uvm_enabled', False):
+        return 0.0
+
+    report_path = config.work_dir / "coverage" / "cumulative_functional_coverage.txt"
+    if report_path.exists():
+        try:
+            from ..utils.questasim import parse_functional_coverage_text
+            result = parse_functional_coverage_text(report_path)
+            return result.get('total_coverage', 0.0)
+        except Exception:
+            pass
+    return 0.0
+
+
+def _signal_done_accepted(state: AgentState) -> bool:
+    """Return True if the agent's signal_done call meets a valid termination condition."""
+    config = state["config"]
+    if state.get("cumulative_coverage", 0.0) >= 100.0:
+        return True
+    if getattr(config, 'uvm_enabled', False):
+        if getattr(config, 'uvm_coverage_mode', 'functional') == "functional":
+            funcov = _get_functional_coverage(state)
+            target = getattr(config, 'functional_coverage_target', 100.0)
+            if funcov >= target:
+                return True
+    if state["consecutive_failures"] >= config.max_retries:
+        return True
+    if state["no_progress_count"] >= config.max_no_progress:
+        return True
+    if state["api_calls"] >= config.max_iterations:
+        return True
+    if state["iteration"] > config.max_iterations:
+        return True
+    return False
+
 
 def initialize_node(state: AgentState) -> AgentState:
     """
@@ -50,8 +99,34 @@ def initialize_node(state: AgentState) -> AgentState:
     # Extract module headers from all design files
     module_header = extract_all_module_headers(config.design_files)
 
+    # ── UVM setup: prepare .f file, read context files ────────────────────
+    uvm_prompt_kwargs = {}
+    if config.uvm_enabled:
+        prepare_uvm_workdir(config)
+        uvm_prompt_kwargs = build_uvm_prompt_context(config)
+        # Store detected names on config for use by validators
+        if uvm_prompt_kwargs.get('uvm_interface_name'):
+            config.uvm_interface_name = uvm_prompt_kwargs['uvm_interface_name']
+        if uvm_prompt_kwargs.get('uvm_env_class'):
+            config.uvm_env_class = uvm_prompt_kwargs['uvm_env_class']
+
     # Construct system prompt (mode-aware)
-    if config.functional_coverage_enabled:
+    if config.uvm_enabled:
+        system_prompt = load_system_prompt(
+            design_name=config.design_name,
+            design_dir=config.design_dir,
+            spec_path=config.spec_path,
+            design_files=config.design_files,
+            design_context_files=config.design_context_files,
+            module_header=module_header,
+            design_context_enabled=config.design_context_enabled,
+            testplan_enabled=config.testplan_enabled,
+            max_iterations=config.max_iterations,
+            sim_runs=config.sim_runs,
+            sim_timeout=config.sim_timeout,
+            **uvm_prompt_kwargs,
+        )
+    elif config.functional_coverage_enabled:
         system_prompt = load_functional_system_prompt(
             design_name=config.design_name,
             design_dir=config.design_dir,
@@ -82,8 +157,8 @@ def initialize_node(state: AgentState) -> AgentState:
         )
 
     # Set config for tools
-    config.current_iteration = 1  # Start at iteration 1
-    config.current_attempt = 1  # Start at attempt 1
+    config.current_iteration = 1
+    config.current_attempt = 1
     set_tool_config(config)
 
     # Initialize structured JSONL event log
@@ -100,7 +175,23 @@ def initialize_node(state: AgentState) -> AgentState:
         "module_header": module_header,
     })
 
-    init_human_msg = "Begin verification. Start by reading the specification."
+    # Choose appropriate initial human message
+    if config.uvm_enabled:
+        if config.uvm_coverage_mode == "line":
+            init_human_msg = (
+                "Begin UVM verification. Start by reading the specification. "
+                "Then generate UVM sequences and a test file to achieve "
+                "maximum line/statement coverage of the RTL design."
+            )
+        else:
+            init_human_msg = (
+                "Begin UVM verification. Start by reading the specification. "
+                "Then generate UVM sequences and a test file to achieve both "
+                "code and functional coverage."
+            )
+    else:
+        init_human_msg = "Begin verification. Start by reading the specification."
+
     emit("human_message", {
         "source": "init",
         "content": init_human_msg,
@@ -112,13 +203,13 @@ def initialize_node(state: AgentState) -> AgentState:
             SystemMessage(content=system_prompt),
             HumanMessage(content=init_human_msg)
         ],
-        "config": config,  # Store config in state to avoid repeated loading
+        "config": config,
         "design_name": config.design_name,
         "design_dir": str(config.design_dir),
         "spec_path": str(config.spec_path),
         "design_files": [str(f) for f in config.design_files],
         "design_context_files": [str(f) for f in config.design_context_files],
-        "rtl_dir": str(config.design_dir),  # Deprecated, kept for compatibility
+        "rtl_dir": str(config.design_dir),
         "module_header": module_header,
         "work_dir": str(config.work_dir),
         "iteration": 1,
@@ -135,6 +226,14 @@ def initialize_node(state: AgentState) -> AgentState:
         "current_functional_coverage": 0.0,
         "max_functional_coverage": 0.0,
         "uncovered_bins": [],
+        # UVM mode
+        "uvm_enabled": config.uvm_enabled,
+        "uvm_coverage_mode": config.uvm_coverage_mode,
+        # Infrastructure modification
+        "infra_modification_enabled": False,
+        "original_driver_path": (
+            str(config.uvm_driver_file) if getattr(config, 'uvm_driver_file', None) else None
+        ),
         "is_done": False,
         "done_reason": None,
         "is_finalizing": False,
@@ -452,6 +551,18 @@ def update_state_node(state: AgentState) -> AgentState:
                 else:
                     delta["current_coverage"] = iteration_coverage
                 return _emit_and_return("verification_cycle_no_improvement", delta)
+
+    # Priority 0b: request_infra_modification → enable infra mod in state
+    for msg in reversed(state["messages"][-5:]):
+        if hasattr(msg, 'name') and msg.name == 'request_infra_modification':
+            result = parse_tool_result(msg.content)
+            if result.get('infra_modification_granted'):
+                if not state.get("infra_modification_enabled", False):
+                    logging.info(
+                        f"{Colors.MAGENTA}INFRASTRUCTURE MODIFICATION GRANTED{Colors.RESET}"
+                    )
+                return _emit_and_return("infra_mod_granted", {"infra_modification_enabled": True})
+            break
 
     # Priority 1: Check for compile_design failures
     for msg in reversed(state["messages"][-5:]):
@@ -822,29 +933,82 @@ def create_react_graph() -> StateGraph:
                 if write_calls:
                     last_message.tool_calls = write_calls
                     return _route("tools", "finalize: executing write_file")
+                # Non-write_file tool calls must still flush through tools
+                return _route("tools", "finalize: flush non-write_file tool calls")
             return _route(END, "finalize: no write_file call, ending")
 
-        # Check termination conditions — route to finalize so agent writes report.md
+        # ── Handle signal_done tool call ────────────────────────────────────
+        if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+            for tool_call in last_message.tool_calls:
+                if tool_call.get('name') == 'signal_done':
+                    reason = tool_call.get('args', {}).get('reason', 'unknown')
+                    logging.info(f"Agent called signal_done with reason: {reason}")
+
+                    if reason == "coverage_complete":
+                        cumulative_cov = state.get("cumulative_coverage", 0.0)
+                        funcov = _get_functional_coverage(state)
+                        funcov_target = getattr(config, 'functional_coverage_target', 100.0)
+                        uvm_mode = getattr(config, 'uvm_enabled', False)
+                        uvm_cov_mode = getattr(config, 'uvm_coverage_mode', 'functional')
+                        if cumulative_cov >= 100.0 or (
+                            uvm_mode and uvm_cov_mode == "functional" and funcov >= funcov_target
+                        ):
+                            logging.info(
+                                f"✓ Accepting signal_done: coverage target met! "
+                                f"(code={cumulative_cov:.1f}%, funcov={funcov:.1f}%)"
+                            )
+                            return _route("finalize", "signal_done: coverage_complete")
+                        else:
+                            logging.warning(
+                                f"⚠️  Agent claimed coverage_complete but coverage is "
+                                f"{cumulative_cov:.1f}%"
+                            )
+
+                    if _signal_done_accepted(state):
+                        logging.info(f"✓ Accepting signal_done: {reason}")
+                        return _route("finalize", f"signal_done: {reason}")
+                    else:
+                        # Increment no_progress_count so repeated signal_done
+                        # calls eventually trigger termination.
+                        state["no_progress_count"] = state.get("no_progress_count", 0) + 1
+                        logging.warning(
+                            f"⚠️  REJECTING signal_done: termination conditions not met\n"
+                            f"   no_progress_count: {state['no_progress_count']}/{config.max_no_progress}\n"
+                            f"   api_calls: {state['api_calls']}/{config.max_iterations}"
+                        )
+                        break  # Fall through to normal tool processing
+
+        # ── Check hard termination conditions ──────────────────────────────
         if state["api_calls"] >= config.max_iterations:
             logging.info(f"Max API calls reached: {state['api_calls']}/{config.max_iterations} — routing to finalize")
+            if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+                return _route("tools", "hard_termination_flush_pending_tools")
             return _route("finalize", f"max_api_calls ({state['api_calls']}/{config.max_iterations})")
 
         if state["iteration"] > config.max_iterations:
             logging.info(f"Max coverage iterations reached: {state['iteration']}/{config.max_iterations} — routing to finalize")
+            if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+                return _route("tools", "hard_termination_flush_pending_tools")
             return _route("finalize", f"max_iterations ({state['iteration']}/{config.max_iterations})")
 
         if state["consecutive_failures"] >= config.max_retries:
             logging.info(f"Max retries reached — routing to finalize")
+            if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+                return _route("tools", "hard_termination_flush_pending_tools")
             return _route("finalize", f"max_retries ({state['consecutive_failures']}/{config.max_retries})")
 
         if state["no_progress_count"] >= config.max_no_progress:
-            logging.info(f"No progress after {state['no_progress_count']} attempts (MAX_NO_PROGRESS={config.max_no_progress}) - cumulative coverage stuck at {state.get('cumulative_coverage', 0.0):.2f}% — routing to finalize")
+            logging.info(f"No progress after {state['no_progress_count']} attempts — routing to finalize")
+            if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+                return _route("tools", "hard_termination_flush_pending_tools")
             return _route("finalize", f"max_no_progress ({state['no_progress_count']}/{config.max_no_progress})")
 
         # Check context window limit
         token_count = count_message_tokens(state["messages"], config.model)
         if token_count >= config.context_window:
-            logging.info(f"Context window limit reached: {format_token_count(token_count, config.context_window)} (CONTEXT_WINDOW={config.context_window:,}) — routing to finalize")
+            logging.info(f"Context window limit reached: {format_token_count(token_count, config.context_window)} — routing to finalize")
+            if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+                return _route("tools", "hard_termination_flush_pending_tools")
             return _route("finalize", f"context_window_limit ({token_count:,}/{config.context_window:,})")
 
         # Route to tools if tool calls present

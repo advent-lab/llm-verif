@@ -23,7 +23,14 @@ class DesignConfig:
         design_files: List[Path],
         design_context_files: List[Path],
         compile_deps_files: List[Path] = None,
-        functional_coverage_testbench_path: Optional[Path] = None
+        functional_coverage_testbench_path: Optional[Path] = None,
+        uvm_testbench_dir: Optional[Path] = None,
+        uvm_filelist: Optional[Path] = None,
+        uvm_sequence_file: Optional[str] = None,
+        uvm_top_module: Optional[str] = None,
+        uvm_test_name: Optional[str] = None,
+        uvm_seq_item_file: Optional[Path] = None,
+        uvm_coverage_module_file: Optional[Path] = None,
     ):
         self.design_name = design_name
         self.spec_path = spec_path
@@ -31,14 +38,22 @@ class DesignConfig:
         self.design_context_files = design_context_files
         self.compile_deps_files = compile_deps_files or []
         self.functional_coverage_testbench_path = functional_coverage_testbench_path
+        self.uvm_testbench_dir = uvm_testbench_dir
+        self.uvm_filelist = uvm_filelist
+        self.uvm_sequence_file = uvm_sequence_file
+        self.uvm_top_module = uvm_top_module
+        self.uvm_test_name = uvm_test_name
+        self.uvm_seq_item_file = uvm_seq_item_file
+        self.uvm_coverage_module_file = uvm_coverage_module_file
 
     def __repr__(self):
+        uvm_str = ", uvm=True" if self.uvm_filelist else ""
         return (
             f"DesignConfig(name={self.design_name}, "
             f"spec={self.spec_path.name}, "
             f"design_files={len(self.design_files)}, "
             f"context_files={len(self.design_context_files)}, "
-            f"compile_deps={len(self.compile_deps_files)})"
+            f"compile_deps={len(self.compile_deps_files)}{uvm_str})"
         )
 
 
@@ -244,12 +259,42 @@ def get_design_from_dashboard(
             else:
                 logger.warning(f"Functional coverage testbench not found (skipping): {verif_path}")
 
+    # Extract optional UVM fields
+    uvm_testbench_dir = None
+    uvm_filelist = None
+    uvm_sequence_file = design_entry.get("uvm_sequence_file")
+    uvm_top_module = design_entry.get("uvm_top_module")
+    uvm_test_name = design_entry.get("uvm_test_name")
+    uvm_seq_item_file = None
+    uvm_coverage_module_file = None
+
+    if "uvm_testbench_dir" in design_entry:
+        uvm_tb_str = _resolve_variables(design_entry["uvm_testbench_dir"], variables)
+        uvm_testbench_dir = Path(uvm_tb_str)
+        if not uvm_testbench_dir.exists():
+            logger.warning(f"UVM testbench dir not found: {uvm_testbench_dir}")
+
+    if "uvm_filelist" in design_entry:
+        uvm_fl_str = _resolve_variables(design_entry["uvm_filelist"], variables)
+        uvm_filelist = Path(uvm_fl_str)
+        if not uvm_filelist.exists():
+            logger.warning(f"UVM filelist not found: {uvm_filelist}")
+
+    if "uvm_seq_item_file" in design_entry:
+        uvm_si_str = _resolve_variables(design_entry["uvm_seq_item_file"], variables)
+        uvm_seq_item_file = Path(uvm_si_str)
+
+    if "uvm_coverage_module_file" in design_entry:
+        uvm_cm_str = _resolve_variables(design_entry["uvm_coverage_module_file"], variables)
+        uvm_coverage_module_file = Path(uvm_cm_str)
+
     # Log summary
+    uvm_str = ", uvm=True" if uvm_filelist else ""
     logger.info(
         f"Loaded {design_name}: "
         f"{len(design_files)} design file(s), "
         f"{len(design_context_files)} context file(s), "
-        f"{len(compile_deps_files)} compile dep(s)"
+        f"{len(compile_deps_files)} compile dep(s){uvm_str}"
     )
 
     return DesignConfig(
@@ -258,7 +303,14 @@ def get_design_from_dashboard(
         design_files=design_files,
         design_context_files=design_context_files,
         compile_deps_files=compile_deps_files,
-        functional_coverage_testbench_path=func_cov_tb_path
+        functional_coverage_testbench_path=func_cov_tb_path,
+        uvm_testbench_dir=uvm_testbench_dir,
+        uvm_filelist=uvm_filelist,
+        uvm_sequence_file=uvm_sequence_file,
+        uvm_top_module=uvm_top_module,
+        uvm_test_name=uvm_test_name,
+        uvm_seq_item_file=uvm_seq_item_file,
+        uvm_coverage_module_file=uvm_coverage_module_file,
     )
 
 

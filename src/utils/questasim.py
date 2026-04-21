@@ -414,3 +414,92 @@ def parse_coverage_xml(xml_path: Path) -> Tuple[float, Dict[str, float], Dict[st
     except (ET.ParseError, FileNotFoundError) as e:
         logging.error(f"Coverage XML parsing failed: {e}")
         return 0.0, {}, {}
+
+
+# ── UVM command builders ───────────────────────────────────────────────────
+# UVM 3-step compile flow:
+#   1. vlib work  +  vlib uvm_lib
+#   2. vlog -sv -work uvm_lib +incdir+$UVM_HOME/src uvm_pkg.sv
+#   3. vmap mtiUvm uvm_lib  (redirect QuestaSim's built-in 1.1d → our 1.2)
+#   4. vlog -sv -mfcu -L uvm_lib -f filelist.f
+#   5. vopt +acc <Top> -L uvm_lib -o opt_top +cover=bcestf
+#
+# The vmap step is critical: without it QuestaSim auto-loads mtiUvm (1.1d)
+# alongside our uvm_lib (1.2) causing factory registration failures (INVTST).
+
+def build_uvm_vlib_uvm_command(simulator_path: Path) -> List[str]:
+    """Build vlib command to create a dedicated UVM library."""
+    return [str(simulator_path / "vlib"), "uvm_lib"]
+
+
+def build_uvm_vlog_uvm_command(simulator_path: Path, uvm_home: str) -> List[str]:
+    """Compile UVM 1.2 from source into ``uvm_lib``.
+
+    Compiled from source rather than using the pre-compiled library because
+    QuestaSim 2025.x added stricter type checks that reject classes compiled
+    with older versions (vsim-12460, vsim-8754).
+    """
+    return [
+        str(simulator_path / "vlog"),
+        "-sv",
+        "-work", "uvm_lib",
+        "+incdir+" + uvm_home + "/src",
+        uvm_home + "/src/uvm_pkg.sv",
+    ]
+
+
+def build_uvm_vmap_command(simulator_path: Path) -> List[str]:
+    """Redirect ``mtiUvm`` to our freshly compiled ``uvm_lib``.
+
+    QuestaSim's modelsim.ini maps mtiUvm → uvm-1.1d and LibrarySearchPath
+    auto-loads mtiUvm during elaboration. Without this vmap, both UVM 1.1d
+    and our UVM 1.2 are loaded, causing factory registration to silently
+    fail (INVTST).
+    """
+    return [str(simulator_path / "vmap"), "mtiUvm", "uvm_lib"]
+
+
+def build_uvm_vlog_design_command(simulator_path: Path, filelist: Path, uvm_home: str) -> List[str]:
+    """Compile design + testbench files with ``-mfcu -L uvm_lib``."""
+    return [
+        str(simulator_path / "vlog"),
+        "-sv",
+        "-mfcu",
+        "+incdir+" + uvm_home + "/src",
+        "-L", "uvm_lib",
+        "-f", str(filelist),
+    ]
+
+
+def build_uvm_vopt_command(simulator_path: Path, top_module: str) -> List[str]:
+    """Build vopt optimization command with full coverage instrumentation."""
+    return [
+        str(simulator_path / "vopt"),
+        "+acc",
+        top_module,
+        "-L", "uvm_lib",
+        "-o", "opt_top",
+        "+cover=bcestf",
+    ]
+
+
+def build_uvm_vsim_command(
+    simulator_path: Path,
+    ucdb_path: Path,
+    test_name: str,
+    dpi_lib: str,
+    seed: str = "random",
+) -> List[str]:
+    """Build vsim simulation command for UVM with coverage collection."""
+    do_script = f"coverage save -onexit {ucdb_path}; run -all; quit"
+    return [
+        str(simulator_path / "vsim"),
+        "-c",
+        "opt_top",
+        "-coverage",
+        "-sv_seed", seed,
+        "-sv_lib", dpi_lib,
+        f"+UVM_TESTNAME={test_name}",
+        "+UVM_VERBOSITY=UVM_HIGH",
+        "-do", do_script,
+    ]

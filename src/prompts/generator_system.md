@@ -62,10 +62,12 @@ You are a ReAct agent. Use tools to write, compile, and simulate your testbench.
 - Do not add extra complexity beyond what the task requires
 - If the task describes specific signal values, timing, or sequences — follow them precisely
 - The task description contains analysis from a Design Expert — trust its guidance on protocols and signal semantics
+
+{uvm_instructions}
 ```
 
 ---
 
 ## Conditional Sections
 
-(none — generator prompt has no template variables; all context comes via dispatch message)
+(none — generator prompt has no variables in non-UVM mode; UVM kwargs are injected when uvm_enabled=True)

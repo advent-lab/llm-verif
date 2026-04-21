@@ -29,6 +29,29 @@ from ...utils.event_log import emit
 from ...utils.conversation_logger import make_generator_logger
 
 
+def _read_file_safe(path) -> str:
+    """Read a file safely, returning empty string if not found."""
+    if path and Path(path).exists():
+        try:
+            return Path(path).read_text(encoding='utf-8', errors='ignore')
+        except Exception:
+            pass
+    return ""
+
+
+def _list_uvm_tb_files(config) -> list:
+    """List UVM testbench infrastructure files (fixed, not generated)."""
+    files = []
+    tb_dir = getattr(config, 'uvm_testbench_dir', None)
+    seq_file = getattr(config, 'uvm_sequence_file', None)
+    test_file = f"{config.uvm_test_name}.sv" if getattr(config, 'uvm_test_name', None) else None
+    if tb_dir and Path(tb_dir).exists():
+        for f in sorted(Path(tb_dir).iterdir()):
+            if f.suffix == '.sv' and f.name != seq_file and f.name != test_file:
+                files.append(str(f))
+    return files
+
+
 def make_generator_tools(
     config: Config,
     iteration: int,
@@ -71,6 +94,20 @@ def make_generator_tools(
         adapter = VerilatorAdapter(config.simulator_path)
     else:
         raise ValueError(f"Unsupported simulator type: {simulator_type}")
+
+    # If UVM mode, pass UVM config to the adapter
+    if getattr(config, 'uvm_enabled', False) and hasattr(adapter, 'set_uvm_config'):
+        uvm_cfg = {
+            'filelist': str(config.uvm_filelist),
+            'top_module': config.uvm_top_module,
+            'test_name': config.uvm_test_name,
+            'dpi_lib': config.uvm_dpi_lib,
+            'uvm_home': config.uvm_home,
+            'testbench_dir': str(config.uvm_testbench_dir) if config.uvm_testbench_dir else None,
+            'sequence_file': config.uvm_sequence_file,
+        }
+        adapter.set_uvm_config(uvm_cfg)
+        logging.info(f"Generator {gen_id}: UVM config set on adapter")
 
     # Initialize QuestaSim work library in generator's sim directory
     if simulator_type == 'questasim':
@@ -125,26 +162,48 @@ def make_generator_tools(
             retry_state["compile_attempts"] += 1
             retry_num = retry_state["compile_attempts"]
 
-            tb_path = (config.work_dir / testbench_path).resolve()
-            if not tb_path.exists():
-                return {"success": False, "error": f"Testbench not found: {testbench_path}"}
-
-            design_files = config.design_context_files + config.design_files
-            compile_deps_files = getattr(config, 'compile_deps_files', [])
-
-            # Functional coverage: inject stimulus body into the user's template.
-            # The patched file is compiled as the testbench; template is NOT
-            # prepended to design_files — it is baked into the injected file.
+            uvm_mode = getattr(config, 'uvm_enabled', False)
             func_cov_enabled = getattr(config, 'functional_coverage_enabled', False)
-            if func_cov_enabled:
-                func_cov_tb = getattr(config, 'functional_coverage_testbench_path', None)
-                if func_cov_tb:
-                    from ...utils.questasim import inject_stimulus_into_template
-                    injected_path = tb_path.parent / f"{tb_path.stem}_injected.sv"
-                    try:
-                        tb_path = inject_stimulus_into_template(func_cov_tb, tb_path, injected_path)
-                    except ValueError as e:
-                        return {"success": False, "error": str(e)}
+
+            if uvm_mode:
+                # UVM mode: pre-compile validation then delegate entirely to adapter
+                from ...validators.uvm_validator import validate_uvm_files
+                passed, val_errors = validate_uvm_files(
+                    work_dir=config.work_dir,
+                    sequence_file=config.uvm_sequence_file,
+                    test_name=config.uvm_test_name,
+                    interface_name=getattr(config, 'uvm_interface_name', None),
+                    env_class=getattr(config, 'uvm_env_class', None),
+                    top_module=config.uvm_top_module,
+                )
+                if not passed:
+                    fix_instructions = "\n".join(f"- {e}" for e in val_errors)
+                    return {
+                        "success": False,
+                        "error": "Pre-compile validation failed. Fix these issues before compiling:",
+                        "validation_errors": fix_instructions,
+                        "stdout": f"STATIC VALIDATION FAILED ({len(val_errors)} issues):\n{fix_instructions}",
+                    }
+                tb_path = None
+                design_files = []
+                compile_deps_files = []
+            else:
+                tb_path = (config.work_dir / testbench_path).resolve()
+                if not tb_path.exists():
+                    return {"success": False, "error": f"Testbench not found: {testbench_path}"}
+
+                design_files = config.design_context_files + config.design_files
+                compile_deps_files = getattr(config, 'compile_deps_files', [])
+
+                if func_cov_enabled:
+                    func_cov_tb = getattr(config, 'functional_coverage_testbench_path', None)
+                    if func_cov_tb:
+                        from ...utils.questasim import inject_stimulus_into_template
+                        injected_path = tb_path.parent / f"{tb_path.stem}_injected.sv"
+                        try:
+                            tb_path = inject_stimulus_into_template(func_cov_tb, tb_path, injected_path)
+                        except ValueError as e:
+                            return {"success": False, "error": str(e)}
 
             result = adapter.compile(
                 testbench_path=tb_path,
@@ -154,6 +213,19 @@ def make_generator_tools(
                 compile_deps_files=compile_deps_files,
                 functional_coverage=func_cov_enabled,
             )
+
+            # Post-compile UVM verification
+            if uvm_mode and result.get("success", False):
+                from ...validators.uvm_validator import verify_compile_log
+                post_ok, post_warnings = verify_compile_log(
+                    stdout=result.get("stdout", ""),
+                    stderr=result.get("stderr", ""),
+                )
+                if post_warnings:
+                    warn_text = "\n".join(f"- {w}" for w in post_warnings)
+                    result["success"] = False
+                    result["error"] = "Post-compile verification failed"
+                    result["post_compile_warnings"] = warn_text
 
             # Log naming: compile_iter_{N}_gen_{id}.log or _retry_{M}
             if retry_num == 1:
@@ -322,8 +394,21 @@ def dispatch_generator(
         if config.reasoning_effort != "disabled":
             llm_kwargs["reasoning_effort"] = config.reasoning_effort
 
-        # Load system prompt
-        system_prompt = load_generator_prompt()
+        # Load system prompt (UVM-aware)
+        uvm_kwargs = {}
+        if getattr(config, 'uvm_enabled', False):
+            uvm_kwargs = {
+                'uvm_enabled': True,
+                'uvm_seq_item_content': _read_file_safe(config.uvm_seq_item_file),
+                'uvm_coverage_module_content': _read_file_safe(config.uvm_coverage_module_file),
+                'uvm_sequence_file': config.uvm_sequence_file,
+                'uvm_test_name': config.uvm_test_name,
+                'uvm_testbench_files': _list_uvm_tb_files(config),
+                'uvm_interface_name': getattr(config, 'uvm_interface_name', None),
+                'uvm_env_class': getattr(config, 'uvm_env_class', None),
+                'uvm_coverage_mode': config.uvm_coverage_mode,
+            }
+        system_prompt = load_generator_prompt(**uvm_kwargs)
 
         # Create fresh agent
         gen_agent = create_agent(
@@ -334,8 +419,13 @@ def dispatch_generator(
         )
 
         # Build testbench path for this generator
-        tb_filename = f"tb_iter_{iteration}_gen_{gen_id}.sv"
-        tb_path = f"testbenches/{tb_filename}"
+        # In UVM mode the sequence/test filenames are fixed; use sequence file as tb_path
+        if getattr(config, 'uvm_enabled', False):
+            tb_filename = config.uvm_sequence_file
+            tb_path = f"testbenches/{tb_filename}"
+        else:
+            tb_filename = f"tb_iter_{iteration}_gen_{gen_id}.sv"
+            tb_path = f"testbenches/{tb_filename}"
 
         # Build task message
         task_parts = [

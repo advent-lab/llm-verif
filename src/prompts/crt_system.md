@@ -130,6 +130,8 @@ When your task specifies functional coverage (stimulus-only mode):
 - Keep testbenches focused on the target area described in your task
 - Maximum compile/simulation retries: follow your task instructions
 - All design context you need is in your task message — use it directly
+
+{uvm_instructions}
 ```
 
 ---

@@ -154,3 +154,49 @@ def run_verification_cycle(
             f"cumulative coverage: {cumulative:.2f}%"
         )
     return result
+
+
+@tool
+def signal_done(reason: str) -> Dict[str, Any]:
+    """Signal verification completion. Framework validates termination conditions.
+
+    CRITICAL: Only call this when you believe termination conditions are met.
+    The framework will validate your request and may reject it.
+
+    Args:
+        reason: Why you're stopping. Must be one of:
+            - "coverage_complete": Achieved 100% (or target) coverage
+            - "no_progress": Tried many iterations with no improvement
+            - "max_iterations": Reached iteration limit
+
+    Returns:
+        Dictionary — framework handles actual termination validation.
+    """
+    valid_reasons = ["coverage_complete", "no_progress", "max_iterations"]
+
+    if reason not in valid_reasons:
+        return {
+            "success": False,
+            "error": f"Invalid reason '{reason}'. Must be one of: {valid_reasons}",
+            "instruction": "Use a valid termination reason."
+        }
+
+    # Always reject here — the routing logic in the graph checks actual conditions.
+    # This prevents infinite loops where the agent keeps calling signal_done.
+    return {
+        "success": False,
+        "message": (
+            f"Termination request '{reason}' received but REJECTED by framework: "
+            f"Termination conditions not yet met."
+        ),
+        "instruction": (
+            "You must continue working. Generate a NEW testbench targeting uncovered "
+            "lines/bins. Analyze the latest coverage report, identify gaps, and create "
+            "stimulus to hit those areas. Do NOT call signal_done again until you've "
+            "made multiple more attempts to improve coverage."
+        ),
+        "next_action": (
+            "Read coverage report → Identify uncovered areas → "
+            "Generate new testbench → Compile → Simulate → Check coverage → Repeat"
+        ),
+    }

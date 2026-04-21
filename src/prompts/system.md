@@ -261,6 +261,8 @@ When targeting uncovered lines, think in terms of input-to-path reachability:
 
 When coverage stalls: re-read the spec, try fundamentally different stimulus, reason about exact input sequences needed.
 
+{uvm_instructions}
+
 ## Rules
 
 1. **Every response MUST include a tool call** — never respond with text only

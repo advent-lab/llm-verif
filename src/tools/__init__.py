@@ -6,7 +6,7 @@ import os
 TEST_MODE = os.getenv("TEST_MODE", "0") == "1"
 
 # Always import filesystem tools (no simulator dependency)
-from .filesystem import read_file, write_file, list_directory
+from .filesystem import read_file, write_file, list_directory, request_infra_modification
 
 # Conditionally import simulation/analysis tools
 if TEST_MODE:
@@ -23,7 +23,7 @@ else:
 
 # Import filesystem and workflow modules for config
 from . import filesystem
-from .workflow import run_verification_cycle
+from .workflow import run_verification_cycle, signal_done
 from . import workflow
 
 def get_all_tools(functional_coverage: bool = False):
@@ -40,6 +40,8 @@ def get_all_tools(functional_coverage: bool = False):
         compile_design,
         run_simulation,
         run_verification_cycle,
+        signal_done,
+        request_infra_modification,
     ]
     if functional_coverage and parse_functional_coverage is not None:
         tools.append(parse_functional_coverage)

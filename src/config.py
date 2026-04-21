@@ -50,6 +50,23 @@ class Config:
     # LangGraph
     recursion_limit: int  # LangGraph graph recursion limit
 
+    # ── UVM Mode ──────────────────────────────────────────────────────────
+    # When True, compilation uses UVM 3-step flow (vlib → vlog → vopt),
+    # simulation uses optimized design with UVM flags, and the LLM generates
+    # UVM sequence + test files instead of complete testbenches.
+    uvm_enabled: bool
+    uvm_coverage_mode: str                # "functional" (default) or "line"
+    uvm_testbench_dir: Optional[Path]     # Dir containing UVM TB components
+    uvm_filelist: Optional[Path]          # .f file listing all UVM sources
+    uvm_sequence_file: Optional[str]      # Filename of sequence file to generate
+    uvm_top_module: Optional[str]         # Top-level module name (e.g., alu_core_Top)
+    uvm_test_name: Optional[str]          # UVM test class name (e.g., alu_core_test)
+    uvm_home: Optional[str]               # UVM 1.2 install root
+    uvm_dpi_lib: Optional[str]            # Path to UVM DPI shared library
+    uvm_seq_item_file: Optional[Path]     # Path to seq_item file (for LLM context)
+    uvm_coverage_module_file: Optional[Path]  # Path to passive coverage module
+    # ────────────────────────────────────────────────────────────────────────
+
     # Multi-agent (v2 / v2.1)
     architecture: str  # "v1", "v2", or "v2.1" — selects which graph to build
     orchestrator_model: str  # Model for orchestrator agent (both v2 and v2.1)
@@ -70,6 +87,10 @@ class Config:
 
     # Runtime tracking (mutable)
     current_iteration: int = 1
+    # Auto-detected UVM names (populated at init, used by validators)
+    uvm_interface_name: Optional[str] = None   # e.g., alu_core_if
+    uvm_env_class: Optional[str] = None        # e.g., alu_core_env
+    uvm_driver_file: Optional[Path] = None     # Auto-detected driver file path
     current_attempt: int = 1  # Tracks all compilation/simulation attempts (always increments)
 
     # Iteration-based retry tracking (for log naming)
@@ -187,7 +208,8 @@ def load_config() -> Config:
 
     model = os.getenv("MODEL", "gpt-4o")
 
-    # Functional coverage configuration
+    # ── Functional Coverage Configuration ──────────────────────────────────
+    uvm_will_be_enabled = os.getenv("UVM_ENABLED", "0") == "1"
     func_cov_enabled = os.getenv("FUNCTIONAL_COVERAGE_ENABLED", "0") == "1"
     func_cov_target = float(os.getenv("FUNCTIONAL_COVERAGE_TARGET", "100.0"))
     func_cov_tb_env = os.getenv("FUNCTIONAL_COVERAGE_TESTBENCH")
@@ -196,7 +218,7 @@ def load_config() -> Config:
         func_cov_tb_path = Path(func_cov_tb_env)
     elif hasattr(design_config, 'functional_coverage_testbench_path') and design_config.functional_coverage_testbench_path:
         func_cov_tb_path = design_config.functional_coverage_testbench_path
-    if func_cov_enabled and not test_mode:
+    if func_cov_enabled and not uvm_will_be_enabled and not test_mode:
         if func_cov_tb_path is None:
             raise ValueError(
                 "FUNCTIONAL_COVERAGE_ENABLED=1 requires a testbench template. "
@@ -204,6 +226,80 @@ def load_config() -> Config:
             )
         if not func_cov_tb_path.exists():
             raise ValueError(f"Functional coverage testbench not found: {func_cov_tb_path}")
+    # ────────────────────────────────────────────────────────────────────────
+
+    # ── UVM Mode Configuration ────────────────────────────────────────────
+    uvm_enabled = uvm_will_be_enabled
+    uvm_coverage_mode = "functional"  # Default; overridden below if UVM enabled
+    uvm_testbench_dir = None
+    uvm_filelist = None
+    uvm_sequence_file = None
+    uvm_top_module = None
+    uvm_test_name = None
+    uvm_dpi_lib = None
+    uvm_seq_item_file = None
+    uvm_coverage_module_file = None
+    uvm_home = None
+
+    if uvm_enabled:
+        uvm_home = os.getenv("UVM_HOME", "/opt/siemens/questasim/uvm-1.2")
+
+        uvm_testbench_dir = getattr(design_config, 'uvm_testbench_dir', None)
+        if not uvm_testbench_dir:
+            env_val = os.getenv("UVM_TESTBENCH_DIR")
+            uvm_testbench_dir = Path(env_val) if env_val else None
+
+        uvm_filelist = getattr(design_config, 'uvm_filelist', None)
+        if not uvm_filelist:
+            env_val = os.getenv("UVM_FILELIST")
+            uvm_filelist = Path(env_val) if env_val else None
+
+        uvm_sequence_file = getattr(design_config, 'uvm_sequence_file', None) or \
+                            os.getenv("UVM_SEQUENCE_FILE")
+
+        uvm_top_module = getattr(design_config, 'uvm_top_module', None) or \
+                         os.getenv("UVM_TOP_MODULE")
+
+        uvm_test_name = getattr(design_config, 'uvm_test_name', None) or \
+                        os.getenv("UVM_TEST_NAME")
+
+        uvm_dpi_lib = os.getenv(
+            "UVM_DPI_LIB",
+            "/opt/siemens/questasim/uvm-1.2/linux_x86_64/uvm_dpi"
+        )
+
+        uvm_seq_item_file = getattr(design_config, 'uvm_seq_item_file', None)
+        if not uvm_seq_item_file:
+            env_val = os.getenv("UVM_SEQ_ITEM_FILE")
+            uvm_seq_item_file = Path(env_val) if env_val else None
+
+        uvm_coverage_module_file = getattr(design_config, 'uvm_coverage_module_file', None)
+        if not uvm_coverage_module_file:
+            env_val = os.getenv("UVM_COVERAGE_MODULE_FILE")
+            uvm_coverage_module_file = Path(env_val) if env_val else None
+
+        if not uvm_filelist or not uvm_filelist.exists():
+            raise ValueError(f"UVM_ENABLED=1 but filelist not found: {uvm_filelist}")
+        if not uvm_sequence_file:
+            raise ValueError("UVM_ENABLED=1 but UVM_SEQUENCE_FILE not set")
+        if not uvm_top_module:
+            raise ValueError("UVM_ENABLED=1 but UVM_TOP_MODULE not set")
+        if not uvm_test_name:
+            raise ValueError("UVM_ENABLED=1 but UVM_TEST_NAME not set")
+
+        logging.info(f"UVM mode enabled: top={uvm_top_module}, test={uvm_test_name}")
+
+        uvm_coverage_mode = os.getenv("UVM_COVERAGE_MODE", "functional").lower()
+        if uvm_coverage_mode not in ("functional", "line"):
+            raise ValueError(
+                f"Invalid UVM_COVERAGE_MODE: '{uvm_coverage_mode}'. "
+                f"Must be 'functional' or 'line'."
+            )
+        logging.info(f"UVM coverage mode: {uvm_coverage_mode}")
+
+        if uvm_coverage_mode == "functional":
+            func_cov_enabled = True
+    # ────────────────────────────────────────────────────────────────────────
 
     return Config(
         openai_api_key=api_key,
@@ -237,6 +333,17 @@ def load_config() -> Config:
         context_window=int(os.getenv("CONTEXT_WINDOW", "128000")),
         keep_latest_failures=int(os.getenv("KEEP_LATEST_FAILURES", "1")),
         recursion_limit=int(os.getenv("RECURSION_LIMIT", "300")),
+        uvm_enabled=uvm_enabled,
+        uvm_coverage_mode=uvm_coverage_mode,
+        uvm_home=uvm_home,
+        uvm_testbench_dir=uvm_testbench_dir,
+        uvm_filelist=uvm_filelist,
+        uvm_sequence_file=uvm_sequence_file,
+        uvm_top_module=uvm_top_module,
+        uvm_test_name=uvm_test_name,
+        uvm_dpi_lib=uvm_dpi_lib,
+        uvm_seq_item_file=uvm_seq_item_file,
+        uvm_coverage_module_file=uvm_coverage_module_file,
         architecture=os.getenv("ARCHITECTURE", "v1").lower().replace("_", "."),
         orchestrator_model=os.getenv("ORCHESTRATOR_MODEL", model),
         design_expert_model=os.getenv("DESIGN_EXPERT_MODEL", model),

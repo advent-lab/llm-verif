@@ -1,0 +1,37 @@
+Metadata-Version: 2.1
+Name: sourcelocation
+Version: 1.1.8
+Summary: Simple data structures for representing source code locations
+Home-page: https://github.com/ChrisTimperley/sourcelocation.py
+License: MIT
+Keywords: data structure,source code,program,analysis
+Author: Christopher Timperley
+Author-email: christimperley@googlemail.com
+Requires-Python: >=3.9
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Project-URL: Repository, https://github.com/ChrisTimperley/sourcelocation.py
+Description-Content-Type: text/x-rst
+
+.. -*-restructuredtext-*-
+
+sourcelocation
+==============
+
+.. image:: https://badge.fury.io/py/sourcelocation.svg
+    :target: https://badge.fury.io/py/sourcelocation
+
+.. image:: https://img.shields.io/pypi/pyversions/sourcelocation.svg
+    :target: https://pypi.org/project/sourcelocation
+
+
+A simple collection of reusable data structures for representing source code
+locations such as character offsets, character ranges, lines, etc.
+

@@ -53,6 +53,14 @@ class AgentState(TypedDict):
     max_functional_coverage: float  # Best functional coverage achieved
     uncovered_bins: List[dict]  # List of uncovered bin descriptors from last parse
 
+    # UVM mode
+    uvm_enabled: bool
+    uvm_coverage_mode: str  # "functional" or "line"
+
+    # Infrastructure modification pipeline
+    infra_modification_enabled: bool         # True = LLM may modify driver file
+    original_driver_path: Optional[str]      # Path to original (unmodified) driver
+
     # Token usage tracking (per-API-call records, appended via reducer)
     # Each record: {api_call, iteration, input_tokens, output_tokens, total_tokens,
     #               reasoning_tokens, cached_input_tokens,
@@ -105,6 +113,14 @@ class MultiAgentState(TypedDict):
     current_functional_coverage: float
     max_functional_coverage: float
     uncovered_bins: List[dict]  # List of uncovered bin descriptors from last parse
+
+    # UVM mode
+    uvm_enabled: bool
+    uvm_coverage_mode: str  # "functional" or "line"
+
+    # Infrastructure modification pipeline
+    infra_modification_enabled: bool         # True = LLM may modify driver file
+    original_driver_path: Optional[str]      # Path to original (unmodified) driver
 
     # Subagent tracking
     api_calls: int              # Orchestrator LLM invocations

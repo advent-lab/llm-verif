@@ -1,0 +1,92 @@
+QuestaSim-64 vopt 2025.3_2 Compiler 2025.11 Nov 20 2025
+** Warning: (vopt-10587) Some optimizations are turned off because the +acc switch is in effect. This will cause your simulation to run slowly. Please use -access/-debug to maintain needed visibility. The +acc switch would be deprecated in a future release.
+Start time: 08:47:51 on Mar 26,2026
+vopt "+acc" trng_Top -o opt_top "+cover=bcestf" -L /opt/siemens/questasim/uvm-1.2 -l optimize.log 
+** Note: (vopt-220) 'modelsim.ini' is used as the ini file.
+
+Top level modules:
+	trng_Top
+
+Analyzing design...
+-- Loading module trng_Top
+-- Loading package /opt/siemens/questasim/uvm-1.2.questa_uvm_pkg
+-- Loading interface trng_if
+-- Loading module trng
+-- Loading module trng_mixer
+-- Loading module sha512_core
+-- Loading module sha512_k_constants
+-- Loading module sha512_h_constants
+-- Loading module sha512_w_mem
+-- Loading module trng_csprng
+-- Loading module chacha_core
+-- Loading module chacha_qr
+-- Loading module trng_csprng_fifo
+-- Loading module avalanche_entropy
+-- Loading module rosc_entropy
+-- Loading module tb_llm
+** Warning: (vopt-13408) Code coverage will be disabled for some DUs/packages/classes and source files.
+Optimizing 19 design-units (inlining 0/18 module instances):
+-- Optimizing module trng(fast)
+-- Optimizing module sha512_w_mem(fast)
+-- Optimizing module sha512_k_constants(fast)
+-- Optimizing module chacha_qr(fast)
+-- Optimizing module sha512_h_constants(fast)
+-- Optimizing module trng_Top(fast)
+-- Optimizing module avalanche_entropy(fast)
+-- Optimizing module rosc_entropy(fast)
+-- Optimizing interface trng_if(fast__2)
+-- Optimizing interface trng_if(fast)
+-- Optimizing package /opt/siemens/questasim/uvm-1.2.uvm_pkg (uvm-1.2 Built-in)(fast)
+-- Optimizing package /opt/siemens/questasim/uvm-1.2.questa_uvm_pkg(fast)
+-- Optimizing package trng_v_unit(fast)
+-- Optimizing module tb_llm(fast)
+** Warning: ../testbench/trng_tb.sv(139): (vopt-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/trng_tb.sv(173): (vopt-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/trng_tb.sv(204): (vopt-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/trng_tb.sv(225): (vopt-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/trng_tb.sv(250): (vopt-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/trng_tb.sv(290): (vopt-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/trng_tb.sv(331): (vopt-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/trng_tb.sv(380): (vopt-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/trng_tb.sv(398): (vopt-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/trng_tb.sv(453): (vopt-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/trng_tb.sv(490): (vopt-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/trng_tb.sv(523): (vopt-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/trng_tb.sv(565): (vopt-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/trng_tb.sv(592): (vopt-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/trng_tb.sv(627): (vopt-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/trng_tb.sv(655): (vopt-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/trng_tb.sv(673): (vopt-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/trng_tb.sv(694): (vopt-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/trng_tb.sv(707): (vopt-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+-- Optimizing module trng_mixer(fast)
+** Warning: ../rtl/trng_mixer.v(242): (vopt-2685) [TFMPC] - Too few port connections for 'hash_inst'.  Expected 28, found 11.
+** Warning: ../rtl/trng_mixer.v(242): (vopt-2718) [TFMPC] - Missing connection for port 'state15_we'.
+** Warning: ../rtl/trng_mixer.v(242): (vopt-2718) [TFMPC] - Missing connection for port 'state14_we'.
+** Warning: ../rtl/trng_mixer.v(242): (vopt-2718) [TFMPC] - Missing connection for port 'state13_we'.
+** Warning: ../rtl/trng_mixer.v(242): (vopt-2718) [TFMPC] - Missing connection for port 'state12_we'.
+** Warning: ../rtl/trng_mixer.v(242): (vopt-2718) [TFMPC] - Missing connection for port 'state11_we'.
+** Warning: ../rtl/trng_mixer.v(242): (vopt-2718) [TFMPC] - Missing connection for port 'state10_we'.
+** Warning: ../rtl/trng_mixer.v(242): (vopt-2718) [TFMPC] - Missing connection for port 'state09_we'.
+** Warning: ../rtl/trng_mixer.v(242): (vopt-2718) [TFMPC] - Missing connection for port 'state08_we'.
+** Warning: ../rtl/trng_mixer.v(242): (vopt-2718) [TFMPC] - Missing connection for port 'state07_we'.
+** Warning: ../rtl/trng_mixer.v(242): (vopt-2718) [TFMPC] - Missing connection for port 'state06_we'.
+** Warning: ../rtl/trng_mixer.v(242): (vopt-2718) [TFMPC] - Missing connection for port 'state05_we'.
+** Warning: ../rtl/trng_mixer.v(242): (vopt-2718) [TFMPC] - Missing connection for port 'state04_we'.
+** Warning: ../rtl/trng_mixer.v(242): (vopt-2718) [TFMPC] - Missing connection for port 'state03_we'.
+** Warning: ../rtl/trng_mixer.v(242): (vopt-2718) [TFMPC] - Missing connection for port 'state02_we'.
+** Warning: ../rtl/trng_mixer.v(242): (vopt-2718) [TFMPC] - Missing connection for port 'state01_we'.
+** Warning: ../rtl/trng_mixer.v(242): (vopt-2718) [TFMPC] - Missing connection for port 'state00_we'.
+** Warning: ../rtl/trng_mixer.v(242): (vopt-2718) [TFMPC] - Missing connection for port 'state_wr_data'.
+** Note: (vopt-143) Recognized 2 FSMs in module "trng_mixer(fast)".
+-- Optimizing module chacha_core(fast)
+** Note: (vopt-143) Recognized 1 FSM in module "chacha_core(fast)".
+-- Optimizing module sha512_core(fast)
+** Note: (vopt-143) Recognized 1 FSM in module "sha512_core(fast)".
+-- Optimizing module trng_csprng(fast)
+** Note: (vopt-143) Recognized 1 FSM in module "trng_csprng(fast)".
+-- Optimizing module trng_csprng_fifo(fast)
+** Note: (vopt-143) Recognized 2 FSMs in module "trng_csprng_fifo(fast)".
+Optimized design name is opt_top
+End time: 08:47:53 on Mar 26,2026, Elapsed time: 0:00:02
+Errors: 0, Warnings: 39

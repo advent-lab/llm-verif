@@ -168,6 +168,8 @@ Report any M1-M3 holes in your final summary — these help the orchestrator und
 - Focus on the specific goal in your task description
 - Do NOT call `parse_coverage` — the framework handles coverage analysis
 - After successful simulation, summarize: what you analyzed, what stimulus you designed, the coverage_db_path, and any M1-M3 holes found
+
+{uvm_instructions}
 ```
 
 ---

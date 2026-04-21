@@ -1,0 +1,34 @@
+QuestaSim-64 vlog 2025.3_2 Compiler 2025.11 Nov 20 2025
+Start time: 08:42:48 on Mar 26,2026
+vlog -sv -mfcu -f ../testbench/sha1_list.f "+incdir+/opt/siemens/questasim/verilog_src/uvm-1.2/src" -L /opt/siemens/questasim/uvm-1.2 -l compile.log 
+** Note: (vlog-220) 'modelsim.ini' is used as the ini file.
+-- Compiling package uvm_pkg (uvm-1.2 Built-in)
+-- Compiling module sha1
+-- Compiling module sha1_core
+-- Compiling module sha1_w_mem
+-- Compiling module tb_llm
+** Warning: ../testbench/tb_sha1.sv(32): (vlog-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/tb_sha1.sv(93): (vlog-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/tb_sha1.sv(124): (vlog-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/tb_sha1.sv(160): (vlog-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/tb_sha1.sv(202): (vlog-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/tb_sha1.sv(219): (vlog-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/tb_sha1.sv(238): (vlog-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+** Warning: ../testbench/tb_sha1.sv(252): (vlog-13203) option.cross_auto_bin_max = 0 setting is non-LRM compliant. No auto cross bins will be generated.
+-- Compiling interface sha1_if
+** Warning: ../testbench/sha1_seq.sv(189): (vlog-2600) [RDGN] - Redundant digits in numeric literal.
+** Warning: ../testbench/sha1_seq.sv(198): (vlog-2600) [RDGN] - Redundant digits in numeric literal.
+** Warning: ../testbench/sha1_seq.sv(198): (vlog-13562) Size of the numeric literal 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' is bigger than the specified number of bits '512'. 
+** Warning: ../testbench/sha1_seq.sv(218): (vlog-2600) [RDGN] - Redundant digits in numeric literal.
+-- Compiling package uvm_pkg_sv_unit
+-- Importing package uvm_pkg (uvm-1.2 Built-in)
+** Warning: ../testbench/sha1_seq.sv(189): (vlog-2600) [RDGN] - Redundant digits in numeric literal.
+** Warning: ../testbench/sha1_seq.sv(198): (vlog-2600) [RDGN] - Redundant digits in numeric literal.
+** Warning: ../testbench/sha1_seq.sv(198): (vlog-13562) Size of the numeric literal 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' is bigger than the specified number of bits '512'. 
+** Warning: ../testbench/sha1_seq.sv(218): (vlog-2600) [RDGN] - Redundant digits in numeric literal.
+-- Compiling module sha1_Top
+
+Top level modules:
+	sha1_Top
+End time: 08:42:49 on Mar 26,2026, Elapsed time: 0:00:01
+Errors: 0, Warnings: 16

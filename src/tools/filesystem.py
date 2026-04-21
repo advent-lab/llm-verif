@@ -159,10 +159,91 @@ def write_file(path: str, content: str) -> Dict[str, Any]:
 
         logging.info(f"Wrote file: {full_path}")
 
+        # In UVM mode save an iteration snapshot for audit trail
+        if getattr(_config, 'uvm_enabled', False) and path.endswith('.sv'):
+            _save_uvm_iteration_snapshot(path, content)
+
         return {"success": True, "full_path": str(full_path)}
 
     except Exception as e:
         return {"success": False, "error": f"Write error: {str(e)}"}
+
+
+def _save_uvm_iteration_snapshot(path: str, content: str):
+    """Save a copy of the written UVM file to iterations/iter_N/ for audit trail."""
+    try:
+        iteration = getattr(_config, 'current_iteration', 1)
+        snapshot_dir = _config.work_dir / "iterations" / f"iter_{iteration}"
+        snapshot_dir.mkdir(parents=True, exist_ok=True)
+        filename = Path(path).name
+        snapshot_path = snapshot_dir / filename
+        with open(snapshot_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        logging.info(f"UVM iteration snapshot saved: {snapshot_path}")
+    except Exception as e:
+        logging.warning(f"Failed to save UVM iteration snapshot: {e}")
+
+
+@tool
+def request_infra_modification() -> Dict[str, Any]:
+    """Request permission to modify the UVM driver to reach blocked coverage holes.
+
+    USE THIS TOOL ONLY when you have identified a coverage hole that is unreachable
+    with the current driver protocol (e.g., single-cycle CS prevents back-to-back
+    transitions, timing constraints prevent overlapping states).
+
+    When granted, you will receive the original driver content. You can then:
+    1. Write a modified driver to testbenches/<driver_filename>
+    2. Update your sequences to leverage the new protocol capability
+    3. Recompile and simulate — the modified driver is used automatically
+
+    DO NOT modify: monitor, agent, env, sequencer, interface, scoreboard, or Top.
+
+    Returns:
+        Dict with infra_modification_granted (bool), driver_content (str on success),
+        driver_filename (str), or error (str on failure).
+    """
+    try:
+        if not getattr(_config, 'uvm_enabled', False):
+            return {
+                "success": False,
+                "error": "request_infra_modification is only available in UVM mode."
+            }
+
+        driver_file = getattr(_config, 'uvm_driver_file', None)
+        if not driver_file:
+            return {
+                "success": False,
+                "error": "No driver file detected. Cannot enable infrastructure modification."
+            }
+
+        if not driver_file.exists():
+            return {
+                "success": False,
+                "error": f"Driver file not found: {driver_file}"
+            }
+
+        # Return original driver content for the LLM to modify
+        driver_content = driver_file.read_text(encoding='utf-8', errors='ignore')
+        _config.uvm_driver_file = driver_file  # ensure it's set on config
+
+        logging.info(f"Infrastructure modification requested: driver={driver_file.name}")
+
+        return {
+            "success": True,
+            "infra_modification_granted": True,
+            "driver_filename": driver_file.name,
+            "driver_content": driver_content,
+            "instruction": (
+                f"Modification granted. Write your modified driver to "
+                f"testbenches/{driver_file.name} using write_file(). "
+                f"Then update your sequences and recompile."
+            ),
+        }
+
+    except Exception as e:
+        logging.error(f"request_infra_modification error: {e}")
+        return {"success": False, "error": str(e)}
 
 
 @tool

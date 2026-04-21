@@ -10,7 +10,8 @@ def set_config(config):
     """Set config and initialize appropriate simulator adapter.
 
     This function now instantiates the correct adapter (QuestaSim or Verilator)
-    based on the simulator_type in the config.
+    based on the simulator_type in the config. If UVM mode is enabled, passes
+    UVM configuration to the adapter.
     """
     global _config, _adapter
     _config = config
@@ -28,6 +29,19 @@ def set_config(config):
         logging.info("Initialized Verilator adapter")
     else:
         raise ValueError(f"Unsupported simulator type: {simulator_type}")
+
+    # If UVM mode, pass UVM config to the adapter
+    if getattr(config, 'uvm_enabled', False) and hasattr(_adapter, 'set_uvm_config'):
+        uvm_cfg = {
+            'filelist': str(config.uvm_filelist),
+            'top_module': config.uvm_top_module,
+            'test_name': config.uvm_test_name,
+            'dpi_lib': config.uvm_dpi_lib,
+            'uvm_home': config.uvm_home,
+            'testbench_dir': str(config.uvm_testbench_dir) if config.uvm_testbench_dir else None,
+            'sequence_file': config.uvm_sequence_file,
+        }
+        _adapter.set_uvm_config(uvm_cfg)
 
 @tool
 def compile_design(testbench_path: str) -> Dict[str, Any]:
@@ -59,31 +73,57 @@ def compile_design(testbench_path: str) -> Dict[str, Any]:
         _config.compile_attempts_this_iter += 1
         retry_num = _config.compile_attempts_this_iter
 
-        # Resolve testbench path
-        tb_path = (_config.work_dir / testbench_path).resolve()
-        if not tb_path.exists():
-            return {"success": False, "error": f"Testbench not found: {testbench_path}", "iteration": iteration, "retry": retry_num}
+        uvm_mode = getattr(_config, 'uvm_enabled', False)
 
-        # Get design files from config (includes both main design and context files)
-        design_files = _config.design_context_files + _config.design_files
-        compile_deps_files = getattr(_config, 'compile_deps_files', [])
+        if uvm_mode:
+            # In UVM mode: pre-compile static validation before calling vlog
+            from ..validators.uvm_validator import validate_uvm_files
+            passed, val_errors = validate_uvm_files(
+                work_dir=_config.work_dir,
+                sequence_file=_config.uvm_sequence_file,
+                test_name=_config.uvm_test_name,
+                interface_name=getattr(_config, 'uvm_interface_name', None),
+                env_class=getattr(_config, 'uvm_env_class', None),
+                top_module=_config.uvm_top_module,
+            )
+            if not passed:
+                fix_instructions = "\n".join(f"- {e}" for e in val_errors)
+                logging.warning(f"UVM pre-compile validation failed:\n{fix_instructions}")
+                return {
+                    "success": False,
+                    "error": "Pre-compile validation failed. Fix these issues before compiling:",
+                    "validation_errors": fix_instructions,
+                    "stdout": f"STATIC VALIDATION FAILED ({len(val_errors)} issues):\n{fix_instructions}",
+                    "iteration": iteration,
+                    "retry": retry_num,
+                }
+            tb_path = None
+            design_files = []
+            compile_deps_files = []
+        else:
+            # Resolve testbench path
+            tb_path = (_config.work_dir / testbench_path).resolve()
+            if not tb_path.exists():
+                return {"success": False, "error": f"Testbench not found: {testbench_path}", "iteration": iteration, "retry": retry_num}
 
-        # Functional coverage: inject the agent's stimulus body into the template.
-        # The template (with covergroups, DUT inst, clock gen) is patched in-place
-        # and the resulting file is compiled as the testbench.  The template is
-        # NOT prepended to design_files — it is already baked into the patched file.
-        func_cov_enabled = getattr(_config, 'functional_coverage_enabled', False)
-        if func_cov_enabled:
-            func_cov_tb = getattr(_config, 'functional_coverage_testbench_path', None)
-            if func_cov_tb:
-                from ..utils.questasim import inject_stimulus_into_template
-                injected_path = tb_path.parent / f"{tb_path.stem}_injected.sv"
-                try:
-                    tb_path = inject_stimulus_into_template(func_cov_tb, tb_path, injected_path)
-                except ValueError as e:
-                    return {"success": False, "error": str(e)}
+            # Get design files from config
+            design_files = _config.design_context_files + _config.design_files
+            compile_deps_files = getattr(_config, 'compile_deps_files', [])
+
+            # Functional coverage: inject the agent's stimulus body into the template.
+            func_cov_enabled = getattr(_config, 'functional_coverage_enabled', False)
+            if func_cov_enabled:
+                func_cov_tb = getattr(_config, 'functional_coverage_testbench_path', None)
+                if func_cov_tb:
+                    from ..utils.questasim import inject_stimulus_into_template
+                    injected_path = tb_path.parent / f"{tb_path.stem}_injected.sv"
+                    try:
+                        tb_path = inject_stimulus_into_template(func_cov_tb, tb_path, injected_path)
+                    except ValueError as e:
+                        return {"success": False, "error": str(e)}
 
         # Delegate to adapter
+        func_cov_enabled = getattr(_config, 'functional_coverage_enabled', False)
         result = _adapter.compile(
             testbench_path=tb_path,
             design_files=design_files,
@@ -113,6 +153,20 @@ def compile_design(testbench_path: str) -> Dict[str, Any]:
         # Drop full_* keys so they don't leak into LLM-facing result
         result.pop("full_stdout", None)
         result.pop("full_stderr", None)
+
+        # Post-compile UVM verification (checks for dual-UVM conflicts, stale binaries)
+        if uvm_mode and result.get("success", False):
+            from ..validators.uvm_validator import verify_compile_log
+            post_ok, post_warnings = verify_compile_log(
+                stdout=result.get("stdout", ""),
+                stderr=result.get("stderr", ""),
+            )
+            if post_warnings:
+                warn_text = "\n".join(f"- {w}" for w in post_warnings)
+                logging.warning(f"UVM post-compile warnings:\n{warn_text}")
+                result["success"] = False
+                result["error"] = "Post-compile verification failed"
+                result["post_compile_warnings"] = warn_text
 
         # Summarize output for the LLM (full output already saved to log file)
         if result.get("success", False):

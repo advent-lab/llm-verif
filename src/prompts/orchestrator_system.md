@@ -167,6 +167,8 @@ When the framework signals termination, write `report.md` with:
 
 ### Testbench Naming
 Testbenches are automatically named `tb_iter_{{iteration}}_gen_{{id}}.sv` by the framework. You do not need to specify filenames — describe the task only.
+
+{uvm_instructions}
 ```
 
 ---
