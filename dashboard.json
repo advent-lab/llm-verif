@@ -3979,13 +3979,13 @@
     ],
     "design_context": [],
     "spec": "$(BASE_DIR)/cvdp_agentic_alu/docs/alu_core_specification.md",
-    "uvm_testbench_dir": "$(BASE_DIR)/cvdp_agentic_alu/verif/UVM",
-    "uvm_filelist": "$(BASE_DIR)/cvdp_agentic_alu/verif/UVM/alu_core_list.f",
+    "uvm_testbench_dir": "$(BASE_DIR)/cvdp_agentic_alu/verif/UVM/testbench",
+    "uvm_filelist": "$(BASE_DIR)/cvdp_agentic_alu/verif/UVM/testbench/alu_core_list.f",
     "uvm_sequence_file": "alu_core_seq.sv",
     "uvm_top_module": "alu_core_Top",
     "uvm_test_name": "alu_core_test",
-    "uvm_seq_item_file": "$(BASE_DIR)/cvdp_agentic_alu/verif/UVM/alu_core_seq_item.sv",
-    "uvm_coverage_module_file": "$(BASE_DIR)/cvdp_agentic_alu/verif/UVM/tb_alu_core.sv"
+    "uvm_seq_item_file": "$(BASE_DIR)/cvdp_agentic_alu/verif/UVM/testbench/alu_core_seq_item.sv",
+    "uvm_coverage_module_file": "$(BASE_DIR)/cvdp_agentic_alu/verif/UVM/testbench/tb_alu_core.sv"
   },
   "cvdp_agentic_memory_scheduler_uvm": {
     "design": [
@@ -3993,13 +3993,13 @@
     ],
     "design_context": [],
     "spec": "$(BASE_DIR)/cvdp_agentic_memory_scheduler/docs/specs.md",
-    "uvm_testbench_dir": "$(BASE_DIR)/cvdp_agentic_memory_scheduler/verif/UVM",
-    "uvm_filelist": "$(BASE_DIR)/cvdp_agentic_memory_scheduler/verif/UVM/memory_scheduler_list.f",
+    "uvm_testbench_dir": "$(BASE_DIR)/cvdp_agentic_memory_scheduler/verif/UVM/testbench",
+    "uvm_filelist": "$(BASE_DIR)/cvdp_agentic_memory_scheduler/verif/UVM/testbench/memory_scheduler_list.f",
     "uvm_sequence_file": "memory_scheduler_seq.sv",
     "uvm_top_module": "memory_scheduler_Top",
     "uvm_test_name": "memory_scheduler_test",
-    "uvm_seq_item_file": "$(BASE_DIR)/cvdp_agentic_memory_scheduler/verif/UVM/memory_scheduler_seq_item.sv",
-    "uvm_coverage_module_file": "$(BASE_DIR)/cvdp_agentic_memory_scheduler/verif/UVM/tb_memory_scheduler.sv"
+    "uvm_seq_item_file": "$(BASE_DIR)/cvdp_agentic_memory_scheduler/verif/UVM/testbench/memory_scheduler_seq_item.sv",
+    "uvm_coverage_module_file": "$(BASE_DIR)/cvdp_agentic_memory_scheduler/verif/UVM/testbench/tb_memory_scheduler.sv"
   },
   "cvdp_agentic_rgb_color_space_conversion_uvm": {
     "design": [
@@ -4007,13 +4007,13 @@
     ],
     "design_context": [],
     "spec": "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/docs/specification.md",
-    "uvm_testbench_dir": "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/verif/UVM",
-    "uvm_filelist": "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/verif/UVM/rgb_color_space_hsv_list.f",
+    "uvm_testbench_dir": "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/verif/UVM/testbench",
+    "uvm_filelist": "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/verif/UVM/testbench/rgb_color_space_hsv_list.f",
     "uvm_sequence_file": "rgb_color_space_hsv_seq.sv",
     "uvm_top_module": "rgb_color_space_hsv_Top",
     "uvm_test_name": "rgb_color_space_hsv_test",
-    "uvm_seq_item_file": "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/verif/UVM/rgb_color_space_hsv_seq_item.sv",
-    "uvm_coverage_module_file": "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/verif/UVM/tb_rgb_color_space_hsv.sv"
+    "uvm_seq_item_file": "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/verif/UVM/testbench/rgb_color_space_hsv_seq_item.sv",
+    "uvm_coverage_module_file": "$(BASE_DIR)/cvdp_agentic_rgb_color_space_conversion/verif/UVM/testbench/tb_rgb_color_space_hsv.sv"
   },
   "sha1_top_uvm": {
     "design": [
@@ -4026,13 +4026,13 @@
     "spec": [
       "$(BASE_DIR)/sha1_top/spec/spec.md"
     ],
-    "uvm_testbench_dir": "$(BASE_DIR)/sha1_top/verif/UVM",
-    "uvm_filelist": "$(BASE_DIR)/sha1_top/verif/UVM/sha1_list.f",
+    "uvm_testbench_dir": "$(BASE_DIR)/sha1_top/verif/UVM/testbench",
+    "uvm_filelist": "$(BASE_DIR)/sha1_top/verif/UVM/testbench/sha1_list.f",
     "uvm_sequence_file": "sha1_seq.sv",
     "uvm_top_module": "sha1_Top",
     "uvm_test_name": "sha1_test",
-    "uvm_seq_item_file": "$(BASE_DIR)/sha1_top/verif/UVM/sha1_seq_item.sv",
-    "uvm_coverage_module_file": "$(BASE_DIR)/sha1_top/verif/UVM/tb_sha1.sv"
+    "uvm_seq_item_file": "$(BASE_DIR)/sha1_top/verif/UVM/testbench/sha1_seq_item.sv",
+    "uvm_coverage_module_file": "$(BASE_DIR)/sha1_top/verif/UVM/testbench/tb_sha1.sv"
   },
   "trng_top_uvm": {
     "design": [
@@ -4058,12 +4058,12 @@
     "spec": [
       "$(BASE_DIR)/trng_top/spec/spec.md"
     ],
-    "uvm_testbench_dir": "$(BASE_DIR)/trng_top/verif/UVM",
-    "uvm_filelist": "$(BASE_DIR)/trng_top/verif/UVM/trng_list.f",
+    "uvm_testbench_dir": "$(BASE_DIR)/trng_top/verif/UVM/testbench",
+    "uvm_filelist": "$(BASE_DIR)/trng_top/verif/UVM/testbench/trng_list.f",
     "uvm_sequence_file": "trng_seq.sv",
     "uvm_top_module": "trng_Top",
     "uvm_test_name": "trng_test",
-    "uvm_seq_item_file": "$(BASE_DIR)/trng_top/verif/UVM/trng_seq_item.sv",
-    "uvm_coverage_module_file": "$(BASE_DIR)/trng_top/verif/UVM/trng_tb.sv"
+    "uvm_seq_item_file": "$(BASE_DIR)/trng_top/verif/UVM/testbench/trng_seq_item.sv",
+    "uvm_coverage_module_file": "$(BASE_DIR)/trng_top/verif/UVM/testbench/trng_tb.sv"
   }
 }

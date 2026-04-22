@@ -66,6 +66,19 @@ class QuestasimAdapter(SimulatorAdapter):
         re.compile(r"^\*\* Note: \(vlog-"),        # informational notes (e.g. vlog-220)
         re.compile(r"^\*\* Warning:.*\/deps\/"),   # warnings from dep files (not actionable)
         re.compile(r"^Errors: 0,"),                # clean summary line (no errors)
+        # vlog-13203: "option.cross_auto_bin_max = 0 is non-LRM compliant" — expected/harmless
+        # These fire for every covergroup in trng_tb.sv / other fixed tb_llm files.
+        # They are not actionable and drown out real errors in the LLM-visible output.
+        re.compile(r"^\*\* Warning:.*\(vlog-13203\)"),
+        # vopt-10587: "+acc turns off some optimizations" — expected when using +acc for coverage
+        re.compile(r"^\*\* Warning: \(vopt-10587\)"),
+        # vopt / vlog version banners and timestamps
+        re.compile(r"^QuestaSim-64 vopt"),
+        re.compile(r"^QuestaSim-64 vmap"),
+        re.compile(r"^vopt\s"),
+        re.compile(r"^vmap\s"),
+        re.compile(r"^Analyzing design"),
+        re.compile(r"^\*\* Note: \(vopt-"),        # informational vopt notes
     ]
 
     # Lines matching these patterns are QuestaSim vsim (simulate) boilerplate
@@ -638,7 +651,8 @@ class QuestasimAdapter(SimulatorAdapter):
             logging.error(f"UVM simulation error: {e}")
             return {"success": False, "error": str(e)}
 
-    def parse_coverage(self, coverage_db_path: Path) -> CoverageResult:
+    def parse_coverage(self, coverage_db_path: Path,
+                       design_files: List[Path] = None) -> CoverageResult:
         """Parse QuestaSim coverage database (.ucdb).
 
         Generates XML report from .ucdb file and parses it to extract
@@ -646,6 +660,10 @@ class QuestasimAdapter(SimulatorAdapter):
 
         Args:
             coverage_db_path: Path to .ucdb coverage database
+            design_files: Optional list of RTL design file paths. When
+                provided, only design units whose source files overlap with
+                this list are counted, filtering out UVM testbench
+                infrastructure that would otherwise dilute RTL coverage.
 
         Returns:
             CoverageResult with normalized coverage data
@@ -678,7 +696,9 @@ class QuestasimAdapter(SimulatorAdapter):
             raise RuntimeError(f"Coverage report generation failed: {result.stderr}")
 
         # Parse XML report
-        total_coverage, module_breakdown, uncovered_lines = self._parse_coverage_xml(xml_path)
+        total_coverage, module_breakdown, uncovered_lines = self._parse_coverage_xml(
+            xml_path, design_files=design_files
+        )
 
         return CoverageResult(
             total_coverage=total_coverage,
@@ -686,15 +706,29 @@ class QuestasimAdapter(SimulatorAdapter):
             uncovered_lines=uncovered_lines
         )
 
-    def _parse_coverage_xml(self, xml_path: Path) -> Tuple[float, Dict[str, float], Dict[str, List[int]]]:
+    def _parse_coverage_xml(self, xml_path: Path,
+                            design_files: List[Path] = None,
+                            ) -> Tuple[float, Dict[str, float], Dict[str, List[int]]]:
         """Parse QuestaSim XML coverage report.
 
         Args:
             xml_path: Path to XML coverage report
+            design_files: Optional list of resolved RTL file paths. When
+                provided, a DU is included only if at least one of its
+                source files matches a design file. Matches on both resolved
+                path and filename to handle UVM copies of RTL into
+                verif/UVM/rtl/ directories.
 
         Returns:
             Tuple of (total_coverage, module_breakdown, uncovered_lines)
         """
+        if design_files:
+            design_file_set = {str(Path(f).resolve()) for f in design_files}
+            design_file_names = {Path(f).name for f in design_files}
+        else:
+            design_file_set = None
+            design_file_names = None
+
         try:
             tree = ET.parse(xml_path)
             root = tree.getroot()
@@ -708,13 +742,29 @@ class QuestasimAdapter(SimulatorAdapter):
             for du_data in root.findall('.//DuData'):
                 du_name = du_data.get('du')
 
-                # Skip testbench from coverage (focus on DUT)
-                if du_name == 'tb_llm':
-                    continue
+                # Collect all source file paths for this DU
+                du_file_paths = []
+                for fm in du_data.findall('.//fileMap'):
+                    p = fm.get('path')
+                    if p:
+                        du_file_paths.append(str(Path(p).resolve()))
 
-                # Get file path
-                file_map = du_data.find('.//fileMap')
-                file_path = file_map.get('path') if file_map is not None else "unknown"
+                # Filter: only include DUs whose source files are design files
+                if design_file_set is not None:
+                    match = any(
+                        p in design_file_set or Path(p).name in design_file_names
+                        for p in du_file_paths
+                    )
+                    if not match:
+                        logging.debug(f"Skipping DU '{du_name}' — not in design files")
+                        continue
+                else:
+                    # Legacy fallback: skip known testbench DU name
+                    if du_name == 'tb_llm':
+                        continue
+
+                # Get primary file path (first fileMap) for uncovered_lines key
+                file_path = du_file_paths[0] if du_file_paths else "unknown"
 
                 # Get statement coverage stats
                 statements = du_data.find('statements')
@@ -725,7 +775,7 @@ class QuestasimAdapter(SimulatorAdapter):
 
                     total_active += active
                     total_hits += hits
-                    module_breakdown[file_path] = percent
+                    module_breakdown[Path(file_path).name] = percent
 
                     # Extract uncovered line numbers. Use a set to deduplicate
                     uncovered = set()

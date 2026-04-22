@@ -320,13 +320,29 @@ Environment File Format:
 
             # Print summary
             final_state = result
+            _use_funcov = (
+                final_state.get('functional_coverage_enabled', False) or
+                (final_state.get('uvm_enabled', False) and
+                 final_state.get('uvm_coverage_mode', 'line') == 'functional')
+            )
+            _final_cov = (
+                final_state.get('current_functional_coverage', 0.0)
+                if _use_funcov else
+                final_state.get('cumulative_coverage', 0.0)
+            )
+            _max_cov = (
+                final_state.get('max_functional_coverage', 0.0)
+                if _use_funcov else
+                final_state.get('max_coverage', 0.0)
+            )
+            _cov_label = "Functional" if _use_funcov else "Code"
             print("\n" + "=" * 70)
             print("EXECUTION COMPLETE")
             print("=" * 70)
             print(f"\nDesign:            {final_state.get('design_name', 'N/A')}")
             print(f"Iterations:        {final_state.get('iteration', 0)}")
-            print(f"Max Coverage:      {final_state.get('max_coverage', 0):.2f}%")
-            print(f"Merged Coverage:    {final_state.get('cumulative_coverage', 0):.2f}%")
+            print(f"Max Coverage:      {_max_cov:.2f}% ({_cov_label})")
+            print(f"Merged Coverage:    {_final_cov:.2f}% ({_cov_label})")
             print(f"Termination:       {final_state.get('done_reason', 'N/A')}")
             print(f"Work Directory:    {final_state.get('work_dir', config.work_dir)}")
 
@@ -353,7 +369,7 @@ Environment File Format:
             summary_text = (
                 f"Design: {final_state.get('design_name', 'N/A')}, "
                 f"Iterations: {final_state.get('iteration', 0)}, "
-                f"Final Coverage: {final_state.get('cumulative_coverage', 0):.2f}%, "
+                f"Final Coverage ({_cov_label}): {_final_cov:.2f}%, "
                 f"Done Reason: {final_state.get('done_reason', 'N/A')}"
             )
             emit("agent_message", {"message": summary_text})
@@ -367,8 +383,8 @@ Environment File Format:
 
             emit("session_end", {
                 "design_name": final_state.get("design_name"),
-                "final_coverage": final_state.get("cumulative_coverage", 0.0),
-                "max_coverage": final_state.get("max_coverage", 0.0),
+                "final_coverage": _final_cov,
+                "max_coverage": _max_cov,
                 "iterations": final_state.get("iteration", 0),
                 "total_api_calls": final_state.get("api_calls", 0),
                 "done_reason": final_state.get("done_reason"),

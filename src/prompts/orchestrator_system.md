@@ -144,9 +144,10 @@ When `FUNCTIONAL_COVERAGE_ENABLED=1`:
 - Consider unit-level targeting for deeply nested coverage holes (ask Expert for the module header)
 - Track what strategies have been attempted in `notes.md`
 - Accept methodology ceiling holes (tied-off signals, dead code, unreachable from module interface) — note them for the report
+- ❌ DO NOT write `report.md` until you receive a **FRAMEWORK NOTICE: Verification terminated** message — writing it early will cause the framework to stall. Even if you believe all remaining holes are unreachable, keep dispatching generators until the framework tells you to stop.
 
 ### Termination
-When the framework signals termination, write `report.md` with:
+When the framework sends **FRAMEWORK NOTICE: Verification terminated**, write `report.md` with:
 - Final coverage achieved and iteration count
 - Classification of ALL remaining uncovered lines (unreachable, excludable, needs more effort)
 - Summary of strategies used and their effectiveness

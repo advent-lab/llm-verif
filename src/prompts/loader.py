@@ -337,16 +337,95 @@ finish_item(seq_item);
 ### CRITICAL UVM RULES
 
 - ❌ DO NOT modify the seq_item, monitor, agent, env, interface, scoreboard, or Top module
-- ❌ DO NOT modify the driver — UNLESS you called `request_infra_modification` and it returned success
+- ❌ DO NOT modify the driver — UNLESS you called `request_infra_modification` and it returned success.
+  When modification IS granted, see **DRIVER MODIFICATION** section below.
 - ❌ DO NOT define covergroups in your sequences (coverage is in the passive module)
 - ❌ DO NOT use `$finish` in sequences (UVM handles simulation termination)
 - ❌ DO NOT use `#include` or `` `include `` to include the sequence file in the test file (or vice versa)
+- ❌ DO NOT call `parse_functional_coverage` or `parse_coverage` more than once per turn — calling them in parallel causes duplicate covergroup entries and corrupts the cumulative database. Call it exactly once after each simulation.
 - ✅ DO use `import uvm_pkg::*;` and `` `include "uvm_macros.svh" `` at the top of BOTH files
 - ✅ DO use the exact seq_item class name and field names shown above
 - ✅ DO write BOTH the sequence file AND the test file each iteration
 {critical_rules_target}
 - ✅ DO use both constrained random AND directed transactions for best coverage
 - ✅ DO use direct field assignment to bypass seq_item constraints for hard-to-reach lines
+
+### SYSTEMVERILOG TASK PORT DIRECTION — CRITICAL PITFALL
+
+SV task port direction is **sticky**: once you write `output`, every subsequent parameter
+WITHOUT an explicit direction keyword also becomes `output`, even if you intended `input`.
+
+❌ **WRONG** — `noise`, `dbg_upd`, `rst_n` silently become `output` (vopt will error):
+```systemverilog
+task do_read(bit [11:0] addr, output bit [31:0] data, bit noise, bit dbg_upd, bit rst_n);
+```
+
+✅ **CORRECT** — label every parameter after an `output` explicitly as `input`:
+```systemverilog
+task do_read(bit [11:0] addr, output bit [31:0] data, input bit noise, input bit dbg_upd, input bit rst_n);
+```
+
+This applies to ALL helper tasks in your sequence class. When in doubt, always write
+`input` or `output` explicitly on every parameter rather than relying on defaults.
+
+### QUESTASIM TASK ARGUMENT — CRITICAL PITFALL
+
+**Do NOT pass `int` bit-selects (`i[0]`, `j[0]`) directly as task arguments.**
+QuestaSim's `-mfcu` parser rejects integer bit-selects in task call argument positions
+and produces a cryptic `near "[": syntax error, unexpected '['` error.
+
+❌ **WRONG** — `i[0]` bit-select as task argument causes a parse error:
+```systemverilog
+for (int i = 0; i < 8; i++) begin
+    send(1, 1, 1, 12'ha20, i[0], i[0], 0);  // ERROR: near '[': unexpected '['
+end
+```
+
+✅ **CORRECT** — use `& 1` directly or assign to a `bit` temp variable first:
+```systemverilog
+send(1, 1, 1, 12'ha20, 32'(i & 1), (i & 1), 0);
+```
+
+This applies whenever you use loop counters to generate toggling bit patterns inside sequences.
+
+### DRIVER MODIFICATION — AUDIT AND RULES
+
+This section applies **only after `request_infra_modification` has been granted**.
+
+#### Step 1 — Audit the driver before changing anything
+
+The provided driver may be **incomplete or contain placeholder code**. Common issues:
+
+- **Missing signal assignments**: Not every interface signal is driven. Look for signals
+  declared in the interface that are absent from `drive_transaction`. Reset signals (`rst`,
+  `rst_n`), enable inputs, interrupt lines, and sideband signals are frequently omitted.
+  A comment like `// Avoid operations that assign 1 or 0.` in place of an assignment is
+  a placeholder — that signal is simply not being driven.
+- **Wrong clock model**: The `run_phase` should call `@(posedge clk)` BEFORE or AFTER
+  `get_next_item()` consistently. Verify this matches the DUT's expected protocol
+  (setup-time: drive before edge; hold-time: drive after edge).
+- **Placeholder or stub logic**: Code that looks like template boilerplate rather than
+  functional stimulus (empty loops, unconditional zero assignments, `// TODO` comments).
+
+Read the full driver carefully and catalogue every issue before writing a single line.
+
+#### Step 2 — Fix in priority order
+
+1. **Add missing signal assignments** — lowest risk, highest impact. Every interface
+   signal the DUT uses as input must appear in `drive_transaction`.
+2. **Fix incorrect placeholder logic** — replace stub code with correct behavior.
+3. **Structural changes** (clock model, pipelining, handshake logic) — only if steps 1-2
+   do not resolve the coverage gap. Document exactly what pipeline problem you are solving.
+
+#### Step 3 — Do NOT do these things
+
+- ❌ **Do NOT move `@(posedge clk)` between `run_phase` and `drive_transaction`** unless
+  the original placement is provably wrong. Changing when the clock edge fires relative
+  to `get_next_item()` shifts the entire pipeline alignment and can break previously
+  covered paths.
+- ❌ **Do NOT add `@(posedge clk)` inside `drive_transaction`** as an extra hold cycle —
+  use explicit idle transactions from the sequence instead.
+- ❌ **Do NOT rewrite the driver from scratch** — make the minimal targeted change.
 """
 
 

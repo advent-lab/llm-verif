@@ -43,8 +43,6 @@ def log_agent_request(state: dict):
 
     iteration = state.get("iteration", "?")
     api_calls = state.get("api_calls", "?")
-    current_coverage = state.get("current_coverage", 0.0)
-    cumulative_coverage = state.get("cumulative_coverage", 0.0)
     consecutive_failures = state.get("consecutive_failures", 0)
     no_progress = state.get("no_progress_count", 0)
 
@@ -53,8 +51,23 @@ def log_agent_request(state: dict):
     model = config.model if config else "gpt-4"
     token_count = count_message_tokens(messages, model)
 
+    # Use functional coverage fields when in functional mode
+    use_funcov = (
+        state.get("functional_coverage_enabled", False) or
+        (state.get("uvm_enabled", False) and
+         state.get("uvm_coverage_mode", "line") == "functional")
+    )
+    if use_funcov:
+        cumulative_coverage = state.get("current_functional_coverage", 0.0)
+        current_coverage = cumulative_coverage
+        cov_label = "Func"
+    else:
+        current_coverage = state.get("current_coverage", 0.0)
+        cumulative_coverage = state.get("cumulative_coverage", 0.0)
+        cov_label = "Cov"
+
     logging.info(f"{Colors.CYAN}{Colors.BOLD}{'='*120}{Colors.RESET}")
-    logging.info(f"{Colors.CYAN}{Colors.BOLD}API REQUEST [Turn: {api_calls} | Iter: {iteration} | Cumulative: {cumulative_coverage:.2f}% | Last: {current_coverage:.2f}% | Failures: {consecutive_failures} | No Progress: {no_progress} | In: ~{token_count:,}]{Colors.RESET}")
+    logging.info(f"{Colors.CYAN}{Colors.BOLD}API REQUEST [Turn: {api_calls} | Iter: {iteration} | {cov_label}: {cumulative_coverage:.2f}% | Last: {current_coverage:.2f}% | Failures: {consecutive_failures} | No Progress: {no_progress} | In: ~{token_count:,}]{Colors.RESET}")
 
     # Collect all trailing ToolMessages (results from the latest tool execution batch)
     # plus any non-ToolMessage that triggered them, logging each one
@@ -113,9 +126,21 @@ def log_agent_response(response, state: dict, usage: dict = None):
 
     iteration = state.get("iteration", "?")
     api_calls = state.get("api_calls", "?")
-    current_coverage = state.get("current_coverage", 0.0)
-    cumulative_coverage = state.get("cumulative_coverage", 0.0)
     config = state.get("config")
+
+    use_funcov = (
+        state.get("functional_coverage_enabled", False) or
+        (state.get("uvm_enabled", False) and
+         state.get("uvm_coverage_mode", "line") == "functional")
+    )
+    if use_funcov:
+        cumulative_coverage = state.get("current_functional_coverage", 0.0)
+        current_coverage = cumulative_coverage
+        cov_label = "Func"
+    else:
+        current_coverage = state.get("current_coverage", 0.0)
+        cumulative_coverage = state.get("cumulative_coverage", 0.0)
+        cov_label = "Cov"
 
     # Build token breakdown from API-reported usage
     in_tok = cached_tok = out_tok = reason_tok = tot_tok = 0
@@ -129,7 +154,7 @@ def log_agent_response(response, state: dict, usage: dict = None):
     logging.info(f"{Colors.GREEN}{Colors.BOLD}{'='*120}{Colors.RESET}")
     logging.info(
         f"{Colors.GREEN}{Colors.BOLD}AGENT RESPONSE [Turn: {api_calls} | Iter {iteration} | "
-        f"Cumulative: {cumulative_coverage:.2f}% | Last: {current_coverage:.2f}% | "
+        f"{cov_label}: {cumulative_coverage:.2f}% | Last: {current_coverage:.2f}% | "
         f"In: {in_tok:,} (Cached: {cached_tok:,}) | Out: {out_tok:,} (Reasoning: {reason_tok:,}) | "
         f"Total: {tot_tok:,}]{Colors.RESET}"
     )

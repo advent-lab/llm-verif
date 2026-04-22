@@ -3,10 +3,16 @@ from typing import Dict, Any, List, Optional
 from langchain.tools import tool
 import logging
 import re
+import threading
 
 _config = None
 _adapter = None  # Simulator adapter instance
 _cumulative_coverage_db: Optional[Path] = None  # Path to cumulative coverage database
+
+# Thread-safety for parse_functional_coverage: parallel tool calls on the same UCDB
+# would merge the same source multiple times, doubling covergroup entries.
+_merge_lock = threading.Lock()
+_merged_ucdb_keys: set = set()  # (str(source_db), str(cumulative_db)) already merged
 
 def set_config(config):
     """Set config and initialize appropriate simulator adapter.
@@ -75,9 +81,12 @@ def parse_coverage(coverage_db_path: str) -> Dict[str, Any]:
         if not db_path.exists():
             return {"success": False, "error": f"Coverage database not found: {coverage_db_path}"}
 
+        # Resolve RTL design files from config for DU filtering
+        design_files = getattr(_config, 'design_files', None) or None
+
         # Step 1: Parse iteration coverage (this testbench alone)
         logging.info("Parsing iteration coverage database")
-        iteration_result = _adapter.parse_coverage(db_path)
+        iteration_result = _adapter.parse_coverage(db_path, design_files=design_files)
         iteration_coverage = iteration_result.total_coverage
         logging.info(f"Iteration coverage: {iteration_coverage:.2f}%")
 
@@ -101,7 +110,7 @@ def parse_coverage(coverage_db_path: str) -> Dict[str, Any]:
 
         # Step 4: Parse cumulative coverage (all testbenches combined)
         logging.info("Parsing cumulative coverage database")
-        cumulative_result = _adapter.parse_coverage(cumulative_db_path)
+        cumulative_result = _adapter.parse_coverage(cumulative_db_path, design_files=design_files)
         cumulative_coverage = cumulative_result.total_coverage
         logging.info(f"Cumulative coverage: {cumulative_coverage:.2f}%")
 
@@ -156,7 +165,7 @@ def parse_functional_coverage(coverage_db_path: str) -> Dict[str, Any]:
         - cumulative_coverage_db: str path to merged functional UCDB
         - error: str (only on failure)
     """
-    global _cumulative_coverage_db
+    global _cumulative_coverage_db, _merged_ucdb_keys
 
     try:
         db_path = Path(coverage_db_path).resolve()
@@ -166,14 +175,24 @@ def parse_functional_coverage(coverage_db_path: str) -> Dict[str, Any]:
         coverage_dir = db_path.parent
         cumulative_db_path = coverage_dir / "cumulative_funcov.ucdb"
 
-        logging.info(f"Merging functional coverage: {db_path} → {cumulative_db_path}")
-        try:
-            _adapter.merge_cumulative_coverage(db_path, cumulative_db_path)
-            _cumulative_coverage_db = cumulative_db_path
-        except Exception as e:
-            logging.error(f"Cumulative functional coverage merge failed: {e}")
-            _cumulative_coverage_db = db_path
-            cumulative_db_path = db_path
+        merge_key = (str(db_path), str(cumulative_db_path))
+
+        # Serialize merges so parallel tool calls on the same UCDB don't duplicate
+        # covergroup entries in the cumulative database.
+        with _merge_lock:
+            if merge_key not in _merged_ucdb_keys:
+                logging.info(f"Merging functional coverage: {db_path} → {cumulative_db_path}")
+                try:
+                    _adapter.merge_cumulative_coverage(db_path, cumulative_db_path)
+                    _merged_ucdb_keys.add(merge_key)
+                    _cumulative_coverage_db = cumulative_db_path
+                except Exception as e:
+                    logging.error(f"Cumulative functional coverage merge failed: {e}")
+                    _cumulative_coverage_db = db_path
+                    cumulative_db_path = db_path
+            else:
+                logging.info(f"Skipping duplicate merge (already merged): {db_path.name}")
+                _cumulative_coverage_db = cumulative_db_path
 
         logging.info("Parsing functional coverage from cumulative database")
         result = _adapter.parse_functional_coverage(cumulative_db_path)

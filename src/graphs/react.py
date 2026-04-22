@@ -598,10 +598,18 @@ def update_state_node(state: AgentState) -> AgentState:
                 })
             break  # Found sim result, move to next check
 
-    # Priority 3a: Check for parse_functional_coverage results
-    latest_msg = state["messages"][-1] if state["messages"] else None
-    if latest_msg and hasattr(latest_msg, 'name') and latest_msg.name == 'parse_functional_coverage':
-        result = parse_tool_result(latest_msg.content)
+    # Priority 3a: Check for parse_functional_coverage results in current turn.
+    # Walk backward to the AIMessage boundary so parallel tool calls are never missed
+    # (e.g. LLM calls parse_functional_coverage + read_file together; read_file lands last).
+    _parse_fc_msg = None
+    for _msg in reversed(state["messages"]):
+        if hasattr(_msg, 'tool_calls'):  # AIMessage boundary — stop here
+            break
+        if hasattr(_msg, 'name') and _msg.name == 'parse_functional_coverage':
+            _parse_fc_msg = _msg
+            break
+    if _parse_fc_msg:
+        result = parse_tool_result(_parse_fc_msg.content)
 
         if result.get('success'):
             cumulative_coverage = result.get('cumulative_coverage', result.get('total_coverage', 0.0))
@@ -745,7 +753,8 @@ def finalize_node(state: AgentState) -> AgentState:
             try:
                 from ..tools.analysis import _adapter as coverage_adapter
                 if coverage_adapter is not None:
-                    cumulative_result = coverage_adapter.parse_coverage(Path(cumulative_db))
+                    design_files = getattr(config, 'design_files', None) or None
+                    cumulative_result = coverage_adapter.parse_coverage(Path(cumulative_db), design_files=design_files)
                     annotated = _create_annotated_source(cumulative_result.uncovered_lines)
                     if annotated:
                         missed_coverage_info = f"\n\n## Latest Missed Coverage\n\n{annotated}"

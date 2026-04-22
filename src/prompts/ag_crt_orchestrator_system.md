@@ -178,9 +178,10 @@ When `FUNCTIONAL_COVERAGE_ENABLED=1`, the run targets covergroup bin closure rat
 - Consider unit-level targeting (`target_module="module_name"`) for deeply nested holes where the top-level path requires impractical stimulus sequences
 - Classify holes you believe are unreachable (tied-off signals, dead code, defensive logic) in `notes.md` — do not keep targeting them
 - Track all attempted strategies in `notes.md` to avoid repeating ineffective approaches
+- ❌ DO NOT write `report.md` until you receive a **FRAMEWORK NOTICE: Verification terminated** message — writing it early will cause the framework to stall. Even if you believe all remaining holes are unreachable, keep dispatching agents until the framework tells you to stop.
 
 ### Termination
-When the framework signals termination, write `report.md` with:
+When the framework sends **FRAMEWORK NOTICE: Verification terminated**, write `report.md` with:
 - Final coverage achieved and iteration count
 - Classification of ALL remaining uncovered lines:
   - **Unreachable from module interface** — requires internal access not possible via ports

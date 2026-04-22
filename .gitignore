@@ -1,2 +1,14 @@
 sol.env
 work/
+.env
+.venv/
+__pycache__/
+
+# UVM simulation outputs (should never be committed)
+data/**/verif/UVM/sim/compile.log
+data/**/verif/UVM/sim/optimize.log
+data/**/verif/UVM/sim/simv.log
+data/**/verif/UVM/sim/transcript
+data/**/verif/UVM/sim/tr_db.log
+data/**/verif/UVM/sim/coverage/
+data/**/verif/UVM/sim/work/

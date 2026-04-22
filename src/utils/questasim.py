@@ -169,9 +169,11 @@ def parse_functional_coverage_text(report_path: Path) -> Dict:
             lines = f.readlines()
 
         total_pat      = re.compile(r'TOTAL COVERGROUP COVERAGE:\s+([\d.]+)%')
+        # Instance header — coverage % may be on same line OR on the next line alone
         instance_pat   = re.compile(
-            r'^ Covergroup instance\s+\\?/?(\w[\w/\\]*)\s+([\d.]+)%'
+            r'^ Covergroup instance\s+\\?/?(\w[\w/\\]*)'
         )
+        instance_cov_pat = re.compile(r'^\s+([\d.]+)%')  # standalone coverage line
         sample_pat     = re.compile(
             r'\s+Sample\s+(?:event|type)\s*:\s*(.+)', re.IGNORECASE
         )
@@ -187,6 +189,7 @@ def parse_functional_coverage_text(report_path: Path) -> Dict:
         covergroups    = []
         current_cg     = None
         current_cp     = None
+        pending_instance_name = None  # waiting for the next-line coverage %
 
         def _flush_cg(cg):
             if cg is not None:
@@ -196,26 +199,52 @@ def parse_functional_coverage_text(report_path: Path) -> Dict:
             m = total_pat.search(line)
             if m:
                 total_coverage = float(m.group(1))
+                pending_instance_name = None
                 continue
 
             if type_pat.match(line):
                 _flush_cg(current_cg)
                 current_cg = None
                 current_cp = None
+                pending_instance_name = None
+                continue
+
+            # If we saw an instance header on the previous line, grab the % now
+            if pending_instance_name is not None:
+                mc = instance_cov_pat.match(line)
+                if mc:
+                    _flush_cg(current_cg)
+                    raw = pending_instance_name
+                    current_cg = {
+                        'name':           raw.split('/')[-1],
+                        'instance_path':  '/' + raw,
+                        'coverage':       float(mc.group(1)),
+                        'sample_event':   None,
+                        'uncovered_bins': [],
+                    }
+                    current_cp = None
+                pending_instance_name = None
                 continue
 
             m = instance_pat.match(line)
             if m:
-                _flush_cg(current_cg)
                 raw = m.group(1).replace('\\', '').strip('/')
-                current_cg = {
-                    'name':           raw.split('/')[-1],
-                    'instance_path':  '/' + raw,
-                    'coverage':       float(m.group(2)),
-                    'sample_event':   None,
-                    'uncovered_bins': [],
-                }
-                current_cp = None
+                # Check if the % is on the same line
+                rest = line[m.end():]
+                mc = re.search(r'\s+([\d.]+)%', rest)
+                if mc:
+                    _flush_cg(current_cg)
+                    current_cg = {
+                        'name':           raw.split('/')[-1],
+                        'instance_path':  '/' + raw,
+                        'coverage':       float(mc.group(1)),
+                        'sample_event':   None,
+                        'uncovered_bins': [],
+                    }
+                    current_cp = None
+                else:
+                    # Coverage % is on the next line
+                    pending_instance_name = raw
                 continue
 
             if current_cg is None:
@@ -247,6 +276,12 @@ def parse_functional_coverage_text(report_path: Path) -> Dict:
                 })
 
         _flush_cg(current_cg)
+
+        # vcover may emit instance data twice; keep last occurrence per instance_path
+        seen: dict = {}
+        for cg in covergroups:
+            seen[cg['instance_path']] = cg
+        covergroups = list(seen.values())
 
         return {
             'total_coverage': total_coverage,
@@ -500,6 +535,6 @@ def build_uvm_vsim_command(
         "-sv_seed", seed,
         "-sv_lib", dpi_lib,
         f"+UVM_TESTNAME={test_name}",
-        "+UVM_VERBOSITY=UVM_HIGH",
+        "+UVM_VERBOSITY=UVM_MEDIUM",
         "-do", do_script,
     ]

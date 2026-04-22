@@ -299,14 +299,14 @@ def agent_node(state: MultiAgentState) -> MultiAgentState:
     if hasattr(response, 'tool_calls') and response.tool_calls:
         no_tool_call_count = 0
     else:
-        no_tool_call_count = state.get("_no_tool_call_count", 0) + 1
+        no_tool_call_count = state.get("no_tool_call_count", 0) + 1
 
     return {
         "messages": [response],
         "api_calls": new_api_calls,
         "orchestrator_calls": state.get("orchestrator_calls", 0) + 1,
         "token_usage": [token_record],
-        "_no_tool_call_count": no_tool_call_count,
+        "no_tool_call_count": no_tool_call_count,
     }
 
 
@@ -384,6 +384,12 @@ def update_state_node(state: MultiAgentState) -> MultiAgentState:
 
     # Merge all successful coverage DBs into cumulative
     func_cov_enabled = getattr(config, 'functional_coverage_enabled', False)
+    # UVM functional mode tracks functional coverage the same way as func_cov_enabled
+    uvm_functional = (
+        getattr(config, 'uvm_enabled', False) and
+        getattr(config, 'uvm_coverage_mode', 'functional') == 'functional'
+    )
+    func_cov_enabled = func_cov_enabled or uvm_functional
     cumulative_db_path = Path(config.work_dir) / "coverage" / "cumulative.ucdb"
     prev_coverage = state.get("cumulative_coverage", 0.0)
     delta_pct = 0.0  # defined here so it's always in scope after the if/else
@@ -452,8 +458,9 @@ def update_state_node(state: MultiAgentState) -> MultiAgentState:
         new_func_coverage = 0.0
         new_uncovered_bins = []
         cumulative_result = None
+        design_files = getattr(config, 'design_files', None) or None
         try:
-            cumulative_result = _adapter.parse_coverage(cumulative_db_path)
+            cumulative_result = _adapter.parse_coverage(cumulative_db_path, design_files=design_files)
             new_coverage = cumulative_result.total_coverage
         except Exception as e:
             logging.error(f"Cumulative coverage parse failed: {e}")
@@ -561,8 +568,13 @@ def finalize_node(state: MultiAgentState) -> MultiAgentState:
 
     # Determine termination reason
     func_cov_enabled = getattr(config, 'functional_coverage_enabled', False)
+    uvm_functional = (
+        getattr(config, 'uvm_enabled', False) and
+        getattr(config, 'uvm_coverage_mode', 'functional') == 'functional'
+    )
+    use_funcov = func_cov_enabled or uvm_functional
     func_cov_target = getattr(config, 'functional_coverage_target', 100.0)
-    if func_cov_enabled:
+    if use_funcov:
         effective_coverage = state.get("current_functional_coverage", 0.0)
         coverage_complete = effective_coverage >= func_cov_target
     else:
@@ -581,7 +593,7 @@ def finalize_node(state: MultiAgentState) -> MultiAgentState:
     else:
         reason = "unknown"
 
-    if func_cov_enabled:
+    if use_funcov:
         cov_line = f"Final functional coverage: {effective_coverage:.2f}%."
         report_coverage = (
             "- Final functional coverage and remaining uncovered bins\n"
@@ -714,7 +726,7 @@ def route_after_agent(state: MultiAgentState) -> Literal["tools", "agent", "fina
         return _route("tools", f"tool_calls: {tool_names}")
 
     # No tool calls — check if stuck
-    no_tool_count = state.get("_no_tool_call_count", 0)
+    no_tool_count = state.get("no_tool_call_count", 0)
     if no_tool_count >= config.max_no_tool_calls:
         return _route("finalize", f"max_no_tool_calls ({no_tool_count}/{config.max_no_tool_calls})")
 
@@ -740,8 +752,12 @@ def route_after_update(state: MultiAgentState) -> Literal["agent", "finalize", "
         return _route(END, "finalize_turn_complete")
 
     func_cov_enabled = getattr(config, 'functional_coverage_enabled', False)
+    uvm_functional = (
+        getattr(config, 'uvm_enabled', False) and
+        getattr(config, 'uvm_coverage_mode', 'functional') == 'functional'
+    )
     func_cov_target = getattr(config, 'functional_coverage_target', 100.0)
-    if func_cov_enabled:
+    if func_cov_enabled or uvm_functional:
         cumulative = state.get("current_functional_coverage", 0.0)
         target = func_cov_target
     else:

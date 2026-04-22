@@ -337,7 +337,11 @@ def make_crt_tools(
             logging.error(f"CRT {gen_id} simulation error: {e}")
             return {"success": False, "error": str(e)}
 
-    return [read_file, list_directory, write_file, compile_design, run_simulation]
+    tools = [read_file, list_directory, write_file, compile_design, run_simulation]
+    if getattr(config, 'uvm_enabled', False):
+        from ...tools.filesystem import request_infra_modification
+        tools.append(request_infra_modification)
+    return tools
 
 
 def dispatch_crt_agent(

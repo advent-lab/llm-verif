@@ -2,9 +2,48 @@ from pathlib import Path
 from typing import Dict, Any
 from langchain.tools import tool
 import logging
+import re as _re
 
 _config = None
 _adapter = None  # Simulator adapter instance
+
+
+def _extract_sim_errors(text: str, max_chars: int = 2000) -> str:
+    """Extract error-relevant lines (with context) from sim output for LLM consumption.
+
+    Searches for UVM_FATAL, UVM_ERROR, and QuestaSim error markers.
+    Returns ≤ max_chars so context tokens stay bounded even on verbose runs.
+    Falls back to first 50 lines when no recognised patterns are found.
+    """
+    if not text:
+        return "(no output)"
+
+    error_re = _re.compile(
+        r'UVM_FATAL|UVM_ERROR|\*\* Error|\*\* Fatal|^Fatal:|^Error:',
+        _re.IGNORECASE | _re.MULTILINE,
+    )
+    lines = text.splitlines()
+    ctx = 3  # lines of context before/after each match
+
+    seen: set = set()
+    chunks: list = []
+    for i, line in enumerate(lines):
+        if error_re.search(line):
+            start = max(0, i - ctx)
+            end = min(len(lines), i + ctx + 1)
+            block = []
+            for j in range(start, end):
+                if j not in seen:
+                    seen.add(j)
+                    block.append(lines[j])
+            if block:
+                chunks.append('\n'.join(block))
+
+    if not chunks:
+        return '\n'.join(lines[:50])
+
+    combined = '\n---\n'.join(chunks)
+    return combined[:max_chars]
 
 def set_config(config):
     """Set config and initialize appropriate simulator adapter.
@@ -149,7 +188,6 @@ def compile_design(testbench_path: str) -> Dict[str, Any]:
             # Prefer full_stdout/full_stderr (includes dep output) for disk log
             f.write(f"STDOUT:\n{result.get('full_stdout', result.get('stdout', '(empty)'))}\n\n")
             f.write(f"STDERR:\n{result.get('full_stderr', result.get('stderr', '(empty)'))}\n")
-        result["log_path"] = str(log_path)
         # Drop full_* keys so they don't leak into LLM-facing result
         result.pop("full_stdout", None)
         result.pop("full_stderr", None)
@@ -170,8 +208,9 @@ def compile_design(testbench_path: str) -> Dict[str, Any]:
 
         # Summarize output for the LLM (full output already saved to log file)
         if result.get("success", False):
-            result["stdout"] = f"Full log: {log_name}"
+            result["stdout"] = "Compilation succeeded."
             result.pop("stderr", None)
+            # log_path intentionally NOT returned — LLM has no reason to read successful compile logs
         else:
             stderr = result.get("stderr", "")
             stdout = result.get("stdout", "")
@@ -179,6 +218,8 @@ def compile_design(testbench_path: str) -> Dict[str, Any]:
             result["error_summary"] = f"Compilation failed. Check {log_name} for details.\n{error_output[:500]}"
             result["stdout"] = _adapter.filter_compile_output(result.get("stdout", ""))
             result["stderr"] = _adapter.filter_compile_output(result.get("stderr", ""))
+            # log_path returned on failure so LLM can request a targeted read if needed
+            result["log_path"] = str(log_path)
 
         # Add iteration and retry info to result
         result["iteration"] = iteration
@@ -248,8 +289,6 @@ def run_simulation(testbench_name: str = "tb_llm", num_runs: int = None) -> Dict
             f.write(f"STDOUT:\n{result.get('stdout', '(empty)')}\n")
             if result.get("stderr"):
                 f.write(f"\nSTDERR:\n{result.get('stderr', '(empty)')}\n")
-        result["log_path"] = str(log_path)
-
         # Summarize output for the LLM (full output already saved to log file)
         if result.get("success", False):
             summary = (
@@ -258,17 +297,25 @@ def run_simulation(testbench_name: str = "tb_llm", num_runs: int = None) -> Dict
             )
             if result.get("warning"):
                 summary += f" Warning: {result['warning']}"
-            summary += f" Full log: {log_name}"
             result["stdout"] = summary
             result.pop("stderr", None)
+            # log_path intentionally NOT returned — LLM should not read 100s-of-KB sim transcripts
         else:
+            raw_stdout = result.get("stdout", "")
+            raw_stderr = result.get("stderr", "")
             error_msg = result.get("error", "")
-            stderr = result.get("stderr", "")
-            stdout = result.get("stdout", "")
-            error_output = error_msg or stderr or stdout or "Unknown error"
-            result["error_summary"] = f"Simulation failed. Check {log_name} for details.\n{error_output[:500]}"
-            result["stdout"] = _adapter.filter_sim_output(result.get("stdout", ""))
-            result["stderr"] = _adapter.filter_sim_output(result.get("stderr", ""))
+            # Extract only error-relevant lines so the LLM gets root-cause context without
+            # ingesting the full verbose transcript (can be 500k+ chars with UVM_MEDIUM)
+            extracted = _extract_sim_errors(raw_stdout or raw_stderr or error_msg)
+            result["error_summary"] = (
+                f"Simulation failed (log saved: {log_name}).\n"
+                f"Relevant errors:\n{extracted}"
+            )
+            result["stdout"] = extracted
+            result.pop("stderr", None)
+            # log_path returned on failure only — lets LLM request targeted read if extracted
+            # errors are insufficient to diagnose the problem
+            result["log_path"] = str(log_path)
 
         # Add iteration and retry info to result
         result["iteration"] = iteration

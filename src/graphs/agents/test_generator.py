@@ -342,7 +342,11 @@ def make_generator_tools(
             logging.error(f"Generator {gen_id} simulation error: {e}")
             return {"success": False, "error": str(e)}
 
-    return [write_file, compile_design, run_simulation]
+    tools = [write_file, compile_design, run_simulation]
+    if getattr(config, 'uvm_enabled', False):
+        from ...tools.filesystem import request_infra_modification
+        tools.append(request_infra_modification)
+    return tools
 
 
 def dispatch_generator(
