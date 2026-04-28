@@ -579,8 +579,13 @@ class QuestasimAdapter(SimulatorAdapter):
             return cumulative_ucdb
 
         # Merge new coverage with cumulative
-        # Create temp file for merged result, then replace cumulative
-        temp_merged = cumulative_ucdb.parent / "cumulative_temp.ucdb"
+        # Create temp file for merged result, then replace cumulative.
+        # Temp name is unique per (target, pid) to avoid clobbering when
+        # parallel callers merge into different cumulatives in the same dir.
+        import os
+        temp_merged = cumulative_ucdb.parent / (
+            f".{cumulative_ucdb.stem}_temp_{os.getpid()}_{id(new_ucdb)}.ucdb"
+        )
 
         merge_command = build_vcover_merge_command(
             self.simulator_path, temp_merged, [cumulative_ucdb, new_ucdb]

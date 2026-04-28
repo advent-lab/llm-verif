@@ -25,10 +25,13 @@ import dataclasses
 import json
 import logging
 import os
+from platform import architecture
 import re
 import sys
 import time
 from pathlib import Path
+
+from charset_normalizer.api import logger
 
 
 class _StripAnsiFilter(logging.Filter):
@@ -308,6 +311,12 @@ Environment File Format:
                 from src.utils.conversation_logger import init_conversation_logging
                 init_conversation_logging(config.work_dir)
                 graph = create_ag_crt_graph()
+            elif config.architecture == "v3":
+                from src.graphs.orc_gen import create_orc_gen_graph
+                from src.utils.conversation_logger import init_conversation_logging
+                logger.info("Using v3 multi-agent architecture (Orchestrator + Iterative Test Generator)")
+                init_conversation_logging(config.work_dir)
+                graph = create_orc_gen_graph()
             else:
                 from src.graphs.react import create_react_graph
                 graph = create_react_graph()

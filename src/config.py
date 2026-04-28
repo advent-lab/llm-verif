@@ -50,9 +50,9 @@ class Config:
     # LangGraph
     recursion_limit: int  # LangGraph graph recursion limit
 
-    # Multi-agent (v2 / v2.1)
-    architecture: str  # "v1", "v2", or "v2.1" — selects which graph to build
-    orchestrator_model: str  # Model for orchestrator agent (both v2 and v2.1)
+    # Multi-agent (v2 / v2.1 / v3)
+    architecture: str  # "v1", "v2", "v2.1", or "v3" — selects which graph to build
+    orchestrator_model: str  # Model for orchestrator agent (v2, v2.1, v3)
     # v2 (expert+generator) models
     design_expert_model: str  # Model for design expert agent
     test_generator_model: str  # Model for test generator agent
@@ -63,6 +63,17 @@ class Config:
     # Shared
     gen_max_retries: int  # Max compile/sim failures per generator dispatch
     max_gen_per_iter: int  # Max generators per orchestrator iteration
+
+    # v3 (orchestrator + iterative test generator)
+    gen_max_iterations: int     # Max successful coverage rounds inside one
+                                 # generator dispatch (the v3 "successful
+                                 # coverage" counter the user asked for).
+    gen_max_no_progress: int    # Stop a generator early if its own coverage
+                                 # stalls for this many consecutive rounds.
+    gen_max_no_tool_calls: int  # Generator inner-loop guard against text-only
+                                 # responses.
+    gen_recursion_limit: int    # LangGraph recursion_limit for the inner
+                                 # test-generator graph.
 
     # Debug
     log_level: str
@@ -246,6 +257,10 @@ def load_config() -> Config:
         crt_model=os.getenv("CRT_MODEL", os.getenv("TEST_GENERATOR_MODEL", model)),
         gen_max_retries=int(os.getenv("GEN_MAX_RETRIES", "3")),
         max_gen_per_iter=int(os.getenv("MAX_GEN_PER_ITER", "3")),
+        gen_max_iterations=int(os.getenv("GEN_MAX_ITERATIONS", "5")),
+        gen_max_no_progress=int(os.getenv("GEN_MAX_NO_PROGRESS", "2")),
+        gen_max_no_tool_calls=int(os.getenv("GEN_MAX_NO_TOOL_CALLS", "2")),
+        gen_recursion_limit=int(os.getenv("GEN_RECURSION_LIMIT", "120")),
         log_level=os.getenv("LOG_LEVEL", "INFO"),
         log_truncate=os.getenv("LOG_TRUNCATE", "1") == "1"
     )

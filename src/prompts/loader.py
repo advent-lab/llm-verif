@@ -281,6 +281,128 @@ def load_crt_prompt(design_name: str) -> str:
     return template.format(design_name=design_name)
 
 
+_V3_MODE_SECTIONS = {
+    "crt": {
+        "intro": (
+            "You generate broad, randomized stimulus to sweep coverage cheaply "
+            "early in verification. Variety beats precision in CRT mode — try "
+            "lots of distributions, modes, and timing patterns."
+        ),
+        "strategy": (
+            "Write testbenches that drive heavily randomized inputs through the "
+            "DUT's top-level ports. Use `$urandom` / `$urandom_range` aggressively. "
+            "Across rounds, deliberately vary the seed family, the distribution "
+            "shape (uniform vs. weighted), and the operating mode (e.g., reset "
+            "variants, mode-control bit combinations). Don't analyze coverage "
+            "holes deeply — just keep widening the stimulus space."
+        ),
+    },
+    "directed": {
+        "intro": (
+            "You generate targeted stimulus aimed at specific uncovered code "
+            "paths or functional bins. Precision beats variety in directed mode "
+            "— each testbench should drive a clearly-named scenario."
+        ),
+        "strategy": (
+            "Read the testplan in your task message carefully. For each round, "
+            "pick ONE hole or scenario from the testplan, trace what input "
+            "sequence triggers it (using your whitelisted RTL files), write a "
+            "testbench that walks exactly that sequence, and check whether the "
+            "hole closed. If a hole resists 2 rounds, document it in your "
+            "summary and move on."
+        ),
+    },
+}
+
+
+def load_orc_gen_orchestrator_prompt(
+    design_name: str,
+    module_header: str,
+    module_registry_summary: str = "",
+    max_iterations: int = 10,
+    sim_runs: int = 5,
+    sim_timeout: int = 60,
+    gen_max_iterations: int = 5,
+    design_dir: str = "",
+    spec_path: str = "",
+    design_files: Optional[List] = None,
+    design_context_files: Optional[List] = None,
+) -> str:
+    """Load and interpolate the v3 (orc_gen) orchestrator system prompt."""
+    template_path = Path(__file__).parent / "orc_gen_orchestrator_system.md"
+    template = _extract_template(template_path)
+
+    design_files_str = (
+        "\n".join([f"   - {f}" for f in design_files]) if design_files else "   (none)"
+    )
+    context_files_str = (
+        "\n".join([f"   - {f}" for f in design_context_files])
+        if design_context_files else "   (none)"
+    )
+
+    return template.format(
+        design_name=design_name,
+        design_dir=design_dir or "(not specified)",
+        spec_path=spec_path or "(not specified)",
+        design_files=design_files_str,
+        design_context_files=context_files_str,
+        module_header=module_header,
+        module_registry_summary=module_registry_summary or "(not yet extracted)",
+        max_iterations=max_iterations,
+        sim_runs=sim_runs,
+        sim_timeout=sim_timeout,
+        gen_max_iterations=gen_max_iterations,
+    )
+
+
+def load_orc_gen_test_generator_prompt(
+    mode: str,
+    design_name: str,
+    spec_path: str,
+    allowed_files: Optional[List[str]] = None,
+    gen_max_iterations: int = 5,
+    gen_max_retries: int = 3,
+    sim_timeout: int = 60,
+) -> str:
+    """Load and interpolate the v3 test generator system prompt.
+
+    Args:
+        mode: "crt" or "directed" — selects the mode-specific intro/strategy.
+        design_name: Design name for prompt interpolation.
+        spec_path: Path to the spec (informational; the orchestrator may include
+            it in the read whitelist).
+        allowed_files: Whitelist of absolute paths the generator may read_file.
+        gen_max_iterations: Max successful coverage rounds inside this dispatch.
+        gen_max_retries: Max compile/sim failures before stopping.
+        sim_timeout: Per-run sim timeout in seconds.
+    """
+    mode_key = mode.lower().strip()
+    if mode_key not in _V3_MODE_SECTIONS:
+        raise ValueError(
+            f"Unknown v3 generator mode: {mode!r} (expected 'crt' or 'directed')"
+        )
+
+    template_path = Path(__file__).parent / "orc_gen_test_generator_system.md"
+    template = _extract_template(template_path)
+
+    if allowed_files:
+        allowed_block = "\n".join(f"   - {p}" for p in allowed_files)
+    else:
+        allowed_block = "   (no files allowed — operate purely from your task message)"
+
+    return template.format(
+        mode=mode_key,
+        mode_intro=_V3_MODE_SECTIONS[mode_key]["intro"],
+        mode_strategy=_V3_MODE_SECTIONS[mode_key]["strategy"],
+        design_name=design_name,
+        spec_path=spec_path or "(not specified)",
+        allowed_files_block=allowed_block,
+        gen_max_iterations=gen_max_iterations,
+        gen_max_retries=gen_max_retries,
+        sim_timeout=sim_timeout,
+    )
+
+
 def load_ag_crt_orchestrator_prompt(
     design_name: str,
     module_header: str,

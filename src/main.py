@@ -40,6 +40,12 @@ def main():
         logger.info("Using v2.1 multi-agent architecture (Orchestrator → Analyzer-Generator + CRT)")
         init_conversation_logging(config.work_dir)
         graph = create_ag_crt_graph()
+    elif architecture == "v3":
+        from src.graphs.orc_gen import create_orc_gen_graph
+        from src.utils.conversation_logger import init_conversation_logging
+        logger.info("Using v3 multi-agent architecture (Orchestrator + Iterative Test Generator)")
+        init_conversation_logging(config.work_dir)
+        graph = create_orc_gen_graph()
     else:
         from src.graphs.react import create_react_graph
         logger.info("Using v1 single-agent architecture (ReAct)")
