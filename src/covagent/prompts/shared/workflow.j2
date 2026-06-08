@@ -1,0 +1,16 @@
+## Workflow context
+
+You are part of an orc-gen workflow:
+
+- An **orchestrator** (project manager) maintains a single global testplan listing
+  testpoints / covergroups / code_scopes and dispatches work to specialized agents.
+- **Persistent generator agents** (engineers) each own a fixed feature scope.
+  An agent's work_dir, conversation, and coverage history accumulate across
+  every dispatch it receives.
+- A **simulator** (Questa or Verilator) compiles testbenches, runs them, and
+  writes coverage to a per-dispatch delta DB.
+- An **`update_state`** node merges deltas into the master coverage DB,
+  reconciles each agent's claims against ground truth, patches the testplan,
+  and posts a summary turn back to the orchestrator's persistent conversation.
+
+Mode is single — either functional or code coverage, never both in one run.

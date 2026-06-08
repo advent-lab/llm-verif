@@ -1,0 +1,539 @@
+{
+    "testplan": {
+        "testpoints": {
+            "stage_v1": [
+                {
+                    "name": "wake_up",
+                    "test": "aes_wake_up",
+                    "description": "Basic hello world, encrypt a plain text read it back - decrypt and compare to input."
+                },
+                {
+                    "name": "smoke",
+                    "test": "aes_smoke",
+                    "description": "Encrypt a plain text read it back - decrypt and compare to input but use reference model to compare after both encryption and decryption."
+                },
+                {
+                    "name": "csr_hw_reset",
+                    "test": "aes_csr_hw_reset",
+                    "description": "Verify the reset values as indicated in the RAL specification.",
+                    "steps": [
+                        "Write all CSRs with a random value.",
+                        "Apply reset to the DUT as well as the RAL model.",
+                        "Read each CSR and compare it against the reset value.",
+                        "Replicate this test for each reset that affects all or a subset of the CSRs.",
+                        "Run this test for all available interfaces the CSRs are accessible from.",
+                        "Shuffle the list of CSRs first to remove the effect of ordering."
+                    ]
+                },
+                {
+                    "name": "csr_rw",
+                    "test": "aes_csr_rw",
+                    "description": "Verify accessibility of CSRs as indicated in the RAL specification.",
+                    "steps": [
+                        "Loop through each CSR to write it with a random value.",
+                        "Read the CSR back and check for correctness while adhering to its access policies.",
+                        "Run this test for all available interfaces the CSRs are accessible from.",
+                        "Shuffle the list of CSRs first to remove the effect of ordering."
+                    ]
+                },
+                {
+                    "name": "csr_bit_bash",
+                    "test": "aes_csr_bit_bash",
+                    "description": "Verify no aliasing within individual bits of a CSR.",
+                    "steps": [
+                        "Walk a 1 through each CSR by flipping 1 bit at a time.",
+                        "Read the CSR back and check for correctness while adhering to its access policies.",
+                        "Verify that writing a specific bit within the CSR did not affect any of the other bits.",
+                        "Run this test for all available interfaces the CSRs are accessible from.",
+                        "Shuffle the list of CSRs first to remove the effect of ordering."
+                    ]
+                },
+                {
+                    "name": "csr_aliasing",
+                    "test": "aes_csr_aliasing",
+                    "description": "Verify no aliasing within the CSR address space.",
+                    "steps": [
+                        "Loop through each CSR to write it with a random value.",
+                        "Shuffle and read ALL CSRs back.",
+                        "Verify all CSRs except for the one that was written in this iteration should read back the previous value.",
+                        "Check the written CSR for correctness while adhering to its access policies.",
+                        "Run this test for all available interfaces the CSRs are accessible from.",
+                        "Shuffle the list of CSRs first to remove the effect of ordering."
+                    ]
+                },
+                {
+                    "name": "csr_mem_rw_with_rand_reset",
+                    "test": "aes_csr_mem_rw_with_rand_reset",
+                    "description": "Verify random reset during CSR/memory access.",
+                    "steps": [
+                        "Run csr_rw sequence to randomly access CSRs.",
+                        "If memory exists, run mem_partial_access in parallel with csr_rw.",
+                        "Randomly issue reset and then use hw_reset sequence to check all CSRs are reset to default value.",
+                        "Run this test for all available interfaces the CSRs are accessible from."
+                    ]
+                },
+                {
+                    "name": "regwen_csr_and_corresponding_lockable_csr",
+                    "tests": ["aes_csr_rw", "aes_csr_aliasing"],
+                    "description": "Verify regwen CSR and its corresponding lockable CSRs.",
+                    "steps": [
+                        "Randomly access all CSRs.",
+                        "Test when regwen CSR is set, its corresponding lockable CSRs become read-only registers."
+                    ],
+                    "notes": [
+                        "If regwen CSR is HW read-only, this feature can be fully tested by common CSR tests - csr_rw and csr_aliasing.",
+                        "If regwen CSR is HW updated, a separate test should be created to test it.",
+                        "This is only applicable if the block contains regwen and lockable CSRs."
+                    ]
+                }
+            ],
+            "stage_v2": [
+                {
+                    "name": "algorithm",
+                    "tests": ["aes_smoke", "aes_stress", "aes_config_error"],
+                    "description": "Compare cypher text from DUT with the output of a C model using same key and data."
+                },
+                {
+                    "name": "key_length",
+                    "tests": ["aes_stress", "aes_smoke", "aes_config_error"],
+                    "description": "Randomly select key length to verify all supported key lengths are working."
+                },
+                {
+                    "name": "back2back",
+                    "tests": ["aes_b2b", "aes_stress"],
+                    "description": "Back to back Messages are not possible as the DUT need to be idle before writing a new configuration. But Back2back verifies that DUT can handle back to back data blocks and other spacings."
+                },
+                {
+                    "name": "backpressure",
+                    "test": "aes_stress",
+                    "description": "Try to write data to registers without offloading the DUT output to verify Stall functionality."
+                },
+                {
+                    "name": "multi_message",
+                    "tests": ["aes_stress", "aes_smoke", "aes_config_error", "aes_alert_reset"],
+                    "description": "Run multiple messages in a random mix of encryption / decryption. Each message should select its mode randomly."
+                },
+                {
+                    "name": "failure_test",
+                    "tests": ["aes_config_error", "aes_alert_reset", "aes_man_cfg_err"],
+                    "description": "Tests what happens if a register is written at the wrong time? If a key does not match the key setting etc. Will the DUT ignore or fail gracefully.",
+                    "examples": [
+                        "Enter a 256bit key but set DUT to use 128bit for encryption. Then enter the 128bit of the key and use for decryption. Will result match plain text and vice.",
+                        "Write unsupported configurations (Key length and mode are 1 hot, what happens if more than one bit is set.)"
+                    ]
+                },
+                {
+                    "name": "trigger_clear_test",
+                    "test": "aes_clear",
+                    "description": "Exercise trigger and clear registers at random times to make sure we handle the different cornercases correctly.",
+                    "example": "Clearing data input or data output before the data is consumed or the DUT finishes an operation."
+                },
+                {
+                    "name": "nist_test_vectors",
+                    "test": "aes_nist_vectors",
+                    "description": "Verify that the DUT handles the NIST test vectors correctly."
+                },
+                {
+                    "name": "nist_test_vectors_gcm",
+                    "test": "aes_nist_vectors_gcm",
+                    "description": "Verify that the DUT handles the NIST GCM test vectors correctly."
+                },
+                {
+                    "name": "reset_recovery",
+                    "test": "aes_alert_reset",
+                    "description": "Pull reset at random times, make sure DUT recover/resets correctly and there is no residual data left in the registers."
+                },
+                {
+                    "name": "stress",
+                    "test": "aes_stress",
+                    "description": "This will combine the other individual testpoints to ensure we stress test everything across the board."
+                },
+                {
+                    "name": "sideload",
+                    "tests": ["aes_stress", "aes_sideload"],
+                    "description": "Verify that DUT uses sideload correctly when sideload is enabled and that it ignores any valid on the bus when disabled."
+                },
+                {
+                    "name": "deinitialization",
+                    "test": "aes_deinit",
+                    "description": "Make sure that there is no residual data from latest operation."
+                },
+                {
+                    "name": "stress_all",
+                    "test": "aes_stress_all",
+                    "description": "Run assorted sequences back-to-back."
+                },
+                {
+                    "name": "gcm_save_and_restore",
+                    "test": "aes_gcm_save_restore",
+                    "description": "Verify that saving and restoring contexts in GCM works correctly. When triggered, save the current context, clear the entire state, restore the context, and proceed with the operation."
+                },
+                {
+                    "name": "alert_test",
+                    "test": "aes_alert_test",
+                    "description": "Verify common alert_test CSR that allows SW to mock-inject alert requests.",
+                    "steps": [
+                        "Enable a random set of alert requests by writing random value to alert_test CSR.",
+                        "Check each alert_tx.alert_p pin to verify that only the requested alerts are triggered.",
+                        "During alert_handshakes, write alert_test CSR again to verify that: If alert_test writes to current ongoing alert handshake, the alert_test request will be ignored. If alert_test writes to current idle alert handshake, a new alert_handshake should be triggered.",
+                        "Wait for the alert handshakes to finish and verify alert_tx.alert_p pins all sets back to 0.",
+                        "Repeat the above steps a bunch of times."
+                    ]
+                },
+                {
+                    "name": "tl_d_oob_addr_access",
+                    "test": "aes_tl_errors",
+                    "description": "Access out of bounds address and verify correctness of response / behavior."
+                },
+                {
+                    "name": "tl_d_illegal_access",
+                    "test": "aes_tl_errors",
+                    "description": "Drive unsupported requests via TL interface and verify correctness of response / behavior.",
+                    "tlul_protocol_errors": [
+                        "Invalid opcode",
+                        "Some mask bits not set when opcode is PutFullData",
+                        "Mask does not match the transfer size (e.g. a_address = 0x00, a_size = 0, a_mask = 'b0010)",
+                        "Mask and address misaligned (e.g. a_address = 0x01, a_mask = 'b0001)",
+                        "Address and size aren't aligned (e.g. a_address = 0x01, a_size != 0)",
+                        "Size is greater than 2"
+                    ],
+                    "opentitan_errors": [
+                        "Access unmapped address, expect d_error = 1",
+                        "Write a CSR with unaligned address (e.g. a_address[1:0] != 0)",
+                        "Write a CSR less than its width (e.g. when CSR is 2 bytes wide, only write 1 byte)",
+                        "Write a memory with a_mask != '1 when it doesn't support partial accesses",
+                        "Read a WO (write-only) memory",
+                        "Write a RO (read-only) memory",
+                        "Write with instr_type = True"
+                    ]
+                },
+                {
+                    "name": "tl_d_outstanding_access",
+                    "tests": ["aes_csr_hw_reset", "aes_csr_rw", "aes_csr_aliasing", "aes_same_csr_outstanding"],
+                    "description": "Drive back-to-back requests without waiting for response to ensure there is one transaction outstanding within the TL device. Also, verify one outstanding when back-to-back accesses are made to the same address."
+                },
+                {
+                    "name": "tl_d_partial_access",
+                    "tests": ["aes_csr_hw_reset", "aes_csr_rw", "aes_csr_aliasing", "aes_same_csr_outstanding"],
+                    "description": "Access CSR with one or more bytes of data. For read, expect to return all word value of the CSR. For write, enabling bytes should cover all CSR valid fields."
+                }
+            ],
+            "stage_v2s": [
+                {
+                    "name": "reseeding",
+                    "test": "aes_reseed",
+                    "description": "Verify that internal PRNGs are effectively reseeded upon manually triggering a PRNG reseed, and - depending on the configuration - if the initial key changes."
+                },
+                {
+                    "name": "fault_inject",
+                    "tests": ["aes_fi", "aes_control_fi", "aes_cipher_fi"],
+                    "description": "Verify that injecting bit errors in one of the state machines or the round counter triggers an error."
+                },
+                {
+                    "name": "shadow_reg_update_error",
+                    "test": "aes_shadow_reg_errors",
+                    "description": "Verify shadowed registers' update error.",
+                    "steps": [
+                        "Randomly pick a shadowed register in the DUT.",
+                        "Write it twice with different values.",
+                        "Verify that the update error alert is triggered and the register value remains unchanged.",
+                        "Verify the update_error status register field is set to 1.",
+                        "Repeat the above steps a bunch of times."
+                    ]
+                },
+                {
+                    "name": "shadow_reg_read_clear_staged_value",
+                    "test": "aes_shadow_reg_errors",
+                    "description": "Verify reading a shadowed register will clear its staged value.",
+                    "steps": [
+                        "Randomly pick a shadowed register in the DUT.",
+                        "Write it once and read it back to clear the staged value.",
+                        "Then write it twice with the same new value (but different from the previous step).",
+                        "Read it back to verify the new value and ensure that the update error alert did not trigger.",
+                        "Verify the update_error status register field remains the same value.",
+                        "Repeat the above steps a bunch of times."
+                    ]
+                },
+                {
+                    "name": "shadow_reg_storage_error",
+                    "test": "aes_shadow_reg_errors",
+                    "description": "Verify shadowed registers' storage error.",
+                    "steps": [
+                        "Randomly pick a shadowed register in the DUT.",
+                        "Backdoor write to shadowed or committed flops to create a storage fatal alert.",
+                        "Check if fatal alert continuously fires until reset.",
+                        "Verify that all other frontdoor write attempts are blocked during the storage error.",
+                        "Verify that storage_error status register field is set to 1.",
+                        "Reset the DUT.",
+                        "Read all CSRs to ensure the DUT is properly reset.",
+                        "Repeat the above steps a bunch of times."
+                    ]
+                },
+                {
+                    "name": "shadowed_reset_glitch",
+                    "test": "aes_shadow_reg_errors",
+                    "description": "Verify toggle shadowed_rst_n pin can trigger storage error.",
+                    "steps": [
+                        "Randomly drive shadowed_rst_n pin to low or rst_n pin to low.",
+                        "Check if any registers have been written before the reset. If so check if storage error fatal alert is triggered.",
+                        "Check status register.",
+                        "Drive shadowed_rst_n pin or rst_n pin back to high.",
+                        "If fatal alert is triggered, reset the DUT.",
+                        "Read all CSRs to ensure the DUT is properly reset.",
+                        "Repeat the above steps a bunch of times."
+                    ]
+                },
+                {
+                    "name": "shadow_reg_update_error_with_csr_rw",
+                    "test": "aes_shadow_reg_errors_with_csr_rw",
+                    "description": "Run shadow_reg_update_error sequence in parallel with csr_rw sequence.",
+                    "steps": [
+                        "Randomly select one of the above sequences.",
+                        "Apply csr_rw sequence in parallel but disable the csr_access_abort to ensure all shadowed registers' write/read to be executed without aborting.",
+                        "Repeat the above steps a bunch of times."
+                    ]
+                },
+                {
+                    "name": "tl_intg_err",
+                    "tests": ["aes_tl_intg_err", "aes_sec_cm"],
+                    "description": "Verify that the data integrity check violation generates an alert.",
+                    "steps": [
+                        "Randomly inject errors on the control, data, or the ECC bits during CSR accesses. Verify that triggers the correct fatal alert.",
+                        "Inject a fault at the onehot check in u_reg.u_prim_reg_we_check and verify the corresponding fatal alert occurs."
+                    ]
+                },
+                {
+                    "name": "sec_cm_bus_integrity",
+                    "test": "aes_tl_intg_err",
+                    "description": "Verify the countermeasure(s) BUS.INTEGRITY."
+                },
+                {
+                    "name": "sec_cm_lc_escalate_en_intersig_mubi",
+                    "test": "aes_alert_reset",
+                    "description": "Verify the countermeasure(s) LC_ESCALATE_EN.INTERSIG.MUBI. Upon randomly switching the life cycle escalation input signal, it is ensured that the DUT stops processing data, locks up and triggers a fatal alert."
+                },
+                {
+                    "name": "sec_cm_main_config_shadow",
+                    "test": "aes_shadow_reg_errors",
+                    "description": "Verify the countermeasure(s) MAIN.CONFIG.SHADOW."
+                },
+                {
+                    "name": "sec_cm_gcm_config_shadow",
+                    "test": "aes_shadow_reg_errors",
+                    "description": "Verify the countermeasure(s) GCM.CONFIG.SHADOW."
+                },
+                {
+                    "name": "sec_cm_main_config_sparse",
+                    "tests": ["aes_stress", "aes_smoke", "aes_alert_reset", "aes_core_fi"],
+                    "description": "Verify the countermeasure(s) MAIN.CONFIG.SPARSE."
+                },
+                {
+                    "name": "sec_cm_gcm_config_sparse",
+                    "tests": ["aes_stress", "aes_config_error", "aes_gcm_save_restore", "aes_core_fi"],
+                    "description": "Verify the countermeasure(s) GCM.CONFIG.SPARSE."
+                },
+                {
+                    "name": "sec_cm_aux_config_shadow",
+                    "test": "aes_shadow_reg_errors",
+                    "description": "Verify the countermeasure(s) AUX.CONFIG.SHADOW."
+                },
+                {
+                    "name": "sec_cm_aux_config_regwen",
+                    "tests": ["aes_stress", "aes_readability"],
+                    "description": "Verify the countermeasure(s) AUX.CONFIG.REGWEN."
+                },
+                {
+                    "name": "sec_cm_key_sideload",
+                    "tests": ["aes_stress", "aes_sideload"],
+                    "description": "Verify the countermeasure(s) KEY.SIDELOAD."
+                },
+                {
+                    "name": "sec_cm_key_sw_unreadable",
+                    "test": "aes_readability",
+                    "description": "Verify the countermeasure(s) KEY.SW_UNREADABLE."
+                },
+                {
+                    "name": "sec_cm_data_reg_sw_unreadable",
+                    "test": "aes_readability",
+                    "description": "Verify the countermeasure(s) DATA_REG.SW_UNREADABLE."
+                },
+                {
+                    "name": "sec_cm_key_sec_wipe",
+                    "test": "aes_readability",
+                    "description": "Verify the countermeasure(s) KEY.SEC_WIPE."
+                },
+                {
+                    "name": "sec_cm_iv_config_sec_wipe",
+                    "test": "aes_readability",
+                    "description": "Verify the countermeasure(s) IV.CONFIG.SEC_WIPE."
+                },
+                {
+                    "name": "sec_cm_data_reg_sec_wipe",
+                    "test": "aes_readability",
+                    "description": "Verify the countermeasure(s) DATA_REG.SEC_WIPE."
+                },
+                {
+                    "name": "sec_cm_data_reg_key_sca",
+                    "test": "aes_stress",
+                    "description": "Verify the countermeasure(s) DATA_REG.KEY.SCA."
+                },
+                {
+                    "name": "sec_cm_key_masking",
+                    "test": "aes_stress",
+                    "description": "Verify the countermeasure(s) KEY.MASKING."
+                },
+                {
+                    "name": "sec_cm_main_fsm_sparse",
+                    "test": "aes_fi",
+                    "description": "Verify the countermeasure(s) MAIN.FSM.SPARSE."
+                },
+                {
+                    "name": "sec_cm_main_fsm_redun",
+                    "tests": ["aes_fi", "aes_control_fi", "aes_cipher_fi", "aes_ctr_fi"],
+                    "description": "Verify the countermeasure(s) MAIN.FSM.REDUN."
+                },
+                {
+                    "name": "sec_cm_cipher_fsm_sparse",
+                    "test": "aes_fi",
+                    "description": "Verify the countermeasure(s) CIPHER.FSM.SPARSE."
+                },
+                {
+                    "name": "sec_cm_cipher_fsm_redun",
+                    "tests": ["aes_fi", "aes_control_fi", "aes_cipher_fi"],
+                    "description": "Verify the countermeasure(s) CIPHER.FSM.REDUN."
+                },
+                {
+                    "name": "sec_cm_cipher_ctr_redun",
+                    "test": "aes_cipher_fi",
+                    "description": "Verify the countermeasure(s) CIPHER.CTR.REDUN."
+                },
+                {
+                    "name": "sec_cm_ctr_fsm_sparse",
+                    "test": "aes_fi",
+                    "description": "Verify the countermeasure(s) CTR.FSM.SPARSE."
+                },
+                {
+                    "name": "sec_cm_ctr_fsm_redun",
+                    "tests": ["aes_fi", "aes_control_fi", "aes_ctr_fi"],
+                    "description": "Verify the countermeasure(s) CTR.FSM.REDUN."
+                },
+                {
+                    "name": "sec_cm_ghash_fsm_sparse",
+                    "test": "aes_fi",
+                    "description": "Verify the countermeasure(s) GHASH.FSM.SPARSE."
+                },
+                {
+                    "name": "sec_cm_ctrl_sparse",
+                    "tests": ["aes_fi", "aes_control_fi", "aes_cipher_fi", "aes_ctr_fi"],
+                    "description": "Verify the countermeasure(s) CTRL.SPARSE."
+                },
+                {
+                    "name": "sec_cm_main_fsm_global_esc",
+                    "test": "aes_alert_reset",
+                    "description": "Verify the countermeasure(s) MAIN.FSM.GLOBAL_ESC."
+                },
+                {
+                    "name": "sec_cm_main_fsm_local_esc",
+                    "tests": ["aes_fi", "aes_control_fi", "aes_cipher_fi", "aes_ctr_fi"],
+                    "description": "Verify the countermeasure(s) MAIN.FSM.LOCAL_ESC."
+                },
+                {
+                    "name": "sec_cm_cipher_fsm_local_esc",
+                    "tests": ["aes_fi", "aes_control_fi", "aes_cipher_fi", "aes_ctr_fi"],
+                    "description": "Verify the countermeasure(s) CIPHER.FSM.LOCAL_ESC."
+                },
+                {
+                    "name": "sec_cm_ctr_fsm_local_esc",
+                    "tests": ["aes_fi", "aes_control_fi", "aes_ctr_fi"],
+                    "description": "Verify the countermeasure(s) CTR.FSM.LOCAL_ESC."
+                },
+                {
+                    "name": "sec_cm_ghash_fsm_local_esc",
+                    "tests": ["aes_fi", "aes_ghash_fi"],
+                    "description": "Verify the countermeasure(s) GHASH.FSM.LOCAL_ESC."
+                },
+                {
+                    "name": "sec_cm_data_reg_local_esc",
+                    "tests": ["aes_fi", "aes_control_fi", "aes_cipher_fi"],
+                    "description": "Verify the countermeasure(s) DATA_REG.LOCAL_ESC."
+                }
+            ],
+            "stage_v3": [
+                {
+                    "name": "stress_all_with_rand_reset",
+                    "test": "aes_stress_all_with_rand_reset",
+                    "description": "This test runs 3 parallel threads - stress_all, tl_errors and random reset. After reset is asserted, the test will read and check all valid CSR registers."
+                }
+            ]
+        },
+        "covergroups": [
+            {
+                "name": "ctrl_aux_cg",
+                "description": "Covers when enabled a complete write forces a reseed."
+            },
+            {
+                "name": "ctrl_gcm_reg_cg",
+                "description": "Covers that all valid settings have been tested.",
+                "coverpoints": ["phase", "restore_after_init", "save_after_aad/text"]
+            },
+            {
+                "name": "ctrl_reg_cg",
+                "description": "Covers that all valid settings have been tested.",
+                "coverpoints": ["operation", "mode", "key_len", "sideload", "prng_reseed_rate", "manual_operation"]
+            },
+            {
+                "name": "dut_busy_cg",
+                "description": "Cover that a busy DUT cannot be manipulated."
+            },
+            {
+                "name": "fault_inject_cg",
+                "description": "Cover that a recoverable error has been seen."
+            },
+            {
+                "name": "gcm_len_cg",
+                "description": "Covers that, when in AES-GCM mode, different sized AAD and TEXT blocks have been tested."
+            },
+            {
+                "name": "key_iv_data_cg",
+                "description": "Covers that these registers have been written in random order and interleaved."
+            },
+            {
+                "name": "regwen_val_when_new_value_written_cg",
+                "description": "Cover each lockable reg field with 2 cases: when regwen = 1 and when regwen = 0."
+            },
+            {
+                "name": "reseed_cg",
+                "description": "Cover that the different reseed configurations has been used.",
+                "coverpoints": ["reseed_rate_per_1", "reseed_rate_per_64", "reseed_rate_per_8k"]
+            },
+            {
+                "name": "self_clearing_cg",
+                "description": "Cover that the DUT self clearing is working correctly."
+            },
+            {
+                "name": "shadow_field_errs_cg",
+                "description": "Cover all shadow register errors for each register field."
+            },
+            {
+                "name": "sideload_cg",
+                "description": "Cover sideload functionality."
+            },
+            {
+                "name": "status_cg",
+                "description": "Covers the different status bits was seen."
+            },
+            {
+                "name": "tl_errors_cg",
+                "description": "Cover the following error cases on TL-UL bus."
+            },
+            {
+                "name": "tl_intg_err_cg",
+                "description": "Cover all kinds of integrity errors (command, data or both)."
+            },
+            {
+                "name": "trigger_cg",
+                "description": "Cover that a start initiates an operation in manual mode."
+            }
+        ]
+    }
+}

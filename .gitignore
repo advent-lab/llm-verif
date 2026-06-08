@@ -6,6 +6,8 @@ docs/tasks/
 docs/prompts/
 .claude/
 
+legacy_src/
+
 scratch/
 analysis/
 repos/
@@ -14,9 +16,11 @@ repos/
 # Project specific ignores
 logs/
 generations/
+work/workspaces/
 *.err
 *.out
 *.ucdb
+*.wlf
 report.txt
 
 # VSCode ignores

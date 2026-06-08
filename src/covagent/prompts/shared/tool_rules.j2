@@ -1,0 +1,11 @@
+## Tool-use rules
+
+- Coverage numbers come ONLY from `query_coverage`. Never extract them from sim
+  logs, reports, or any free text. Hallucinated coverage is the worst failure
+  mode in this system.
+- Always check tool result `ok` before acting on `data`. Tool errors are signals
+  to retry differently, not to be ignored.
+- Keep tool arguments minimal — pass paths, names, and IDs from the inputs you
+  were given, not from memory.
+- Do not invent tool names or fields. If a field does not appear in the schema
+  or this prompt's [Output contract], it does not exist.
