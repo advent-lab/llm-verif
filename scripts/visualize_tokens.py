@@ -147,7 +147,7 @@ Examples:
     
     # Validate that the file exists
     if not json_path.exists() or not json_path.is_file():
-        print(f"❌ Error: File does not exist: {json_path}")
+        print(f"Error: File does not exist: {json_path}")
         exit(1)
     
     # Output to same directory as input
