@@ -118,13 +118,13 @@ llm-verif/
 │       ├── loader.py         # System prompt template loader
 │       └── system.md         # System prompt template
 ├── scripts/
-│   ├── parse_log.py          # Extract metrics from run.log files
-│   ├── count_loc.py          # Count lines of code
+│   ├── compute_covagent.py   # events.jsonl -> tokens.json (token allocation by category)
+│   ├── visualize_tokens.py   # tokens.json -> token_alloc.html (pie chart)
+│   ├── make_category_csv.py # tokens.json -> by_category.csv
 │   ├── gen_codex_prompt.py   # Generate prompts for Codex comparison
+│   ├── test_design.py        # Scaffold compile+sim test for a dashboard design
 │   ├── test_prompt_loader.py # Test prompt template loading
-│   ├── test_without_sim.py   # Test graph without simulator
-│   ├── verify_questasim_sol.sh  # Verify QuestaSim solution
-│   └── setup_env.sh          # Environment setup helper
+│   └── README.md             # Script-by-script usage reference
 ├── configs/                  # Example environment configs
 ├── data/                     # Design files (RTL + specs)
 ├── docs/                     # Documentation
@@ -160,32 +160,15 @@ This exercises the full graph without needing QuestaSim or Verilator installed.
 python scripts/test_prompt_loader.py
 ```
 
-### Testing Without Simulation
-
-```bash
-python scripts/test_without_sim.py
-```
-
 ## Analyzing Run Results
 
-### Log Parsing
+### Token Allocation
 
-Use the log parsing script to extract metrics from completed runs:
-
-```bash
-# Human-readable output
-python scripts/parse_log.py work/<RUN_ID>/run.log
-
-# JSON output for scripting
-python scripts/parse_log.py work/<RUN_ID>/run.log --json
-```
-
-Metrics extracted:
-- Total run duration
-- Final cumulative coverage
-- Final token count
-- Coverage milestones (time to reach 80%, 85%, 90%, 95%, 100%)
-- Warning count and details
+Use `scripts/compute_covagent.py` to turn a run's `events.jsonl` into a per-category
+token breakdown (`tokens.json`), then `scripts/visualize_tokens.py` /
+`scripts/make_category_csv.py` to chart or export it. See
+[scripts/README.md](../scripts/README.md) and the "Reproducing Token Allocation
+Results" section of the top-level [README.md](../README.md).
 
 ### Run Artifacts
 
